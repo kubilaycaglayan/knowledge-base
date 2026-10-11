@@ -11,6 +11,134 @@ source-backed outline for route, page-region, control, gesture, security, and
 edge-case inventories. `/development` is temporary tooling and excluded from
 supported product route coverage and navigation.
 
+## Coverage change checklist and gates
+
+For a route, API contract, visible control, gesture, permission, or security
+boundary change, update the matching inventory in the same review and add or
+adjust a named behavioral assertion. Record an explicit exclusion or owner for
+an unresolved gap. Run `node scripts/check-ototest-inventory.mjs` to catch stale
+local Markdown links, unclassified rows, ownerless matrices, duplicate
+route/API keys, milestone status drift, missing source/evidence locations, and
+API evidence references that no longer resolve to Java test methods. It also
+resolves named frontend component/browser assertions in the route/control
+matrices to declarations in their cited test files, requires named Java test
+evidence on each API operation, and checks one recognized evidence status on
+route, API, control, extension/feature, and cross-client journey rows. Covered
+rows must name a test assertion; claims about persisted state, readback, or
+ownership must also cite a Java integration test or a real-stack/real-browser
+acceptance. These checks establish traceability and evidence layer, not the
+semantic quality of an assertion. The command rejects marking OTOTEST-05 Complete
+while its acceptance checklist has
+unchecked items or its evidence record lacks a passing hosted run link. It
+checks inventory and completion consistency, not behavioral coverage. The
+guard's open-checklist, missing-run, in-progress, and valid-completion cases
+run with `node --test scripts/ototest-completion-guard.test.mjs`. The required
+matrix owner, reviewed source revision, review trigger, exact command, and
+latest hosted-run metadata are checked with
+`node --test scripts/ototest-inventory-metadata.test.mjs` and
+`node scripts/check-ototest-inventory.mjs`.
+
+For changed route behavior, update the route/state row for path, alias, guard,
+redirect, route parameter, direct-load identity, authentication result, query
+state, and unavailable-resource behavior as applicable. For each changed
+visible control or gesture, give the action a distinct checklist ID and record
+its source, starting state, supported input, visible result, and persisted or
+URL effect. Split dialog opening, successful submission, cancellation,
+applicable validation, and recoverable request failure into separately
+reviewable actions; record confirmation or undo for destructive actions. Mark
+decorative or unavailable controls non-interactive with a reason. For browser
+gestures, identify desktop Chrome input and Android Chrome input when offered,
+include a tap/click or keyboard alternative for drag-dependent actions where
+applicable, and record recovery from interrupted pointer input. Keep gaps and
+platform-specific evidence status explicit; desktop phone-width emulation does
+not establish physical Android Chrome behavior.
+Every operation marked public in the API matrix must state its authentication
+bypass reason; its regression cases run with
+`node --test scripts/ototest-api-public-status.test.mjs` in
+`verify / web-and-extension`.
+Every `decision-needed` API operation must document its missing supported
+client call site and name Knowledge Base maintainers as the decision owner;
+the policy regression runs with
+`node --test scripts/ototest-api-client-scope.test.mjs` in
+`verify / web-and-extension`.
+Java test references in API and detailed control rows resolve to method
+declarations; the reference parser tests run with
+`node --test scripts/ototest-java-evidence.test.mjs`.
+The browser evidence policy tests also reject covered persisted-state or
+ownership claims that cite only frontend rendering evidence; run them with
+`node --test scripts/ototest-browser-evidence.test.mjs`.
+Manual-status inventory rows must link to a reproducible procedure; those
+policy cases run with `node --test scripts/ototest-manual-evidence.test.mjs`.
+The built Manifest V3 permission set is reconciled with the extension feature
+map by `node scripts/check-ototest-extension-permissions.mjs <built-manifest.json>`;
+its mapping and denied-permission regression cases run with
+`node --test scripts/ototest-extension-permissions.test.mjs` in
+`verify / web-and-extension`.
+
+The deployed-shaped smoke run also compares the live generated OpenAPI method
+and path pairs with `docs/ototest/01-api-matrix.md`, and the registered Vue
+route patterns with `docs/ototest/01-route-matrix.md`. The source comparison is
+implemented by `node scripts/check-ototest-source-drift.mjs` and runs after the
+smoke API becomes healthy; the smoke step streams OpenAPI from inside the
+isolated API container without publishing its port to the host. Parser regressions run with
+`node --test scripts/ototest-source-drift.test.mjs` in `verify / web-and-extension`.
+
+| Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
+| --- | --- | --- | --- |
+| Frontend unit and component | `verify / web-and-extension` (`npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build`) | `cd frontend && npm test && node --test scripts/vitest-scope.test.mjs && npm run build` | About 30 seconds with dependencies installed; Node 22 and `frontend/npm ci` |
+| Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | About 1–2 minutes; Docker and Gradle 8.13/JDK 21 container |
+| PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | About 2–3 minutes for empty-database full suite plus migrated startup; Docker and PostgreSQL 16 |
+| Browser route/control acceptance | `verify / web-and-extension` — **Run web route and control browser acceptance** (`npm run test:nav`) | `cd frontend && npm run test:nav` (mocked API, headless Chromium) | About 2 minutes; Node 22 and Playwright Chromium |
+| Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; domain acceptance scripts also run with their dedicated `scripts/run-*-e2e.sh` wrappers | Fixture-backed `npm run test:*` suites beyond `test:nav` and domain real-stack wrappers are opt-in; install Playwright Chromium and use only disposable stacks | Around 1–2 minutes for smoke, 10–30 seconds per domain wrapper after images are built, and about 20–40 seconds for line-history/Orca; cold Docker builds take longer. Wrappers share HTTPS port 26443 and run sequentially. |
+| Packaged extension browser | `verify / web-and-extension` — **Run packaged extension browser acceptance** | `(cd frontend && npx playwright install --with-deps chromium) && ./scripts/run-extension-browser-e2e.sh` (desktop Chromium under Xvfb; isolated temporary profile and loopback API fixture) | About 5 seconds after browser dependencies are installed; Chromium, Playwright, Xvfb, Node 22 |
+| Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | A few seconds; Node 22 |
+| iOS | Out of scope while the app is inactive; historical jobs remain disabled | Manual macOS workflow only if the supported-client decision changes | No current gate/runtime |
+
+Browser suites that need a local application or installed extension remain
+opt-in unless they are listed in the CI gates above. The route/control browser
+suite and packaged extension browser journey run in `verify / web-and-extension`; the timer WebSocket
+and line-history jobs upload artifacts only on failure. Artifact names include
+the workflow run ID and attempt, runner evidence records the source commit, and
+the workflow summary links the run. Uploads expire after 14 days. Browser traces
+retain DOM snapshots but disable screenshot capture; trace JSON is scrubbed for
+credentials, tokens, cookies, and email addresses before upload. If scrubbing
+fails, the trace is deleted. Diagnostics contain request paths and status codes,
+and browser tests use generated disposable accounts. A release evidence record
+should use the
+[#ototest execution template](ototest/evidence-template.md); never commit
+tokens, personal data, or secret-bearing artifacts.
+The runtimes above are approximate local observations through the 2026-10-11
+OTOTEST-05 supplements, not CI service-level guarantees; the
+[run record](ototest/runs/2026-10-10-ototest-05-local-gates.md) lists exact
+commands and outcomes.
+
+## Manual and platform-limited evidence
+
+- **Physical Android Chrome:** Knowledge Base maintainers use a disposable
+  account and local isolated environment, open the app from Android Chrome,
+  and execute the relevant **MOBILE-01 through MOBILE-33** criteria in the
+  [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md), plus
+  the Android Chrome flows in the
+  [OTOTEST-05 acceptance checklist](ototest/05-acceptance-checklist.md).
+  Follow the matching route/control flow where those criteria depend on it.
+  Record every criterion separately as pass, fail, blocked, or not run; a
+  partial sweep must list the unrun IDs and cannot be reported as complete.
+  For each result, use the
+  [execution template](ototest/evidence-template.md) to record device,
+  Android/Chrome versions, viewport/orientation, input method, route/action,
+  outcome, and redacted evidence. Verify saved mutations after reload or a
+  fresh API read. Desktop viewport emulation is supplemental and must not be
+  recorded as a device run.
+- **Extension permission prompt:** Knowledge Base maintainers build the
+  packaged extension with `npm run build --prefix chrome-extension`, load
+  `chrome-extension/.output/chrome-mv3` in a fresh desktop Chrome profile,
+  and record the requested permission, allow/deny action, resulting feature
+  behavior, Chrome version, and redacted evidence. Use only a local fixture or
+  disposable Knowledge Base account; live Google consent and Clockify account
+  data are not required for this permission check.
+- **iOS:** Out of scope while the app is inactive. Historical CI jobs remain
+  disabled and do not establish a current product gate.
+
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
 Three backend integration suites guard the API as a whole (see
@@ -119,6 +247,58 @@ bodies with the Line history gutter on and checks:
   before the browser reports the new caret, so the other tests wait one frame
   after clicking.
 Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
+
+`./scripts/run-extension-browser-e2e.sh` builds the Manifest V3 extension and
+loads that packaged build in desktop Chromium with a fresh temporary browser
+profile. The browser journey checks the manifest permissions, popup and
+options entrypoints, API URL persistence, a Clockify content-script to
+service-worker request, signed-in timer start/stop, note creation and editing,
+expired-session recovery, and unavailable-API recovery against a disposable
+loopback fixture. It restarts the persistent Chromium profile to confirm the
+packaged extension worker reconnects with its local sign-in state. Unexpected
+console and page errors fail the suite. It requires
+`xvfb-run` on a headless Linux host and uses only a local fixture token. The
+test profile and fixture server are removed when the run exits. To run just
+the browser assertions after building the extension, use
+`(cd frontend && npm run test:extension:e2e)`.
+
+`./scripts/run-notes-e2e.sh` runs a desktop Chromium Notes journey against a
+unique disposable Compose stack. It creates a note in the UI, edits its title
+and body, verifies a fresh API read, archives and restores it, then checks the
+active note after reload. It also uses a second account in a mobile-sized
+Chromium context to verify that the first account's note returns 404. The
+runner generates local credentials and removes only its own Compose project
+and volumes.
+
+`./scripts/run-paths-e2e.sh` runs a desktop Chromium Paths journey in a separate
+disposable Compose project. It creates a Path through the UI, edits it, removes
+it with the supported undo window, and confirms each saved state through fresh
+API reads and reloads.
+
+`./scripts/run-logs-e2e.sh` runs a desktop Chromium Logs journey in its own
+disposable stack. It creates and edits a log through the UI, confirms each
+version from the API and after reload, then exercises the removal confirmation
+and verifies the deleted entry stays absent.
+
+`./scripts/run-labels-e2e.sh` runs a desktop Chromium Labels journey in a
+separate disposable stack. It creates, edits, and removes an unassigned label,
+checking the API state and the rendered row after reload.
+
+`./scripts/run-calendar-e2e.sh` runs a desktop Chromium Calendar day journey
+against a separate disposable stack. It creates and edits a day note through
+the date-linked route, verifies each value through a fresh API range read, then
+clears the note and confirms the day disappears after reload.
+
+`./scripts/run-reports-settings-e2e.sh` runs desktop Chromium report-range and
+theme-preference journeys in its own disposable Compose project. It checks the
+report range through the API and URL after reload, and the selected theme in
+local storage, the rendered document, and the Settings control after reload.
+
+`./scripts/run-transfers-e2e.sh` runs desktop Chromium export/import journeys
+in a separate disposable stack. It exports a Path, imports it into a second
+disposable account, and verifies it through that account's API. It also
+recovers from invalid Clockify JSON and confirms the imported batch and session
+through fresh API reads.
 
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca

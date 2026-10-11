@@ -95,7 +95,7 @@ class ImportControllerApiTest {
                     java.time.Instant.parse("2026-08-26T10:00:00Z"),
                     null)));
     when(service.undoBatch(user, batchId))
-        .thenReturn(new ClockifyImportService.UndoSummary(batchId, 2, 2));
+        .thenReturn(new ClockifyImportService.UndoSummary(batchId, 2, 2, 1));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(get("/api/v1/imports/clockify/batches").with(authentication(auth)))

@@ -2,15 +2,23 @@
 import {
   computed,
   defineAsyncComponent,
+  inject,
   onBeforeUnmount,
   onMounted,
   ref,
 } from "vue";
+import { routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import {
   addDays,
+  addMonths,
+  addQuarters,
+  addYears,
   differenceInCalendarDays,
+  endOfMonth,
+  endOfQuarter,
   endOfWeek,
+  endOfYear,
   format,
   parseISO,
   startOfMonth,
@@ -159,6 +167,7 @@ const selectedLabelIds = ref<string[]>(initialParams.getAll("labelId"));
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const reportsStore = useReportsStore();
+const router = inject(routerKey, undefined);
 const { paths: availablePaths } = storeToRefs(pathsStore);
 const availableLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const report = ref<Report | null>(null);
@@ -181,7 +190,10 @@ const labelOptions = computed<LabelOption[]>(() =>
         label.id ? [{ id: label.id, name: label.label }] : [],
       ),
 );
-const breakdownMode = ref<"Path" | "Labels">("Path");
+function groupingFromUrl(params: URLSearchParams): "Path" | "Labels" {
+  return params.get("groupBy")?.toLowerCase() === "labels" ? "Labels" : "Path";
+}
+const breakdownMode = ref<"Path" | "Labels">(groupingFromUrl(initialParams));
 const breakdownCategories = computed(() =>
   breakdownMode.value === "Path"
     ? report.value?.paths || []
@@ -289,6 +301,7 @@ function syncReportStateFromUrl() {
   syncSankeyFromUrl();
   syncTrendlineFromUrl();
   const params = new URLSearchParams(window.location.search);
+  breakdownMode.value = groupingFromUrl(params);
   const nextAggregation = params
     .get("aggregation")
     ?.toUpperCase() as Aggregation;
@@ -334,6 +347,8 @@ function storeReportState() {
   url.searchParams.set("aggregation", aggregation.value.toLowerCase());
   url.searchParams.set("startDate", selectedRange.value.startDate);
   url.searchParams.set("endDate", selectedRange.value.endDate);
+  if (breakdownMode.value === "Labels") url.searchParams.set("groupBy", "labels");
+  else url.searchParams.delete("groupBy");
   url.searchParams.delete("pathId");
   selectedPathIds.value.forEach((pathId) =>
     url.searchParams.append("pathId", pathId),
@@ -342,7 +357,11 @@ function storeReportState() {
   selectedLabelIds.value.forEach((labelId) =>
     url.searchParams.append("labelId", labelId),
   );
-  window.history.pushState({}, "", url);
+  pushReportUrl(url);
+}
+function selectGrouping(value: string) {
+  breakdownMode.value = value === "Labels" ? "Labels" : "Path";
+  storeReportState();
 }
 function toggleTrendline() {
   const next =
@@ -352,15 +371,28 @@ function toggleTrendline() {
   const url = new URL(window.location.href);
   if (next === "OFF") url.searchParams.delete("trendline");
   else url.searchParams.set("trendline", next.toLowerCase());
-  window.history.pushState({}, "", url);
-  syncTrendlineFromUrl();
+  trendlineMode.value = next;
+  pushReportUrl(url);
 }
 function toggleSankey() {
   const url = new URL(window.location.href);
   if (showSankey.value) url.searchParams.delete("sankey");
   else url.searchParams.set("sankey", "1");
-  window.history.pushState({}, "", url);
-  syncSankeyFromUrl();
+  showSankey.value = !showSankey.value;
+  pushReportUrl(url);
+}
+
+function pushReportUrl(url: URL) {
+  if (!router) {
+    window.history.pushState({}, "", url);
+    return;
+  }
+  const query: Record<string, string | string[]> = {};
+  for (const key of new Set(url.searchParams.keys())) {
+    const values = url.searchParams.getAll(key);
+    query[key] = values.length > 1 ? values : values[0];
+  }
+  void router.push({ query });
 }
 
 async function load(preserveScroll?: { left: number; top: number }) {
@@ -490,20 +522,30 @@ function selectRange(value: DateRange) {
   void load();
 }
 function shiftAnchor(amount: number) {
-  const span =
-    differenceInCalendarDays(
-      parseISO(selectedRange.value.endDate),
-      parseISO(selectedRange.value.startDate),
-    ) + 1;
+  const start = parseISO(selectedRange.value.startDate);
+  const end = parseISO(selectedRange.value.endDate);
+  const wholeInterval = (first: Date, last: Date) =>
+    format(start, "yyyy-MM-dd") === format(first, "yyyy-MM-dd") &&
+    format(end, "yyyy-MM-dd") === format(last, "yyyy-MM-dd");
+  let nextStart: Date;
+  let nextEnd: Date;
+  if (wholeInterval(startOfYear(start), endOfYear(start))) {
+    nextStart = startOfYear(addYears(start, amount));
+    nextEnd = endOfYear(nextStart);
+  } else if (wholeInterval(startOfQuarter(start), endOfQuarter(start))) {
+    nextStart = startOfQuarter(addQuarters(start, amount));
+    nextEnd = endOfQuarter(nextStart);
+  } else if (wholeInterval(startOfMonth(start), endOfMonth(start))) {
+    nextStart = startOfMonth(addMonths(start, amount));
+    nextEnd = endOfMonth(nextStart);
+  } else {
+    const span = differenceInCalendarDays(end, start) + 1;
+    nextStart = addDays(start, amount * span);
+    nextEnd = addDays(end, amount * span);
+  }
   selectedRange.value = {
-    startDate: format(
-      addDays(parseISO(selectedRange.value.startDate), amount * span),
-      "yyyy-MM-dd",
-    ),
-    endDate: format(
-      addDays(parseISO(selectedRange.value.endDate), amount * span),
-      "yyyy-MM-dd",
-    ),
+    startDate: format(nextStart, "yyyy-MM-dd"),
+    endDate: format(nextEnd, "yyyy-MM-dd"),
   };
   storeReportState();
   void load();
@@ -739,7 +781,8 @@ onBeforeUnmount(() =>
             <v-select
               aria-label="Group by"
               :items="['Path', 'Labels']"
-              v-model="breakdownMode"
+              :model-value="breakdownMode"
+              @update:model-value="selectGrouping"
               density="compact"
               variant="outlined"
               hide-details

@@ -146,14 +146,6 @@ function closeFloatingOnOutside(event: PointerEvent) {
     return;
   open.value = false;
 }
-function expandFromBar(event: MouseEvent) {
-  if (props.inline || !window.matchMedia("(min-width: 641px)").matches)
-    return;
-  const target = event.target;
-  if (target instanceof Element && target.closest("button, a, input, select, textarea, [role='button']"))
-    return;
-  open.value = true;
-}
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
     pathId.value = "";
@@ -235,7 +227,7 @@ onUnmounted(() => {
     :style="{ '--tracker-viewport-height': `${trackerViewportHeight}px` }"
   >
     <section class="floating-tracker session-grid" aria-label="Focus today">
-      <div class="floating-tracker-bar focus" @click="expandFromBar">
+      <div class="floating-tracker-bar focus">
         <TimerRunButton
           v-if="timer || isPaused"
           class="floating-tracker-pause"
@@ -766,6 +758,7 @@ onUnmounted(() => {
     height: 44px;
   }
   .floating-tracker-clock {
+    min-height: 44px;
     font-size: 16px;
   }
   .floating-tracker-panel {

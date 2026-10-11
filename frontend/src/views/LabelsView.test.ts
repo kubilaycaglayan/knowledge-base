@@ -1,10 +1,17 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import LabelsView from "./LabelsView.vue";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 
-vi.mock("../lib/api", () => ({ api: vi.fn() }));
+vi.mock("../lib/api", () => ({
+  api: vi.fn(),
+  ApiError: class MockApiError extends Error {
+    constructor(message: string, public readonly status: number) {
+      super(message);
+    }
+  },
+}));
 
 describe("LabelsView", () => {
   it("shows the intentional empty state when no labels exist", async () => {
@@ -127,7 +134,7 @@ describe("LabelsView", () => {
     ).toHaveLength(1);
   });
 
-  it("offers a second confirmation and removes assignments only after confirming", async () => {
+  it("preserves an assigned label and explains that assignments must be removed first", async () => {
     const confirmations: string[] = [];
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
@@ -135,10 +142,8 @@ describe("LabelsView", () => {
           return [
             { id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] },
           ];
-        if (path.startsWith("/labels/one") && options?.method === "DELETE") {
-          if (path.includes("removeAssignments")) return undefined;
-          throw new Error("assigned");
-        }
+        if (path === "/labels/one" && options?.method === "DELETE")
+          throw new ApiError("Labels in use cannot be deleted; remove their assignments first", 409);
         return undefined;
       },
     );
@@ -148,8 +153,8 @@ describe("LabelsView", () => {
           PromptDialog: {
             template: "<div />",
             methods: {
-              open(message: string) {
-                confirmations.push(message);
+              open(message: string, description: string) {
+                confirmations.push(`${message} ${description}`);
                 return Promise.resolve("confirmed");
               },
             },
@@ -162,8 +167,7 @@ describe("LabelsView", () => {
     await flushPromises();
 
     expect(confirmations).toEqual([
-      "Remove “Study”?",
-      "“Study” has assignments. Remove the label and its assignments?",
+      "Remove “Study”? Labels in use must be unassigned first.",
     ]);
     expect(
       vi
@@ -171,8 +175,9 @@ describe("LabelsView", () => {
         .mock.calls.some(
           ([path]) => path === "/labels/one?removeAssignments=true",
         ),
-    ).toBe(true);
-    expect(wrapper.text()).not.toContain("Study");
+    ).toBe(false);
+    expect(wrapper.text()).toContain("Remove assignments before removing this label.");
+    expect(wrapper.text()).toContain("Study");
   });
 
   it("creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections", async () => {
@@ -324,7 +329,7 @@ describe("LabelsView", () => {
     await flushPromises();
     await failed.get('button[aria-label="Remove Study"]').trigger("click");
     await flushPromises();
-    expect(confirmOpen).toHaveBeenCalledTimes(2);
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
     expect(failed.text()).toContain("Study");
     expect(failed.get('[role="alert"]').text()).toBe("Could not remove this label.");
   });

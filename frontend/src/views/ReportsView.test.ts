@@ -76,6 +76,45 @@ describe("ReportsView", () => {
     });
   });
 
+  it("REPORT-14: restores the selected grouping and range when the report remounts", async () => {
+    window.history.replaceState({}, "", "/reports?startDate=2026-08-24&endDate=2026-08-30&aggregation=week");
+    const first = mount(ReportsView, { global });
+    await flushPromises();
+    await first.get('[aria-label="Group by"]').setValue("Labels");
+    first.unmount();
+    const restored = mount(ReportsView, { global });
+    try {
+      await flushPromises();
+      expect((restored.get('[aria-label="Group by"]').element as HTMLSelectElement).value).toBe("Labels");
+      const params = new URLSearchParams(window.location.search);
+      expect(params.get("startDate")).toBe("2026-08-24");
+      expect(params.get("endDate")).toBe("2026-08-30");
+    } finally {
+      restored.unmount();
+    }
+  });
+
+  it("REPORT-04: advances a leap-February month to the complete next month", async () => {
+    window.history.replaceState({}, "", "/reports?startDate=2024-02-01&endDate=2024-02-29&aggregation=month");
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (!path.startsWith("/reports?")) return [];
+      const params = new URLSearchParams(path.split("?")[1]);
+      return { from: params.get("startDate"), to: params.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
+    });
+    const wrapper = mount(ReportsView, { global });
+    try {
+      await flushPromises();
+      await wrapper.get('[aria-label="Next date range"]').trigger("click");
+      await flushPromises();
+      const params = new URLSearchParams(window.location.search);
+      expect(params.get("startDate")).toBe("2024-03-01");
+      expect(params.get("endDate")).toBe("2024-03-31");
+      expect(params.get("aggregation")).toBe("month");
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("shows the report dashboard with project breakdown and charts", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
@@ -169,7 +208,7 @@ describe("ReportsView", () => {
         (sum, category) => sum + category.seconds,
         0,
       );
-    const initialSearch = window.location.search;
+    const initialSearch = new URLSearchParams(window.location.search);
 
     expect(breakdown.props("categoryLabel")).toBe("Path");
     expect(categoryTotal()).toBe(3600);
@@ -181,7 +220,10 @@ describe("ReportsView", () => {
     expect(categoryTotal()).toBe(3600);
     expect(breakdown.text()).toContain("Focus");
     expect(wrapper.get(".total-display").text()).toBe("01:00:00");
-    expect(window.location.search).toBe(initialSearch);
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("startDate")).toBe(initialSearch.get("startDate"));
+    expect(params.get("endDate")).toBe(initialSearch.get("endDate"));
+    expect(params.get("groupBy")).toBe("labels");
   });
 
   it("keeps the current report visible behind a refresh state while parameters load", async () => {

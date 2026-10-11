@@ -80,7 +80,8 @@ public class ClockifyImportService {
     }
   }
 
-  public record UndoSummary(UUID batchId, long deletedEntries, long deletedActivities) {}
+  public record UndoSummary(
+      UUID batchId, long deletedEntries, long deletedActivities, long deletedPaths) {}
 
   @Transactional
   public ImportSummary importEntries(UUID userId, ClockifyImportRequest request) {
@@ -163,13 +164,14 @@ public class ClockifyImportService {
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Import batch not found"));
     if (batch.getUndoneAt() != null) {
-      return new UndoSummary(batch.getId(), 0, 0);
+      return new UndoSummary(batch.getId(), 0, 0, 0);
     }
     long deletedActivities = activities.deleteByUserIdAndImportBatchId(userId, batch.getId());
     long deletedEntries = entries.deleteByUserIdAndImportBatchId(userId, batch.getId());
+    long deletedPaths = paths.deleteByUserIdAndImportBatchId(userId, batch.getId());
     batch.undo();
     batches.save(batch);
-    return new UndoSummary(batch.getId(), deletedEntries, deletedActivities);
+    return new UndoSummary(batch.getId(), deletedEntries, deletedActivities, deletedPaths);
   }
 
   private Path resolvePath(

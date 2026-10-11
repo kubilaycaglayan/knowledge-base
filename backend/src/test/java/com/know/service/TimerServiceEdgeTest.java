@@ -45,6 +45,22 @@ class TimerServiceEdgeTest {
   }
 
   @Test
+  void currentReadsOnlyTheAuthenticatedUsersRunningTimer() {
+    UUID user = UUID.randomUUID();
+    TimeEntry running = new TimeEntry(user, null, Instant.now(), "Reading", TimeSource.WEB);
+    when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.of(running));
+    when(entryLabels.findAllByIdTimeEntryId(running.getId())).thenReturn(List.of());
+
+    TimerService.TimeView current = service().current(user);
+
+    assertEquals(running.getId(), current.id());
+    assertTrue(current.running());
+    assertEquals("Reading", current.description());
+    verify(entries).findByUserIdAndEndedAtIsNull(user);
+    verifyNoInteractions(paths, labels, scopes);
+  }
+
+  @Test
   void startingWhileAnotherTimerRunsConflictsBeforeTargetValidationOrMutation() {
     UUID user = UUID.randomUUID();
     TimeEntry running =

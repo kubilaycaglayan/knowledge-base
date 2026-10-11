@@ -221,6 +221,9 @@ describe("matchPages", () => {
     expect(labels("home")).toEqual(["Sessions"]);
     expect(matchPages("home")[0].path).toBe("/");
   });
+  it("does not expose temporary Development tooling as an authenticated page shortcut", () => {
+    expect(labels("development")).toEqual([]);
+  });
   it("matches nothing for empty or unrelated text", () => {
     expect(labels("")).toEqual([]);
     expect(labels("   ")).toEqual([]);

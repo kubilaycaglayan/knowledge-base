@@ -247,11 +247,28 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     String board = "/api/v1/boards/" + ids.get("board");
     String[][] operations = {
       {"GET", "/api/v1/paths/{id}", ids.get("path"), null},
+      {"GET", "/api/v1/paths/{id}/summary", ids.get("path"), null},
+      {"GET", "/api/v1/labels/{id}/history", ids.get("label"), null},
+      {"GET", "/api/v1/labels/{id}/history/records?kind=notes", ids.get("label"), null},
       {"GET", "/api/v1/notes/{id}", ids.get("note"), null},
       {"GET", "/api/v1/logs/{id}", ids.get("log"), null},
       {"PUT", "/api/v1/labels/{id}", ids.get("label"), "{\"name\":\"Hidden\",\"scopes\":[\"NOTE\"]}"},
       {"GET", "/api/v1/boards/{id}", ids.get("board"), null},
+      {"GET", "/api/v1/boards/{id}/statuses", ids.get("board"), null},
       {"PUT", board + "/statuses/{id}", ids.get("status"), "{\"name\":\"Hidden\"}"},
+      {"GET", "/api/v1/boards/{id}/cards", ids.get("board"), null},
+      {
+        "GET",
+        "/api/v1/boards/{id}/cards/page?statusId=" + ids.get("status"),
+        ids.get("board"),
+        null
+      },
+      {
+        "GET",
+        "/api/v1/boards/{id}/gantt?from=2026-08-01&to=2026-10-31",
+        ids.get("board"),
+        null
+      },
       {"GET", board + "/cards/{id}", ids.get("card"), null},
       {"GET", "/api/v1/time-entries/{id}", ids.get("entry"), null},
       {"PUT", "/api/v1/timers/{id}", ids.get("entry"), "{\"labelIds\":[],\"startedAt\":\"2026-09-01T09:00:00Z\"}"},
@@ -333,6 +350,16 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
             new String[] {"POST", cards, "{\"title\":\"Mine\",\"pathIds\":[\"" + ids.get("path") + "\"]}"},
             new String[] {"POST", cards, "{\"title\":\"Mine\",\"labelIds\":[\"" + ids.get("label") + "\"]}"},
             new String[] {"POST", cards, "{\"title\":\"Mine\",\"statusId\":\"" + ids.get("status") + "\"}"},
+            new String[] {
+              "PUT",
+              cards + "/" + intruderCard,
+              "{\"pathIds\":[\"" + ids.get("path") + "\"]}"
+            },
+            new String[] {
+              "PUT",
+              cards + "/" + intruderCard,
+              "{\"labelIds\":[\"" + ids.get("label") + "\"]}"
+            },
             new String[] {
               "POST",
               cards + "/" + intruderCard + "/move",

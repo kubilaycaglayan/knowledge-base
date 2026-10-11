@@ -7,7 +7,8 @@
   Notes, Calendar, Reports, Settings, …) lists it under Pages above the
   record results, matched instantly in the browser; Enter on the top match
   goes straight there without waiting for the record search. Cards follow
-  Pages and precede the other record groups.
+  Pages and precede the other record groups. Temporary `/development` tooling
+  is excluded from authenticated navigation and page shortcuts.
 - [x] Global search: ⌘K/Ctrl+K (or the header Search button) opens a search
   of every owned path, board, label, note, card, log, session, and calendar
   day from any page. Results are grouped by type with highlighted matches,
@@ -38,6 +39,16 @@
   lists each body line with its time ("Unsaved" for lines typed since the last
   save), with VoiceOver labels. `NoteLineHistory` runs its XCTest cases on
   Linux in CI.
+- [x] Protect web Note edits from accidental navigation and conflicting saves:
+  confirm before discarding an unsaved draft, keep autosaving if the user stays,
+  and show the newer title and body when another window saves first so the user
+  can choose the saved version or explicitly retry their draft against its
+  version (see `docs/ototest/03-acceptance-checklist.md`, FLOW-09.12–09.13).
+- [x] Gantt date controls work with keyboard input for moving/resizing scheduled
+  cards and selecting a range on undated cards; phone-width touch can set a
+  single date with a 44px target. The control recovers from lost pointer capture
+  without saving a partial drag (see `docs/ototest/03-acceptance-checklist.md`,
+  FLOW-08.18–08.19).
 - [x] Build the iOS app and run its unit tests and the notes UI tests (Line
   history included) in an iPhone simulator on every push (CI job `ios`).
 - [x] iOS: `NoteDocument.plainText` keeps each heading, paragraph, code line,

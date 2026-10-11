@@ -77,9 +77,15 @@ async function load() {
 async function selectTab(tab: "clockify" | "knowledge-base") {
   activeTab.value = tab;
   historyPage.value = 1;
+  importSummary.value = "";
+  error.value = "";
+  errorDetails.value = "";
   await load();
 }
 async function importClockify() {
+  importSummary.value = "";
+  error.value = "";
+  errorDetails.value = "";
   try {
     const payload = JSON.parse(clockifyJson.value);
     if (!payload || !Array.isArray(payload.timeentries))
@@ -105,6 +111,9 @@ async function importClockify() {
 }
 async function importKnowledgeBase() {
   importingKnowledgeBase.value = true;
+  importSummary.value = "";
+  error.value = "";
+  errorDetails.value = "";
   try {
     if (!knowledgeBaseCsv.value.trim())
       throw new Error("Paste a Knowledge Base CSV file first.");
@@ -343,6 +352,11 @@ onMounted(load);
   box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
   color: var(--workspace-text);
 }
+@media (max-width: 700px) {
+  .import-tabs button {
+    min-height: 44px;
+  }
+}
 .file-input {
   display: grid;
   gap: 6px;
@@ -359,5 +373,11 @@ onMounted(load);
 .history-pagination button {
   min-height: 40px;
   padding: 8px 12px;
+}
+@media (max-width: 700px) {
+  .import-tabs button,
+  .history-pagination button {
+    min-height: 44px;
+  }
 }
 </style>

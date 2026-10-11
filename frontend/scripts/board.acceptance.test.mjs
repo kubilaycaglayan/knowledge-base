@@ -96,6 +96,15 @@ it("keeps the full-width Gantt card list inside the visible shell", async (t) =>
   assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
 });
 
+it("opens a Kanban card from its semantic title action with the keyboard", async (t) => {
+  const { page } = await fixture(t, 1440);
+
+  const openCard = page.getByRole("button", { name: "Ship timeline", exact: true });
+  await openCard.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("dialog", { name: "Edit card" }).waitFor();
+});
+
 // The width toggle sits on the timeline's top-right corner; the Gantt clips
 // overflow, so the whole button must stay inside it in both widths, and the
 // wide timeline must keep its vertical scrollbar inside the viewport.
@@ -388,6 +397,55 @@ it("highlights an unscheduled Gantt card after it gets a date", async (t) => {
   await page.waitForFunction(() => document.querySelector(".timeline-row")?.classList.contains("last-changed") && document.querySelector(".timeline-label")?.classList.contains("last-changed"));
 });
 
+it("sets an inclusive date range on an unscheduled Gantt card with keyboard input", async (t) => {
+  const { page, getCardUpdateRequests } = await fixture(t, 1440);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: [{ ...cards[0], startDate: undefined, dueDate: undefined }] }));
+  await boardAction(page, "Gantt");
+  const control = page.getByRole("button", { name: "Choose a date for Ship timeline" });
+  await control.waitFor();
+  const dates = await page.locator(".timeline-days span[data-date]").evaluateAll((els) => els.map((el) => el.getAttribute("data-date")));
+  assert.ok(dates.length >= 3);
+  const saved = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().includes("/cards/card-1"));
+  await control.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Enter");
+  const request = await saved;
+  const input = request.request().postDataJSON();
+  assert.equal(input.startDate, dates[1]);
+  assert.equal(input.dueDate, dates[2]);
+  assert.equal(getCardUpdateRequests(), 1);
+  await page.waitForFunction(() => document.querySelector('.timeline-card')?.getAttribute('aria-busy') === 'false');
+  assert.equal(await page.locator(".timeline-bar").getAttribute("aria-label"), "Ship timeline");
+});
+
+it("sets one date on an unscheduled Gantt card with a phone-width touch tap", async (t) => {
+  const { page, getCardUpdateRequests } = await fixture(t, 390);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: [{ ...cards[0], startDate: undefined, dueDate: undefined }] }));
+  await boardAction(page, "Gantt");
+  const control = page.getByRole("button", { name: "Choose a date for Ship timeline" });
+  await control.waitFor();
+  const bounds = await control.boundingBox();
+  assert.ok(bounds && bounds.height >= 44, `The unscheduled row touch target must be at least 44px high (${bounds?.height}px)`);
+  const days = page.locator(".timeline-days span[data-date]");
+  const visibleDay = await days.evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { date: element.getAttribute("data-date"), x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  }).find((day) => day.date && day.x >= 150 && day.x + day.width <= innerWidth));
+  assert.ok(visibleDay, "At least one Gantt day must be visible for touch selection");
+  const hitTarget = await page.evaluate(({ x, y }) => {
+    const hit = document.elementFromPoint(x, y);
+    return { tag: hit?.tagName, className: hit instanceof HTMLElement ? hit.className : "", label: hit?.getAttribute("aria-label") };
+  }, { x: visibleDay.x + visibleDay.width / 2, y: bounds.y + bounds.height / 2 });
+  assert.match(`${hitTarget.tag} ${hitTarget.className}`, /timeline-unscheduled/);
+  const saved = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().includes("/cards/card-1"));
+  await page.touchscreen.tap(visibleDay.x + visibleDay.width / 2, bounds.y + bounds.height / 2);
+  const input = (await saved).request().postDataJSON();
+  assert.equal(input.startDate, visibleDay.date);
+  assert.equal(input.dueDate, undefined, "A touch tap sets one date without adding a range end");
+  assert.equal(getCardUpdateRequests(), 1);
+});
+
 // GO-04, GO-05, GO-06
 for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline edges and jumps to the card at ${width}px`, async (t) => {
   const { page } = await fixture(t, width);
@@ -475,7 +533,7 @@ for (const width of [390, 1440]) it(`ends the timeline at a future card from its
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null, failCardMoveOnce = false) {
   const iphoneWebKit = process.env.BOARD_BROWSER === "webkit" && width <= 390;
   const context = await browser.newContext({ ...(iphoneWebKit ? devices["iPhone 13"] : {}), viewport: { width, height: 900 }, ...(iphoneWebKit ? { screen: { width, height: 900 } } : {}), hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
@@ -544,6 +602,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     }
     if (method === "POST" && cardRoute?.[2] === "move" && routedCard) {
       cardMoveRequests += 1;
+      if (failCardMoveOnce && cardMoveRequests === 1) {
+        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary move failure" }) });
+        return;
+      }
       const requestBody = request.postDataJSON();
       const previousStatusId = routedCard.statusId;
       const previousPosition = routedCard.position;
@@ -750,7 +812,21 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(input.dueDate, dateOnly(5));
     input = await drag(".timeline-resize:first-child", 1);
     assert.equal(input.startDate, dateOnly(2));
-    assert.equal(getCardUpdateRequests(), 5);
+    const bar = page.locator(".timeline-bar");
+    await bar.focus();
+    let response = page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/cards/card-1"));
+    await page.keyboard.press("ArrowRight");
+    input = (await response).request().postDataJSON();
+    assert.equal(input.startDate, dateOnly(3));
+    assert.equal(input.dueDate, dateOnly(6));
+    await page.waitForFunction(() => document.querySelector('.timeline-card')?.getAttribute('aria-busy') === 'false');
+    await bar.focus();
+    response = page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/cards/card-1"));
+    await page.keyboard.press("Shift+ArrowLeft");
+    input = (await response).request().postDataJSON();
+    assert.equal(input.startDate, dateOnly(3));
+    assert.equal(input.dueDate, dateOnly(5));
+    assert.equal(getCardUpdateRequests(), 7);
     await page.locator(".timeline-bar").focus();
     await page.keyboard.press("Enter");
     await page.getByRole("dialog").waitFor();
@@ -768,6 +844,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       await page.mouse.down();
       await page.mouse.move(box.x + box.width / 2 + day.width, box.y + box.height / 2, { steps: 5 });
     };
+    await start();
+    const captured = await page.locator(".timeline-bar").evaluate((element) => {
+      const button = element;
+      const pointerId = 1;
+      const ownsCapture = button.hasPointerCapture(pointerId);
+      if (ownsCapture) button.releasePointerCapture(pointerId);
+      return ownsCapture;
+    });
+    assert.equal(captured, true, "The Gantt bar must own the active pointer before capture is lost");
+    await page.mouse.up();
+    assert.equal(getCardUpdateRequests(), 0, "Losing pointer capture cancels the pending date change");
+    assert.equal(await page.locator(".timeline-card").getAttribute("style"), original);
     await start();
     await page.keyboard.press("Escape");
     await page.mouse.up();
@@ -822,9 +910,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       assert.ok(box.x >= 0 && box.x + box.width <= width, `${name} stays within the viewport`);
     }
     const before = new URL(page.url()).searchParams.get("from");
-    await page.getByRole("button", { name: "Next timeline window" }).click();
+    await page.getByRole("button", { name: "Next timeline window" }).tap();
     await page.waitForFunction((previousFrom) => new URL(location.href).searchParams.get("from") !== previousFrom, before);
-    await page.getByRole("button", { name: "Today", exact: true }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).tap();
     const today = await page.evaluate(() => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; });
     assert.equal(await page.getByRole("textbox", { name: "Timeline start date" }).inputValue(), today);
   });
@@ -1057,9 +1145,12 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("opens a new-board dialog from the Boards dialog and returns there on Escape", async (t) => {
     const { page } = await fixture(t);
+    const boardMenu = page.getByRole("button", { name: "Board menu", exact: true });
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).count(), 0, "No inline board input on the page");
     assert.equal(await page.getByRole("button", { name: "Add board" }).count(), 0, "No Add board button on the page");
-    await boardAction(page, "Manage boards");
+    await page.getByRole("button", { name: "Board menu", exact: true }).click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.getByRole("button", { name: "Add board" }).click();
     const dialog = page.getByRole("dialog", { name: "New board" });
@@ -1070,21 +1161,36 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await dialog.waitFor({ state: "detached" });
     await manager.waitFor();
     assert.equal(await manager.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
+    await page.keyboard.press("Escape");
+    await manager.waitFor({ state: "detached" });
+    const active = await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className || ""}`);
+    assert.equal(await boardMenu.evaluate((button) => document.activeElement === button), true, `Closing the Boards dialog returns focus to its menu trigger; active=${active}`);
   });
 
-  it("closes backdrop-dismissible dialogs but keeps destructive confirmations open", async (t) => {
+  it("closes the Boards manager when its backdrop is activated", async (t) => {
     const { page } = await fixture(t);
     await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.waitFor();
     await page.locator(".dialog-backdrop").click({ position: { x: 8, y: 8 } });
     await manager.waitFor({ state: "detached" });
+  });
 
+  it("keeps archive confirmation open when its backdrop is activated", async (t) => {
+    const { page } = await fixture(t);
     await page.locator(".board-card", { hasText: "Ship timeline" }).click();
     await page.getByRole("button", { name: "Archive card" }).click();
     const confirmation = page.getByRole("alertdialog", { name: "Archive card?" });
     await confirmation.waitFor();
     await page.locator(".dialog-backdrop.confirm-layer").click({ position: { x: 8, y: 8 } });
+    await confirmation.waitFor();
+  });
+
+  it("cancels card archive confirmation without archiving the card", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
+    await page.getByRole("button", { name: "Archive card" }).click();
+    const confirmation = page.getByRole("alertdialog", { name: "Archive card?" });
     await confirmation.waitFor();
     await confirmation.getByRole("button", { name: "Cancel" }).click();
     await confirmation.waitFor({ state: "detached" });
@@ -1117,6 +1223,13 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await editor.getByRole("button", { name: /Save card|Cancel/ }).count(), 0, "Edits save themselves");
     assert.equal(await editor.locator(".ProseMirror").count(), 1);
     assert.equal(await editor.getByRole("combobox", { name: "Status" }).inputValue(), "status-1");
+
+    await closeCard(page);
+    const untitledCard = page.locator('.kanban-column .board-card[aria-label="Untitled card"]');
+    const openUntitled = untitledCard.getByRole("button", { name: "Open untitled card" });
+    await openUntitled.focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("dialog", { name: "Edit card" }).waitFor();
   });
 
   it("autosaves edits and closes with Cmd/Ctrl+Enter from the body", async (t) => {
@@ -1342,7 +1455,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   for (const width of [320, 390]) it(`fills the portrait visual viewport with the phone card editor (${width}px)`, async (t) => {
     const { page } = await fixture(t, width);
-    await page.locator(".board-card").first().click();
+    await page.locator(".board-card").first().tap();
     const editor = page.locator(".card-editor");
     await editor.waitFor();
     const viewportHeight = await page.evaluate(() => window.visualViewport?.height || window.innerHeight);
@@ -1377,8 +1490,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       footer: await page.locator(".board-footer").boundingBox(),
       tracker: await page.locator(".floating-tracker-host").boundingBox(),
     };
-    assert.ok(centerHit.insideCard, `Card center should receive the click (${JSON.stringify({ centerHit, landscapeBounds })})`);
-    await firstCard.click();
+    assert.ok(centerHit.insideCard, `Card center should receive the tap (${JSON.stringify({ centerHit, landscapeBounds })})`);
+    await firstCard.tap();
     const editor = page.locator(".card-editor");
     const editorBox = await editor.boundingBox();
     assert.ok(Math.abs(editorBox.height - 390) < 2, `The landscape card editor fills the visible height (${editorBox.height}px)`);
@@ -1394,7 +1507,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.deepEqual(undersizedFields, [], `Landscape card-editor fields keep 44px targets (${JSON.stringify(undersizedFields)})`);
     assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 390, "The editor remains inside the landscape viewport");
     await page.screenshot({ path: join(screenshotDir, "card-editor-phone-landscape.png") });
-    await editor.locator(".ProseMirror").click();
+    await editor.locator(".ProseMirror").tap();
     await page.setViewportSize({ width: 844, height: 260 });
     await page.waitForFunction(() => {
       const dialog = document.querySelector(".card-editor");
@@ -1417,7 +1530,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "The compact landscape page has no horizontal overflow");
     const kanbanBox = await page.locator(".kanban").boundingBox();
     assert.ok(kanbanBox.y + kanbanBox.height <= 375, `Kanban stays inside the compact landscape viewport (${kanbanBox.y + kanbanBox.height}px)`);
-    await page.locator(".board-card").first().click();
+    await page.locator(".board-card").first().tap();
     const editor = page.locator(".card-editor");
     let editorBox = await editor.boundingBox();
     assert.ok(Math.abs(editorBox.height - 375) < 2, `The editor fills compact landscape height (${editorBox.height}px)`);
@@ -1426,7 +1539,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
     }).map((button) => button.getAttribute("aria-label") || button.title || button.textContent.trim()));
     assert.deepEqual(undersizedButtons, [], `Compact landscape editor buttons keep 44px targets (${undersizedButtons.join(", ")})`);
-    await editor.locator(".ProseMirror").click();
+    await editor.locator(".ProseMirror").tap();
     await page.setViewportSize({ width: 667, height: 260 });
     await page.waitForFunction(() => {
       const dialog = document.querySelector(".card-editor");
@@ -1469,7 +1582,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
     await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
     assert.deepEqual(await boxes(), before, "Starting a timer does not move or resize cards");
-    assert.equal(await page.locator(".board-card").first().getByRole("button").count(), 0, "The hidden play slot is not a button to assistive tech");
+    assert.equal(await page.locator(".board-card").first().getByRole("button", { name: /Start a session for/ }).count(), 0, "The hidden play slot is not a button to assistive tech");
     await page.getByRole("button", { name: "Stop timer" }).click();
     await play.waitFor();
     assert.deepEqual(await boxes(), before, "Stopping a timer does not move or resize cards");
@@ -1733,18 +1846,22 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".view-switch").isVisible().catch(() => false), false, "No view switch row on phones");
     assert.equal(await page.getByRole("button", { name: "Manage boards", exact: true }).count(), 0, "No gear on phones");
     const menuButton = page.getByRole("button", { name: "Board menu" });
-    await menuButton.click();
+    await menuButton.tap();
     const menu = page.getByRole("menu", { name: "Board menu" });
     assert.deepEqual(await menu.locator('[role^="menuitem"]').evaluateAll((items) => items.map((item) => `${item.getAttribute("role")}:${item.textContent.trim()}:${item.getAttribute("aria-checked") ?? ""}`)), ["menuitemradio:Kanban:true", "menuitemradio:Gantt:false", "menuitem:Manage boards…:"]);
-    await menu.getByRole("menuitemradio", { name: "Gantt" }).click();
+    await menu.getByRole("menuitemradio", { name: "Gantt" }).tap();
     await menu.waitFor({ state: "detached" });
     await page.waitForFunction(() => new URL(location.href).searchParams.get("view") === "gantt");
     const ganttBoardButton = page.getByRole("button", { name: /^Choose board:/ });
-    await ganttBoardButton.click();
+    await ganttBoardButton.tap();
     const ganttMenu = page.getByRole("menu", { name: "Choose board" });
     assert.equal(await ganttMenu.getByRole("menuitemradio", { name: "Gantt" }).getAttribute("aria-checked"), "true");
-    await ganttMenu.getByRole("menuitem", { name: "Manage boards…" }).click();
-    await page.getByRole("dialog", { name: "Boards" }).waitFor();
+    await ganttMenu.getByRole("menuitem", { name: "Manage boards…" }).tap();
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.waitFor();
+    assert.equal(await manager.evaluate((dialog) => dialog.contains(document.activeElement)), true, "Opening the dialog moves focus inside it");
+    await manager.getByRole("button", { name: "Done" }).tap();
+    await manager.waitFor({ state: "detached" });
   });
 
   it("keeps the view switch and gear in the toolbar on wide screens", async (t) => {
@@ -1879,7 +1996,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     // evaluateAll does not wait, so let the card render first.
     await page.locator(".board-card", { hasText: "Ship timeline" }).waitFor();
-    assert.deepEqual(await page.locator(".board-card").getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [], "Cards outside In Progress carry no buttons");
+    assert.equal(await page.locator(".board-card-play").count(), 0, "Cards outside In Progress carry no timer actions");
     await page.locator(".board-card", { hasText: "Ship timeline" }).click();
     await page.getByRole("button", { name: "Archive card" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
@@ -1913,11 +2030,26 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("confirms status archival before sending the destructive request", async (t) => {
     const { page } = await fixture(t);
-    await (await openBoardSettings(page)).getByRole("button", { name: "Archive Backlog status" }).click();
+    const settings = await openBoardSettings(page);
+    const trigger = settings.getByRole("button", { name: "Archive Backlog status" });
+    await trigger.click();
     const dialog = page.getByRole("alertdialog", { name: "Archive status?" });
     await dialog.waitFor();
+    const cancel = dialog.getByRole("button", { name: "Cancel" });
+    const archive = dialog.getByRole("button", { name: "Archive" });
+    assert.equal(await dialog.getAttribute("aria-modal"), "true");
+    await page.waitForFunction((element) => element === document.activeElement, await cancel.elementHandle());
+    await cancel.press("Shift+Tab");
+    assert.equal(await archive.evaluate((element) => element === document.activeElement), true, "Shift+Tab wraps to Archive");
+    await archive.press("Tab");
+    assert.equal(await cancel.evaluate((element) => element === document.activeElement), true, "Tab wraps back to Cancel");
     await dialog.getByRole("button", { name: "Cancel" }).click();
     assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0);
+    assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "Cancel restores focus to the archive-status action");
+    await trigger.click();
+    await page.keyboard.press("Escape");
+    assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0, "Escape cancels the confirmation");
+    assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "Escape restores focus to the archive-status action");
   });
 
   it("explains why the last active status is disabled in board settings", async (t) => {
@@ -1961,7 +2093,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   });
 
   it("reorders statuses by dragging their handle in board settings", async (t) => {
-    const { page } = await fixture(t);
+    const { page } = await fixture(t, 1440);
     const settings = await openBoardSettings(page);
     assert.equal(await settings.getByRole("button", { name: /^Move / }).count(), 0, "Arrows are replaced by drag handles");
     const handle = await settings.getByRole("button", { name: "Reorder Pending" }).boundingBox();
@@ -1994,6 +2126,20 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.waitForFunction(() => [...document.querySelectorAll(".kanban-column h2")].map((heading) => heading.textContent?.trim()).join(",") === "Pending,Backlog,In Progress,Done");
   });
 
+  it("reorders statuses with touch-sized actions at phone width", async (t) => {
+    const { page } = await fixture(t, 390);
+    const settings = await openBoardSettings(page);
+    const moveUp = settings.getByRole("button", { name: "Move Pending up" });
+    const bounds = await moveUp.boundingBox();
+    assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44, JSON.stringify(bounds));
+    await moveUp.tap();
+    await page.waitForFunction(() => [...document.querySelectorAll(".settings-statuses input")].map((input) => input.getAttribute("aria-label")?.replace("Status name ", "")).join(",") === "Pending,Backlog,In Progress,Done");
+    await settings.getByRole("button", { name: "Done", exact: true }).tap();
+    await page.reload();
+    await page.locator(".board-page").waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll(".kanban-column h2")].map((heading) => heading.textContent?.trim()).join(",") === "Pending,Backlog,In Progress,Done");
+  });
+
   it("moves an existing card with pointer drag and drop", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().evaluate((card, target) => {
@@ -2004,6 +2150,24 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
     }, await page.locator(".kanban-column").nth(1).elementHandle());
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("rolls back a failed pointer card reorder and reports how to recover", async (t) => {
+    const { page, getCardMoveRequests } = await fixture(t, 390, true, false, false, false, false, 409, false, 0, "status-0", null, true);
+    const column = page.locator(".kanban-column").first();
+    const first = column.locator(".board-card").nth(0);
+    const second = column.locator(".board-card").nth(1);
+    await first.evaluate((card, target) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData("text/plain", card.getAttribute("data-card-id") || "dense-0");
+      card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    }, await second.elementHandle());
+    await page.getByRole("status").filter({ hasText: "Could not reorder card. The change was rolled back." }).waitFor();
+    assert.equal(await column.locator(".board-card h3").first().innerText(), "Dense card 1");
+    assert.equal(await column.locator(".board-card h3").nth(1).innerText(), "Dense card 2");
+    assert.equal(getCardMoveRequests(), 1);
   });
 
   it("inserts a dragged card at the pointer target within its column", async (t) => {
@@ -2053,6 +2217,20 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       ["Dense card 2", "Dense card 1"],
       "The reordered cards retain their positions after reload",
     );
+  });
+
+  it("reorders cards with touch-sized actions at phone width", async (t) => {
+    const { page, getCardMoveRequests } = await fixture(t, 390, true);
+    const column = page.locator(".kanban-column").first();
+    const moveUp = page.getByRole("button", { name: "Move Dense card 2 up" });
+    const bounds = await moveUp.boundingBox();
+    assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44, JSON.stringify(bounds));
+    await moveUp.tap();
+    await page.waitForFunction(() => document.querySelector(".kanban-column")?.querySelector(".board-card h3")?.textContent === "Dense card 2");
+    assert.equal(getCardMoveRequests(), 1, "Touch reorder persists through the move endpoint");
+    await page.reload();
+    await page.locator(".board-card").first().waitFor();
+    assert.deepEqual(await column.locator(".board-card h3").allInnerTexts().then((titles) => titles.slice(0, 2)), ["Dense card 2", "Dense card 1"]);
   });
 
   it("restores an archived status from the archive page", async (t) => {
@@ -2149,11 +2327,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
 // PB-28: every path owns a board; hiding it from the Paths page removes its tab.
 describe("path boards", { concurrency: 4 }, () => {
-  async function pathBoardFixture(t) {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
+  async function pathBoardFixture(t, width = 1280, height = 900, boardCount = 2) {
+    const context = await browser.newContext({ viewport: { width, height }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
     const paths = [];
-    const boards = [{ id: "custom-1", name: "Custom", archived: false, pathId: null, hidden: false, pinned: false }, { id: "custom-2", name: "Second", archived: false, pathId: null, hidden: false, pinned: false }];
+    const boards = Array.from({ length: boardCount }, (_, index) => ({ id: `custom-${index + 1}`, name: index === 0 ? "Custom" : index === 1 ? "Second" : `Board ${index + 1}`, archived: false, pathId: null, hidden: false, pinned: false }));
     const boardStatuses = {};
     const boardCards = {};
     const visibilityRequests = [];
@@ -2268,7 +2446,14 @@ describe("path boards", { concurrency: 4 }, () => {
 
     await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
+    const keyboardOrder = page.waitForResponse((response) => {
+      const request = response.request();
+      return new URL(response.url()).pathname.endsWith("/boards/order") &&
+        request.method() === "PUT" &&
+        JSON.stringify(request.postDataJSON().ids) === JSON.stringify(["custom-2", "custom-1"]);
+    });
     await manager.getByRole("button", { name: "Reorder Second" }).press("ArrowUp");
+    assert.equal((await keyboardOrder).status(), 204);
     await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Second");
     assert.deepEqual(orderRequests.at(-1), ["custom-2", "custom-1"]);
 
@@ -2276,10 +2461,17 @@ describe("path boards", { concurrency: 4 }, () => {
     const target = manager.getByRole("button", { name: "Reorder Second" });
     const from = await handle.boundingBox();
     const to = await target.boundingBox();
+    const pointerOrder = page.waitForResponse((response) => {
+      const request = response.request();
+      return new URL(response.url()).pathname.endsWith("/boards/order") &&
+        request.method() === "PUT" &&
+        JSON.stringify(request.postDataJSON().ids) === JSON.stringify(["custom-1", "custom-2"]);
+    });
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
     await page.mouse.move(to.x + to.width / 2, to.y - 4, { steps: 6 });
     await page.mouse.up();
+    assert.equal((await pointerOrder).status(), 204);
     await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Custom");
     assert.deepEqual(orderRequests.at(-1), ["custom-1", "custom-2"]);
 
@@ -2309,6 +2501,32 @@ describe("path boards", { concurrency: 4 }, () => {
     );
   });
 
+  it("reorders boards with touch-sized actions at phone width", async (t) => {
+    const { page, origin, orderRequests } = await pathBoardFixture(t, 390);
+    await page.goto(`${origin}/board`);
+    await page.locator(".board-tab", { hasText: "Second" }).waitFor();
+    await boardAction(page, "Manage boards");
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    const moveUp = manager.getByRole("button", { name: "Move Second up" });
+    const bounds = await moveUp.boundingBox();
+    assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44, JSON.stringify(bounds));
+    const orderSaved = page.waitForResponse((response) => {
+      const request = response.request();
+      return new URL(response.url()).pathname.endsWith("/boards/order") &&
+        request.method() === "PUT" &&
+        JSON.stringify(request.postDataJSON().ids) === JSON.stringify(["custom-2", "custom-1"]);
+    });
+    await moveUp.tap();
+    assert.equal((await orderSaved).status(), 204);
+    await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Second");
+    assert.deepEqual(orderRequests.at(-1), ["custom-2", "custom-1"]);
+    await manager.getByRole("button", { name: "Done", exact: true }).tap();
+    await page.reload();
+    await page.locator(".board-page").waitFor();
+    await boardAction(page, "Manage boards");
+    assert.deepEqual(await page.locator(".boards-manager-name").allInnerTexts().then((names) => names.map((name) => name.trim())), ["Second", "Custom"]);
+  });
+
   // Long board lists fit on screen: rows are dense on fine pointers, and dialogs cover the floating tracker.
   it("keeps Boards dialog rows compact and above the floating tracker", async (t) => {
     const { page, origin } = await pathBoardFixture(t);
@@ -2328,6 +2546,53 @@ describe("path boards", { concurrency: 4 }, () => {
     const box = await tracker.boundingBox();
     const topmost = await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest(".dialog-backdrop")), { x: box.x + box.width / 2, y: box.y + box.height / 2 });
     assert.ok(topmost, "the dialog backdrop should cover the floating tracker");
+  });
+
+  it("keeps a long Boards dialog scroll-contained with Done reachable on a phone", async (t) => {
+    const { page, origin } = await pathBoardFixture(t, 390, 320, 20);
+    await page.goto(`${origin}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await page.locator("button.board-tab-more").tap();
+    await page.getByRole("menu").getByRole("menuitem", { name: "Manage boards…" }).tap();
+
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.waitFor();
+    assert.equal(await manager.locator(".boards-manager-list li").count(), 20);
+    const scrollState = await manager.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+      overscrollBehavior: getComputedStyle(element).overscrollBehaviorY,
+    }));
+    assert.ok(scrollState.scrollHeight > scrollState.clientHeight, JSON.stringify(scrollState));
+    assert.equal(scrollState.overflowY, "auto");
+    assert.equal(scrollState.overscrollBehavior, "contain");
+
+    const done = manager.getByRole("button", { name: "Done", exact: true });
+    const focusableCount = await manager.locator('button:not(:disabled), input:not(:disabled), a[href], [tabindex="0"]').count();
+    let doneFocused = false;
+    for (let index = 0; index < focusableCount + 2; index += 1) {
+      if (await done.evaluate((element) => element === document.activeElement)) {
+        doneFocused = true;
+        break;
+      }
+      await page.keyboard.press("Tab");
+    }
+    assert.equal(doneFocused, true, "Tab reaches Done through the dialog controls");
+    const focusState = await done.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const dialog = element.closest('[role="dialog"]');
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+        inViewport: rect.top >= 0 && rect.bottom <= innerHeight,
+        dialogScrolled: dialog.scrollTop > 0,
+      };
+    });
+    assert.deepEqual(focusState, { outlineStyle: "solid", outlineWidth: "2px", inViewport: true, dialogScrolled: true });
+    await done.tap();
+    await manager.waitFor({ state: "detached" });
   });
 });
 

@@ -22,6 +22,18 @@ to shared tests or be marked as non-interactive with a reason.
 
 ## Current state
 
+OTOTEST-04 LABEL-04 follow-up: duplicate label creation now rejects a trimmed,
+case-insensitive existing name without changing its saved metadata or scopes.
+The focused service regression, expanded Labels real-stack journey, and
+deployed-shaped smoke check verify this acceptance rule. Manual context
+completion remains tracked in the existing milestone 4 checklist.
+REPORT-14 follow-up: Reports grouping now persists in the route and restores
+with its date range on reload and Back/Forward, with view regression and
+seeded real-stack evidence.
+REPORT-02/REPORT-04 follow-up: preset boundaries and seeded totals are covered
+for all five intervals; full-month/quarter/year navigation now uses calendar
+units, including leap-February and differing destination lengths.
+
 - Backend API/domain, web unit/view/store, extension module, and deployed-shaped
   tests already cover substantial behavior.
 - Successful behavior is not mapped from every API method to its tests.
@@ -48,8 +60,14 @@ to shared tests or be marked as non-interactive with a reason.
 | OTOTEST-01 | Build the route, API, feature, and control inventories | High | — | Complete |
 | OTOTEST-02 | Close backend API behavior-map gaps | High | 01 | Complete |
 | OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | In progress |
-| OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Proposed |
-| OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | Proposed |
+| OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Complete |
+| OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | In progress |
+| OTOTEST-06 | Measure and reduce test runtime across suites without losing coverage | Medium | — | Proposed |
+
+The latest OTOTEST-05 local gate evidence is recorded in
+[`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).
+Hosted `verify` passed for the current branch (run 38125772310); physical Android and the
+remaining product acceptance flows are still outstanding.
 
 Each milestone has its own task and acceptance document:
 
@@ -59,6 +77,10 @@ Each milestone has its own task and acceptance document:
 - [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
+  - [OTOTEST-05 acceptance checklist](05-acceptance-checklist.md)
+  - [Execution evidence template](evidence-template.md)
+- [OTOTEST-06 — Test runtime efficiency](06-test-runtime-efficiency.md)
+  - [OTOTEST-06 runtime records and acceptance checklist](06-acceptance-checklist.md)
 - [Milestone index](README.md)
 - [Product test tree: routes → page regions → actions → edge/security cases](product-test-tree.md)
 

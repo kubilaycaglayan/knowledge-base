@@ -622,7 +622,7 @@ describe("NotesView", () => {
     expect(wrapper.get('[aria-label="Note content"]').text()).toBe("Essays");
   });
 
-  it("saves edits to the open note when an earlier note's save finishes late", async () => {
+  it("waits for one Note save before switching and scopes later edits to the next Note", async () => {
     const second = { ...note, id: "note-2", title: "Writing" };
     let releaseFirstSave: () => void = () => {};
     vi.mocked(api).mockImplementation(
@@ -648,11 +648,13 @@ describe("NotesView", () => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
-    await r.push("/notes");
+    const leaveToList = r.push("/notes");
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
+    releaseFirstSave();
+    await leaveToList;
     await flushPromises();
     await r.push("/notes/note-2");
-    await flushPromises();
-    releaseFirstSave();
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Writing 2");
     await new Promise((resolve) => setTimeout(resolve, 700));
@@ -876,7 +878,7 @@ describe("NotesView", () => {
       expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
     });
 
-    it("shows the replayed save's times after another window saved first", async () => {
+    it("asks before replaying a line-history draft after another window saves first", async () => {
       let writes = 0;
       const { wrapper, editor } = await openStamped((body) => {
         writes += 1;
@@ -885,6 +887,10 @@ describe("NotesView", () => {
       });
       editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
       await new Promise((resolve) => setTimeout(resolve, 700));
+      await flushPromises();
+      expect(writes).toBe(1);
+      expect(wrapper.text()).toContain("This note changed elsewhere");
+      await wrapper.get('button[aria-label="Keep my draft"]').trigger("click");
       await flushPromises();
       expect(writes).toBe(2);
       expect(wrapper.get(".save-state").text()).toBe("Saved");
@@ -901,7 +907,7 @@ describe("NotesView", () => {
     });
   });
 
-  it("flushes a pending autosave before navigating back to the note list", async () => {
+  it("warns before discarding a pending edit and keeps autosaving when the user stays", async () => {
     const writes: { path: string; body: string }[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
@@ -920,26 +926,60 @@ describe("NotesView", () => {
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Unsaved before leaving");
 
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     await r.push("/notes");
     await flushPromises();
+    expect(confirm).toHaveBeenCalledWith("This note has unsaved changes. Leave and discard them?");
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
     expect(writes).toHaveLength(1);
     expect(JSON.parse(writes[0].body).title).toBe("Unsaved before leaving");
+    await r.push("/notes");
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes");
+    confirm.mockRestore();
     wrapper.unmount();
   });
 
-  it("waits for an in-flight save and flushes a newer draft before leaving", async () => {
+  it("discards an unsaved Note draft only after the user confirms navigation", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") return { ...note, ...JSON.parse(String(options.body)) };
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      if (path === "/notes" || path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Discard this draft");
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await r.push("/notes");
+    await flushPromises();
+    expect(confirm).toHaveBeenCalledWith("This note has unsaved changes. Leave and discard them?");
+    expect(r.currentRoute.value.fullPath).toBe("/notes");
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/notes/note-1" && options?.method === "PUT")).toBe(false);
+
+    await r.push("/notes/note-1");
+    await flushPromises();
+    expect((wrapper.get('input[aria-label="Note title"]').element as HTMLInputElement).value).toBe("Learning");
+    confirm.mockRestore();
+    wrapper.unmount();
+  });
+
+  it("waits for an in-flight save and asks before discarding its newer draft", async () => {
     let resolveFirst!: (saved: typeof note) => void;
-    let resolveSecond!: (saved: typeof note) => void;
     const writes: Record<string, unknown>[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
         const body = JSON.parse(String(options.body)) as Record<string, unknown>;
         writes.push(body);
         if (writes.length === 1) return new Promise((resolve) => { resolveFirst = resolve; });
-        if (writes.length === 2) return new Promise((resolve) => { resolveSecond = resolve; });
         return { ...note, ...body, version: writes.length };
       }
       if (path === "/notes/note-1") return note;
@@ -959,23 +999,19 @@ describe("NotesView", () => {
     expect(writes).toHaveLength(1);
 
     await title.setValue("Newer draft");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const navigation = r.push("/notes");
     await flushPromises();
     expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
 
     resolveFirst({ ...note, title: String(writes[0].title), version: 1 });
     await flushPromises();
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    await flushPromises();
-    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
-    expect(writes).toHaveLength(2);
-    expect(writes[1].title).toBe("Newer draft");
-    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
-
-    resolveSecond({ ...note, title: String(writes[1].title), version: 2 });
     await navigation;
     await flushPromises();
+    expect(confirm).toHaveBeenCalledWith("This note has unsaved changes. Leave and discard them?");
+    expect(writes).toHaveLength(1);
     expect(r.currentRoute.value.fullPath).toBe("/notes");
+    confirm.mockRestore();
     wrapper.unmount();
   });
 
@@ -1001,7 +1037,10 @@ describe("NotesView", () => {
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Keep this draft");
 
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     await r.push("/notes");
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
     expect(writes).toHaveLength(1);
@@ -1019,6 +1058,7 @@ describe("NotesView", () => {
     await r.push("/notes");
     await flushPromises();
     expect(r.currentRoute.value.fullPath).toBe("/notes");
+    confirm.mockRestore();
     expect(wrapper.text()).toContain("Keep this draft");
     wrapper.unmount();
   });
@@ -1175,7 +1215,7 @@ describe("NotesView", () => {
     await flushPromises();
   });
 
-  it("replays a draft when another window saved first", async () => {
+  it("asks before replaying a draft when another window saved first", async () => {
     const writes: string[] = [];
     const latest = { ...note, version: 1, title: "Remote title" };
     vi.mocked(api).mockImplementation(
@@ -1198,8 +1238,49 @@ describe("NotesView", () => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
+    expect(writes).toHaveLength(1);
+    expect(wrapper.text()).toContain("This note changed elsewhere");
+    expect(wrapper.text()).toContain("Remote title");
+    expect(wrapper.text()).toContain("Graph theory");
+    expect(wrapper.find('button[aria-label="Keep my draft"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Use saved version"]').exists()).toBe(true);
+    await wrapper.get(".note-conflict-backdrop").trigger("keydown", { key: "Escape" });
+    expect(wrapper.find(".note-conflict-backdrop").exists()).toBe(true);
+    expect(writes).toHaveLength(1);
+
+    await wrapper.get('button[aria-label="Keep my draft"]').trigger("click");
+    await flushPromises();
     expect(writes).toHaveLength(2);
     expect(writes[1]).toContain('"version":1');
+    expect(wrapper.get(".save-state").text()).toBe("Saved");
+  });
+
+  it("uses the newer saved Note when the user declines a conflicting draft", async () => {
+    const latest = { ...note, version: 1, title: "Remote title" };
+    const writes: string[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        writes.push(String(options.body));
+        throw new Error("Note changed in another window");
+      }
+      if (path === "/notes/note-1") return writes.length ? latest : note;
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Local draft");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+
+    expect(writes).toHaveLength(1);
+    await wrapper.get('button[aria-label="Use saved version"]').trigger("click");
+    await flushPromises();
+
+    expect(writes).toHaveLength(1);
+    expect((wrapper.get('input[aria-label="Note title"]').element as HTMLInputElement).value).toBe("Remote title");
     expect(wrapper.get(".save-state").text()).toBe("Saved");
   });
 
@@ -1335,5 +1416,48 @@ describe("NotesView", () => {
     await flushPromises();
     expect(wrapper.get(".note-row").text()).toContain("Learning");
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
+  });
+
+  it("prevents duplicate restore requests while a restore is pending", async () => {
+    let finishRestore!: () => void;
+    const restorePending = new Promise<void>((resolve) => { finishRestore = resolve; });
+    let restored = false;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1/restore" && options?.method === "POST") {
+        await restorePending;
+        restored = true;
+        return undefined;
+      }
+      if (path.startsWith("/notes?")) {
+        const archived = new URLSearchParams(path.split("?")[1]).get("archived") === "true";
+        if (archived) return page(restored ? [] : [{ ...note, deletedAt: "2026-09-03T10:00:00Z" }]);
+        return page([note]);
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+
+    const restoreButton = wrapper.get(".note-row button");
+    await restoreButton.trigger("click");
+    await flushPromises();
+    expect(restoreButton.attributes("disabled")).toBeDefined();
+    expect(restoreButton.attributes("aria-busy")).toBe("true");
+    expect(restoreButton.find(".restore-spinner").exists()).toBe(true);
+    await restoreButton.trigger("click");
+    expect(vi.mocked(api).mock.calls.filter(([path, options]) =>
+      path === "/notes/note-1/restore" && options?.method === "POST",
+    )).toHaveLength(1);
+
+    finishRestore();
+    await flushPromises();
+    expect(wrapper.findAll(".note-row")).toHaveLength(0);
+    expect(wrapper.text()).toContain("No archived notes.");
+    expect(wrapper.text()).not.toContain("Unable to restore note.");
   });
 });

@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.know.domain.TimeSource;
@@ -35,6 +36,33 @@ class TimerApiTest {
   @Test
   void unauthenticatedTimerReadIsRejected() throws Exception {
     mvc.perform(get("/api/v1/timers/current")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void currentTimerReadUsesAuthenticatedUserAndReturnsRunningState() throws Exception {
+    UUID user = UUID.randomUUID();
+    UUID timer = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    when(service.current(user))
+        .thenReturn(
+            new TimerService.TimeView(
+                timer,
+                null,
+                List.of(),
+                Instant.parse("2026-10-11T10:00:00Z"),
+                null,
+                null,
+                "Reading",
+                TimeSource.WEB,
+                true));
+
+    mvc.perform(get("/api/v1/timers/current").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(timer.toString()))
+        .andExpect(jsonPath("$.description").value("Reading"))
+        .andExpect(jsonPath("$.running").value(true));
+
+    verify(service).current(user);
   }
 
   @Test

@@ -168,7 +168,7 @@ function onKeydown(event: KeyboardEvent) {
   } else if (event.key === "Escape") {
     open.value = false;
     query.value = "";
-    void nextTick(() => root.value?.querySelector<HTMLButtonElement>(".picker-chevron")?.focus({ preventScroll: true }));
+    void nextTick(() => root.value?.querySelector<HTMLButtonElement>(".picker-chevron, .label-picker-icon-trigger")?.focus({ preventScroll: true }));
   } else if (event.key === "Backspace" && !query.value && selectedLabels.value.length) {
     removeLabel(selectedLabels.value[selectedLabels.value.length - 1]);
   }
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
     <button v-if="triggerMode === 'icon'" class="label-picker-icon-trigger" :class="{ 'has-selection': modelValue.length > 0 }" type="button" :disabled="disabled" :aria-label="label || 'Choose labels'" :aria-expanded="open" :aria-controls="listboxId" @click="togglePicker">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 10.6 13.4 3.4A2 2 0 0 0 12 2.8H4a1.2 1.2 0 0 0-1.2 1.2v8a2 2 0 0 0 .6 1.4l7.2 7.2a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8Z" /><circle cx="7.5" cy="7.5" r="1.2" /></svg>
     </button>
-    <div v-else class="label-picker-control" @click="openPicker">
+    <div v-else class="label-picker-control">
       <span v-for="(label, index) in selectedLabels.slice(0, visibleCount)" :key="label.id" class="selected-chip" :style="{ ...(label.color ? { '--chip-color': label.color } : {}), ...(chipMaxWidth(index) ? { maxWidth: chipMaxWidth(index) } : {}) }">
         <span class="chip-dot" aria-hidden="true"></span><span class="chip-name">{{ label.name }}</span>
         <button type="button" :disabled="disabled" :aria-label="`Remove ${label.name}`" @click.stop="removeLabel(label)">×</button>
@@ -317,7 +317,7 @@ onBeforeUnmount(() => {
 .label-picker-icon-trigger.has-selection svg { fill:currentColor; stroke:none; }
 .label-picker-icon-trigger.has-selection svg circle { fill:var(--workspace-surface); stroke:none; }
 .label-picker-icon-trigger.has-selection { color:var(--workspace-strong); }
-.label-picker-control { display: flex; align-items: center; gap: 6px; min-height: 42px; width: 100%; overflow: hidden; padding: 4px 8px 4px 9px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-surface); cursor: pointer; touch-action:manipulation; }
+.label-picker-control { display: flex; align-items: center; gap: 6px; min-height: 42px; width: 100%; overflow: hidden; padding: 4px 8px 4px 9px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-surface); touch-action:manipulation; }
 .label-picker-control:focus-within, .is-open .label-picker-control { border-color: var(--workspace-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-focus) 16%, transparent); }
 .empty-picker { flex: 1; min-width: 0; overflow: hidden; color: var(--workspace-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .picker-chevron { display: grid; place-items: center; width: 28px; height: 30px; flex: 0 0 auto; margin-left: auto; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--workspace-muted); touch-action:manipulation; }

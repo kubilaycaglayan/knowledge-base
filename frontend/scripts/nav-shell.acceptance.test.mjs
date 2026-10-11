@@ -1,21 +1,69 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
 
 // Mocked API only: no real credentials, backend writes, or personal data.
-let server, browser;
+let server, browser, viteCacheDir;
 const pages = ["/", "/board", "/logs", "/notes", "/calendar", "/reports", "/paths", "/labels", "/settings"];
 const today = new Date().toISOString().slice(0, 10);
 const statuses = ["Backlog", "In Progress", "Done"].map((name, position) => ({ id: `status-${position}`, name, position, archived: false, cardSort: "MANUAL" }));
 const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: today, dueDate: today, position: 0, archived: false, pathIds: [], labelIds: [] };
 const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
-after(async () => { await browser?.close(); await server?.close(); });
+before(async () => {
+  // Use a cold Vite cache so dependency optimization cannot make the first
+  // browser assertions race a page reload on CI but pass with a warm local cache.
+  viteCacheDir = await mkdtemp(join(tmpdir(), "knowledge-base-nav-vite-"));
+  server = await createServer({
+    cacheDir: viteCacheDir,
+    optimizeDeps: {
+      include: [
+        "vuetify/components/VBtn",
+        "vuetify/components/VIcon",
+        "vuetify/components/VList",
+        "vuetify/components/VSelect",
+        "vuetify/components/VSnackbar",
+        "vuetify/components/VMenu",
+        "vuetify/components/VChip",
+        "vuetify/components/VTable",
+      ],
+    },
+    server: { host: "127.0.0.1", port: 0, hmr: false },
+  });
+  await server.listen();
+  browser = await chromium.launch({ headless: true });
+});
+after(async () => {
+  await browser?.close();
+  await server?.close();
+  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
+});
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", async () => {
+  const optimizer = server.environments.client.depsOptimizer;
+  await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
+  const optimized = optimizer.metadata.optimized;
+  for (const dependency of [
+    "vuetify/components/VBtn",
+    "vuetify/components/VIcon",
+    "vuetify/components/VList",
+    "vuetify/components/VSelect",
+    "vuetify/components/VSnackbar",
+    "vuetify/components/VMenu",
+    "vuetify/components/VChip",
+    "vuetify/components/VTable",
+  ]) {
+    assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
+  }
+});
+
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+  context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
@@ -32,8 +80,10 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let pausedTimer = {};
   let rejectNextReportsRequest = rejectReportsAuth;
   let searchFailurePending = failSearchOnce;
+  let failedSearchQueryPending = failSearchQuery;
   let importFailurePending = failImportOnce;
   let logDeleteFailurePending = failLogDeleteOnce;
+  let logUpdateFailurePending = failLogUpdateOnce;
   let noteUpdateFailurePending = failNoteUpdateOnce;
   let timelineNoteFailurePending = failTimelineNoteOnce;
   if (authenticated) await context.addInitScript(() => {
@@ -56,6 +106,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
       return;
     }
+    if (failedSearchQueryPending && path === "/search" && url.searchParams.get("q") === failedSearchQueryPending) {
+      failedSearchQueryPending = null;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
+      return;
+    }
     if (importFailurePending && path === "/imports/knowledge-base" && method === "POST") {
       importFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary import failure" }) });
@@ -64,6 +119,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (logDeleteFailurePending && path.startsWith("/logs/") && method === "DELETE") {
       logDeleteFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary log delete failure" }) });
+      return;
+    }
+    if (logUpdateFailurePending && path.startsWith("/logs/") && method === "PUT") {
+      logUpdateFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary log save failure" }) });
       return;
     }
     if (noteUpdateFailurePending && path.startsWith("/notes/") && method === "PUT") {
@@ -184,6 +244,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       body = { id: `calendar-label-${calendarLabels.length + 1}`, ...route.request().postDataJSON() };
       calendarLabels.push(body);
     }
+    else if (path.startsWith("/labels/") && method === "PUT") {
+      const id = path.split("/")[2];
+      const index = calendarLabels.findIndex((label) => label.id === id);
+      if (index >= 0) calendarLabels[index] = { ...calendarLabels[index], ...route.request().postDataJSON() };
+      body = calendarLabels[index] || null;
+    }
     else if (path === "/labels/label-deep-link/history") body = { labelId: "label-deep-link", name: "Deep link label", color: "#3B82F6", firstUsedAt: null, lastUsedAt: null, totalUses: 0, trackedSeconds: 0, uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 }, timeline: [], hours: [], related: [] };
     else if (path === "/labels/label-deep-link/history/records") body = { items: [], hasMore: false };
     else if (path === "/labels") body = calendarLabels;
@@ -259,14 +325,18 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
           : moreType === "LOG"
             ? [{ type: "LOG", total: 2, capped: false, results: logResults }]
             : [{ type: "NOTE", total: 3, capped: false, results: noteResults }, { type: "LOG", total: 2, capped: false, results: logResults }]
-        : reportsResults;
+        : query?.toLocaleLowerCase() === "reports" ? reportsResults : [];
       body = { groups, fuzzy: false, incomplete: false };
     }
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
-      const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const selectedPath = paths.find((item) => url.searchParams.getAll("pathId").includes(item.id));
+      const chartPath = selectedPath
+        ? { id: selectedPath.id, label: selectedPath.name, seconds: 3600, color: "#3b82f6" }
+        : { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const selectedLabel = calendarLabels.find((item) => url.searchParams.getAll("labelId").includes(item.id));
       const chartDay = { date: today, totalSeconds: 3600, paths: [chartPath] };
-      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: [], calendarLabels: [] };
+      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: themeSurfaces && selectedLabel ? [{ id: selectedLabel.id, label: selectedLabel.name, seconds: 3600 }] : [], calendarLabels: [] };
     }
     else if (path === "/preferences" && method === "PUT") {
       Object.assign(preferences, route.request().postDataJSON());
@@ -311,9 +381,18 @@ async function until(condition) {
   assert.ok(condition(), "Timed out waiting for the mocked request");
 }
 
+function expectedReportDateRange(startDate, endDate) {
+  const format = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const parse = (value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+  return `${format.format(parse(startDate))} – ${format.format(parse(endDate))}`;
+}
+
 async function visit(page, path) {
-  await page.evaluate((target) => { history.pushState({}, "", target); dispatchEvent(new PopStateEvent("popstate")); }, path);
-  await page.waitForFunction((target) => location.pathname === target, path);
+  await page.goto(new URL(path, page.url()).href);
+  await page.locator(".dashboard-shell > main").waitFor();
   await page.waitForTimeout(150);
 }
 
@@ -391,6 +470,23 @@ it("does not disable browser zoom in the viewport configuration", async (t) => {
   assert.doesNotMatch(content, /maximum-scale\s*=\s*1(?:\.0+)?(?:\s|,|$)/i);
 });
 
+it("keeps core mobile routes readable without horizontal page overflow at enlarged text", async (t) => {
+  const { page } = await fixture(t, 390);
+  for (const path of ["/logs", "/notes", "/calendar", "/settings", "/imports"]) {
+    await visit(page, path);
+    await page.addStyleTag({
+      content: "h1, h2, h3, p, label, button, a, input, select, textarea { font-size: max(24px, 150%) !important; }",
+    });
+    const result = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      page: document.documentElement.scrollWidth,
+      headingSize: Number.parseFloat(getComputedStyle(document.querySelector("h1")).fontSize),
+    }));
+    assert.ok(result.headingSize >= 24, `${path}: expected enlarged heading text, got ${result.headingSize}px`);
+    assert.ok(result.page <= result.viewport, `${path}: enlarged text caused horizontal page overflow (${result.page}px > ${result.viewport}px)`);
+  }
+});
+
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
   const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");
@@ -405,7 +501,8 @@ it("keeps the Gantt timeline full width while the nav bar stays standard", async
 it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
   const { page, requests } = await fixture(t, 1440);
   await until(() => requests.includes("/time-entries"));
-  await visit(page, "/logs");
+  await page.getByRole("link", { name: "Logs" }).click();
+  await page.waitForFunction(() => location.pathname === "/logs");
   await page.evaluate(() => { window.__noReload = true; });
   const homeData = ["/time-entries", "/paths", "/labels"];
   const before = requests.filter((path) => homeData.includes(path)).length;
@@ -432,17 +529,22 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
 });
 
 it("keeps a running timer active after route navigation and browser reload", async (t) => {
-  const { page } = await fixture(t, 1440);
+  const { page, requests } = await fixture(t, 1440);
   await page.getByRole("textbox", { name: "Timer description" }).fill("Persist across views");
   await page.getByRole("button", { name: "Start timer" }).click();
   await page.getByRole("button", { name: "Stop timer" }).waitFor();
 
   await visit(page, "/board");
   await page.locator(".board-page").waitFor();
-  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
+  await floatingTracker.waitFor();
+  assert.equal(await floatingTracker.isVisible(), true, "a running session is shown by the floating tracker outside Sessions");
+  await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
   await page.reload();
   await page.locator(".board-page").waitFor();
-  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  await floatingTracker.waitFor();
+  await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
+  assert.ok(requests.filter((path) => path === "/timers/current").length >= 3, "route and reload re-read server-owned timer state");
   assert.equal(new URL(page.url()).pathname, "/board");
 });
 
@@ -514,6 +616,32 @@ it("keeps every supported primary destination reachable at phone width", async (
   }
 });
 
+it("reaches milestone-four destinations from mobile navigation", async (t) => {
+  const { page } = await fixture(t, 390);
+  const destinations = [
+    ["Board", "/board", ".board-page"],
+    ["Logs", "/logs", ".logs-page"],
+    ["Notes", "/notes", ".notes-page"],
+    ["Calendar", "/calendar", ".calendar-page"],
+    ["Reports", "/reports", ".reports-page"],
+    ["Paths", "/paths", ".paths-page"],
+    ["Labels", "/labels", ".labels-view"],
+  ];
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  for (const [name, path, selector] of destinations) {
+    await nav.getByRole("link", { name, exact: true }).click();
+    await page.waitForFunction((expectedPath) => location.pathname === expectedPath, path);
+    await page.locator(selector).waitFor();
+  }
+
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page.waitForFunction(() => location.pathname === "/settings");
+  await page.locator(".settings-view").waitFor();
+  await page.getByRole("tab", { name: "Import", exact: true }).click();
+  await page.getByRole("tabpanel", { name: "Import" }).waitFor();
+  await page.getByRole("textbox", { name: "Knowledge Base CSV" }).waitFor();
+});
+
 const reorderNotes = () => [
   { id: "note-a", title: "Browser note A", content: "{}", contentText: "First note", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false },
   { id: "note-b", title: "Browser note B", content: "{}", contentText: "Second note", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false },
@@ -561,6 +689,24 @@ it("renders every supported top-level route after a direct browser load", async 
     await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
     await page.locator(selector).waitFor();
     assert.equal(new URL(page.url()).pathname, canonicalPath);
+  }
+});
+
+it("shows a safe not-found page for unknown URLs", async (t) => {
+  const { page } = await fixture(t, 1440);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${server.resolvedUrls.local[0]}unknown-ototest-route`);
+
+    await page.getByRole("heading", { name: "Page not found" }).waitFor();
+    assert.equal(await page.locator(".session-list, .notes-page, .logs-page").count(), 0);
+    assert.equal(await page.title(), "Knowledge Base · Page not found");
+    const sessionsLink = page.getByRole("link", { name: "Go to Sessions" });
+    const bounds = await sessionsLink.boundingBox();
+    assert.ok(bounds && bounds.height >= 44, `Sessions recovery link is at least 44px tall at ${width}px`);
+    await sessionsLink.click();
+    await page.locator(".session-list").waitFor();
+    assert.equal(new URL(page.url()).pathname, "/");
   }
 });
 
@@ -633,22 +779,26 @@ it("opens each primary navigation route and updates the active link and title", 
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   const destinations = [
-    ["Board", "/board", ".board-page", "Board"],
-    ["Logs", "/logs", ".logs-page", "Logs"],
-    ["Notes", "/notes", ".notes-page", "Notes"],
-    ["Calendar", "/calendar", ".calendar-page", "Calendar"],
-    ["Reports", "/reports", ".reports-page", "Reports"],
-    ["Paths", "/paths", ".paths-page", "Paths"],
-    ["Labels", "/labels", ".labels-view", "Labels"],
+    ["Board", "/board", ".board-page", "Board", "Boards"],
+    ["Logs", "/logs", ".logs-page", "Logs", "Logs"],
+    ["Notes", "/notes", ".notes-page", "Notes", "Notes"],
+    ["Calendar", "/calendar", ".calendar-page", "Calendar", "Calendar"],
+    ["Reports", "/reports", ".reports-page", "Reports", "Reports"],
+    ["Paths", "/paths", ".paths-page", "Paths", "Your paths"],
+    ["Labels", "/labels", ".labels-view", "Labels", "Labels"],
   ];
 
-  for (const [label, path, selector, title] of destinations) {
-    await nav.getByRole("link", { name: label, exact: true }).click();
+  for (const [label, path, selector, title, heading] of destinations) {
+    const link = nav.getByRole("link", { name: label, exact: true });
+    assert.equal(await link.evaluate((element) => element.tagName), "A");
+    assert.equal(await link.getAttribute("href"), path);
+    await link.click();
     await page.waitForFunction((expected) => location.pathname === expected, path);
     await page.locator(selector).waitFor();
     const activeLink = nav.getByRole("link", { name: label, exact: true });
     assert.equal(await activeLink.getAttribute("aria-current"), "page");
     await page.waitForFunction((expected) => document.title === expected, `Knowledge Base · ${title}`);
+    await page.getByRole("main").getByRole("heading", { name: heading, level: 1, exact: true }).waitFor();
   }
 
   await nav.getByRole("link", { name: "Board", exact: true }).click();
@@ -661,6 +811,20 @@ it("opens each primary navigation route and updates the active link and title", 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
+});
+
+it("preserves browser-native new-tab behavior for primary navigation links", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const boardLink = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board", exact: true });
+  assert.equal(await boardLink.evaluate((element) => element.tagName), "A");
+  assert.equal(await boardLink.getAttribute("href"), "/board");
+
+  const opened = page.context().waitForEvent("page");
+  await boardLink.click({ modifiers: ["Control"] });
+  const newTab = await opened;
+  await newTab.locator(".board-page").waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/board");
+  assert.equal(new URL(page.url()).pathname, "/");
 });
 
 it("restores the Log search query from a direct URL after reload", async (t) => {
@@ -737,6 +901,40 @@ it("edits a Log in the browser and reloads the saved text", async (t) => {
   assert.equal(await page.locator(".log-entry", { hasText: "Original browser log text" }).count(), 0);
 });
 
+it("keeps a phone Log edit and timestamp after a failed save, then retries by touch", async (t) => {
+  const { page, requests } = await fixture(t, 390, {
+    failLogUpdateOnce: true,
+    logSeeds: [{ id: "phone-edit-log", body: "Original phone Log", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] }],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+  const entry = page.locator("#log-phone-edit-log");
+  await entry.getByText("Original phone Log", { exact: true }).waitFor();
+  await entry.getByRole("button", { name: /^Edit log from / }).tap();
+  const editor = entry.getByRole("textbox", { name: /^Edit log text from / });
+  const timestamp = entry.getByLabel("Edit log timestamp", { exact: true });
+  await editor.fill("Phone Log draft survives the rejected save");
+  await timestamp.fill("2026-10-02T11:30");
+  await editor.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+
+  const save = entry.getByRole("button", { name: "Save", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  assert.equal(await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "Save remains reachable above the keyboard-like viewport");
+  await save.tap();
+  await page.getByRole("alert").filter({ hasText: "Unable to save this log. Your text is still here; try again." }).waitFor();
+  assert.equal(await editor.inputValue(), "Phone Log draft survives the rejected save");
+  assert.equal(await timestamp.inputValue(), "2026-10-02T11:30");
+  assert.equal(requests.filter((path) => path === "/logs/phone-edit-log").length, 1);
+
+  await save.tap();
+  await page.getByText("Phone Log draft survives the rejected save", { exact: true }).waitFor();
+  assert.equal(requests.filter((path) => path === "/logs/phone-edit-log").length, 2);
+});
+
 it("confirms Log removal, preserves it on cancel or failure, then retries successfully", async (t) => {
   const { page, requests } = await fixture(t, 1280, {
     failLogDeleteOnce: true,
@@ -782,6 +980,22 @@ it("downloads the Knowledge Base export from Settings in the browser", async (t)
   await page.getByRole("tab", { name: "Export" }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Knowledge Base CSV" }).click();
+  const file = await download;
+  assert.equal(file.suggestedFilename(), "knowledge-base-export.csv");
+  await page.getByRole("status").filter({ hasText: "Your Knowledge Base export is ready." }).waitFor();
+  assert.ok(requests.includes("/imports/knowledge-base/export"));
+});
+
+it("downloads a Knowledge Base export from Settings at phone width", async (t) => {
+  const { page, requests } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/settings");
+  await page.getByRole("tab", { name: "Export" }).tap();
+  const action = page.getByRole("button", { name: "Download Knowledge Base CSV" });
+  const bounds = await action.boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.height >= 44, JSON.stringify(bounds));
+  const download = page.waitForEvent("download");
+  await action.tap();
   const file = await download;
   assert.equal(file.suggestedFilename(), "knowledge-base-export.csv");
   await page.getByRole("status").filter({ hasText: "Your Knowledge Base export is ready." }).waitFor();
@@ -834,6 +1048,56 @@ it("keeps Knowledge Base import data available after a failed request and retrie
   assert.equal(requests.filter((path) => path === "/imports/knowledge-base").length, 2);
 });
 
+it("keeps Import and Settings recovery controls reachable in a keyboard-like phone viewport", async (t) => {
+  const { page, requests } = await fixture(t, 390, { failImportOnce: true });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  const csv = page.getByRole("textbox", { name: "Knowledge Base CSV" });
+  await csv.fill("type,id\\nPATH,mobile-retry-path");
+  await csv.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+  assert.equal(await csv.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await csv.inputValue(), "type,id\\nPATH,mobile-retry-path");
+  const importButton = page.getByRole("button", { name: "Import Knowledge Base data" });
+  await importButton.scrollIntoViewIfNeeded();
+  assert.equal(await importButton.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "the Import action can be brought into view above the keyboard-like viewport");
+  await importButton.tap();
+  await page.getByRole("alert").filter({ hasText: "Could not import Knowledge Base data." }).waitFor();
+  assert.equal(await csv.inputValue(), "type,id\\nPATH,mobile-retry-path", "a failed import retains the CSV draft");
+  await importButton.tap();
+  await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
+  assert.equal(requests.filter((path) => path === "/imports/knowledge-base").length, 2);
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}settings`);
+  await page.getByRole("textbox", { name: "Current password" }).waitFor();
+  const currentPassword = page.getByRole("textbox", { name: "Current password" });
+  const newPassword = page.getByRole("textbox", { name: "New password", exact: true });
+  const confirmPassword = page.getByRole("textbox", { name: "Confirm new password" });
+  await currentPassword.fill("current-mobile-password");
+  await newPassword.fill("new-mobile-password");
+  await confirmPassword.fill("different-mobile-password");
+  await confirmPassword.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+  assert.equal(await confirmPassword.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await currentPassword.inputValue(), "current-mobile-password");
+  assert.equal(await newPassword.inputValue(), "new-mobile-password");
+  assert.equal(await confirmPassword.inputValue(), "different-mobile-password");
+  const changePassword = page.getByRole("button", { name: "Change password" });
+  await changePassword.scrollIntoViewIfNeeded();
+  assert.equal(await changePassword.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "the password recovery action can be brought into view above the keyboard-like viewport");
+  await changePassword.tap();
+  await page.getByRole("alert").filter({ hasText: "Passwords do not match." }).waitFor();
+  assert.equal(await newPassword.inputValue(), "new-mobile-password");
+  assert.equal(await confirmPassword.inputValue(), "different-mobile-password");
+});
+
 it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
@@ -854,18 +1118,14 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
 it("shows the floating tracker on eligible routes but not Sessions or focused phone inputs", async (t) => {
   const { page } = await fixture(t, 390);
   const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
-  const eligibleRoutes = [
-    "/board",
-    "/logs",
-    "/notes",
-    "/calendar",
-    "/reports",
-    "/paths",
-    "/labels",
-  ];
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Visible floating session");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  const eligibleRoutes = [...pages.filter((path) => path !== "/"), "/timeline", "/imports", "/board/archive"];
   for (const path of eligibleRoutes) {
     await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
     await floatingTracker.waitFor();
+    await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
     assert.equal(await floatingTracker.isVisible(), true, `${path} should show the floating tracker`);
   }
 
@@ -918,6 +1178,62 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
+it("creates and reloads a Path using only the keyboard", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/");
+  const pathsLink = page.getByRole("link", { name: "Paths", exact: true });
+  let pathsReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await pathsLink.evaluate((element) => element === document.activeElement)) {
+      pathsReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(pathsReachedByTab, true, "Tab reaches the Paths navigation link");
+  await page.keyboard.press("Enter");
+  await page.locator(".paths-page").waitFor();
+  const trigger = page.getByRole("button", { name: "Add path" });
+  let addPathReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await trigger.evaluate((element) => element === document.activeElement)) {
+      addPathReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(addPathReachedByTab, true, "Tab reaches the Add path button");
+  await page.keyboard.press("Enter");
+
+  const name = page.getByRole("textbox", { name: "New path name" });
+  await name.waitFor();
+  await page.waitForFunction(() => document.activeElement === document.querySelector('input[aria-label="New path name"]'));
+  const nameFocus = await name.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+      covered: center !== element && !element.contains(center),
+    };
+  });
+  assert.equal(nameFocus.outlineStyle, "solid", "keyboard-focused Path name input shows a visible focus ring");
+  assert.equal(nameFocus.outlineWidth, "2px");
+  assert.equal(nameFocus.visible, true, JSON.stringify(nameFocus));
+  assert.equal(nameFocus.covered, false, JSON.stringify(nameFocus));
+  await page.keyboard.insertText("Keyboard path");
+  await page.keyboard.press("Enter");
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.ok(requests.includes("/paths"), "Enter submits the focused Path form");
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "focus returns to Add path after creation");
+
+  await page.reload();
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
 it("pins a Path and keeps the saved state after browser reload", async (t) => {
   const { page, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", pinned: false }],
@@ -967,12 +1283,28 @@ it("reorders Paths by keyboard with the accessible Move up action", async (t) =>
   await up.waitFor();
   assert.equal(await page.getByRole("button", { name: "Move Algorithms up" }).isDisabled(), true);
   assert.equal(await page.getByRole("button", { name: "Move Writing down" }).isDisabled(), true);
-  await up.focus();
+  let moveUpReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await up.evaluate((element) => element === document.activeElement)) {
+      moveUpReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(moveUpReachedByTab, true, "Tab reaches the accessible Move up action");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
   const down = page.getByRole("button", { name: "Move Writing down" });
   assert.equal(await down.isDisabled(), false);
-  await down.focus();
+  let moveDownReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await down.evaluate((element) => element === document.activeElement)) {
+      moveDownReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(moveDownReachedByTab, true, "Tab reaches the accessible Move down action");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Algorithms,Writing");
   assert.deepEqual(pathOrderWrites, [["path-b", "path-a"], ["path-a", "path-b"]]);
@@ -994,6 +1326,75 @@ it("reorders Paths by touch with a 44px Move up target", async (t) => {
   assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
 });
 
+it("creates a Path by touch at phone width and keeps the dialog usable after viewport shrink", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/paths");
+  const trigger = page.locator(".paths-page button[aria-label='Add path']");
+  await trigger.tap();
+  let dialog = page.getByRole("dialog", { name: "Add a path" });
+  await dialog.waitFor();
+  await dialog.getByRole("textbox", { name: "New path name" }).fill("Canceled phone Path");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).tap();
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await page.getByText("Canceled phone Path", { exact: true }).count(), 0);
+
+  await trigger.tap();
+  dialog = page.getByRole("dialog", { name: "Add a path" });
+  const name = dialog.getByRole("textbox", { name: "New path name" });
+  const description = dialog.getByRole("textbox", { name: "Path description" });
+  await name.fill("Saved phone Path");
+  await description.fill("Created using the phone layout.");
+  await description.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+  assert.equal(await description.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await name.inputValue(), "Saved phone Path");
+  assert.equal(await description.inputValue(), "Created using the phone layout.");
+  const dialogBounds = await dialog.boundingBox();
+  assert.ok(dialogBounds && dialogBounds.y >= 0 && dialogBounds.y + dialogBounds.height <= 320, JSON.stringify(dialogBounds));
+  const add = dialog.getByRole("button", { name: "Add path", exact: true });
+  await add.scrollIntoViewIfNeeded();
+  assert.equal(await add.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "the Path save action can be reached above the keyboard-like viewport");
+  await add.tap();
+  await page.getByRole("heading", { name: "Saved phone Path" }).waitFor();
+});
+
+it("edits a Path by touch at phone width and keeps save reachable after viewport shrink", async (t) => {
+  const { page } = await fixture(t, 390, {
+    pathSeeds: [{ id: "phone-edit-path", name: "Original phone Path", description: "Original description", color: "#3b82f6", status: "ACTIVE", pinned: false }],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/paths");
+  const pathCard = page.locator("article.path").first();
+  await pathCard.getByRole("button", { name: "Edit", exact: true }).tap();
+  const name = pathCard.getByRole("textbox", { name: "Edit path name" });
+  const description = pathCard.getByRole("textbox", { name: "Edit path description" });
+  await name.fill("Edited phone Path");
+  await description.fill("Updated description on a phone.");
+  await description.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+  assert.equal(await name.inputValue(), "Edited phone Path");
+  assert.equal(await description.inputValue(), "Updated description on a phone.");
+  const save = pathCard.getByRole("button", { name: "Save path", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  assert.equal(await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "Save path remains reachable after the viewport shrinks");
+  await save.tap();
+  await pathCard.getByText("Edited phone Path", { exact: true }).waitFor();
+  assert.equal(await pathCard.getByText("Updated description on a phone.", { exact: true }).count(), 1);
+  await pathCard.getByRole("button", { name: "Edit", exact: true }).tap();
+  const editForm = pathCard.locator(".path-edit");
+  await editForm.waitFor();
+  await editForm.getByRole("button", { name: "Cancel", exact: true }).tap();
+  await editForm.waitFor({ state: "detached" });
+  await pathCard.getByText("Edited phone Path", { exact: true }).waitFor();
+});
+
 it("reorders Paths with browser drag and persists the ordered IDs", async (t) => {
   const pathSeeds = [
     { id: "path-a", name: "Algorithms", status: "ACTIVE" },
@@ -1011,6 +1412,123 @@ it("reorders Paths with browser drag and persists the ordered IDs", async (t) =>
   await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
 });
 
+it("creates a Label with touch at phone width and keeps its dialog controls usable", async (t) => {
+  const { page, calendarLabels } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/labels");
+  await page.getByRole("button", { name: "Add label" }).tap();
+  let dialog = page.getByRole("dialog", { name: "Add a label" });
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "Name" });
+  await dialog.getByRole("button", { name: "Add label", exact: true }).tap();
+  assert.equal(await name.evaluate((input) => input.validity.valueMissing), true);
+  assert.equal(await name.evaluate((input) => input === document.activeElement), true);
+  assert.equal(calendarLabels.length, 0, "an empty label is rejected before a record is created");
+
+  await name.fill("Phone touch label");
+  const blue = dialog.getByRole("button", { name: "Choose label color: Blue (#3B82F6)" });
+  await blue.tap();
+  assert.equal(await blue.getAttribute("aria-pressed"), "true");
+  await dialog.getByLabel("Calendar").tap();
+  await dialog.getByRole("button", { name: "Add label", exact: true }).tap();
+  await page.getByText("Phone touch label", { exact: true }).waitFor();
+  assert.equal(calendarLabels.length, 1);
+  assert.equal(calendarLabels[0].color, "#3B82F6");
+
+  await page.getByRole("button", { name: "Add label" }).tap();
+  dialog = page.getByRole("dialog", { name: "Add a label" });
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Canceled phone label");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).tap();
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await page.getByText("Canceled phone label", { exact: true }).count(), 0);
+});
+
+it("edits a Label with touch at phone width and keeps scope and save controls reachable", async (t) => {
+  const { page, calendarLabels } = await fixture(t, 390, {
+    calendarLabels: [{ id: "phone-edit-label", name: "Original phone label", color: "#3B82F6", scopes: ["NOTE"] }],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/labels");
+  await page.getByRole("button", { name: "Edit Original phone label" }).tap();
+  let dialog = page.getByRole("dialog", { name: "Edit Original phone label" });
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "Name" });
+  await name.fill("Canceled phone label edit");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).tap();
+  await dialog.waitFor({ state: "detached" });
+  await page.getByText("Original phone label", { exact: true }).waitFor();
+
+  await page.getByRole("button", { name: "Edit Original phone label" }).tap();
+  dialog = page.getByRole("dialog", { name: "Edit Original phone label" });
+  await name.fill("Edited phone label");
+  const green = dialog.getByRole("button", { name: "Set edit label color: Green (#22C55E)" });
+  await green.tap();
+  assert.equal(await green.getAttribute("aria-pressed"), "true");
+  await dialog.getByLabel("Calendar").tap();
+  await name.focus();
+  await page.setViewportSize({ width: 390, height: 320 });
+  assert.equal(await name.evaluate((input) => input === document.activeElement), true);
+  assert.equal(await name.inputValue(), "Edited phone label");
+  const bounds = await dialog.boundingBox();
+  assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= 320, JSON.stringify(bounds));
+  const save = dialog.getByRole("button", { name: "Save changes", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  assert.equal(await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), true, "Save changes remains reachable above the keyboard-like viewport");
+  await save.tap();
+  await page.getByText("Edited phone label", { exact: true }).waitFor();
+  assert.equal(calendarLabels[0].color, "#22C55E");
+  assert.equal(calendarLabels[0].name, "Edited phone label");
+  assert.ok(calendarLabels[0].scopes.includes("CALENDAR"));
+});
+
+it("keeps Label history records and their links readable at phone width", async (t) => {
+  const label = { id: "phone-history-label", name: "Long phone history label", color: "#3B82F6", scopes: ["NOTE"] };
+  const { page } = await fixture(t, 390, { calendarLabels: [label] });
+  await page.route("**/api/v1/labels/phone-history-label/history**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const result = pathname.endsWith("/records")
+      ? {
+          items: [{
+            id: "phone-history-note",
+            date: "2026-10-01T10:00:00Z",
+            title: `LongUnbrokenPhoneHistoryRecord${"X".repeat(80)} and a wrapped title`,
+            preview: "A related Note stays readable in the history panel.",
+          }],
+          hasMore: false,
+        }
+      : {
+          labelId: label.id,
+          name: label.name,
+          color: label.color,
+          firstUsedAt: "2026-10-01T10:00:00Z",
+          lastUsedAt: "2026-10-01T10:00:00Z",
+          totalUses: 1,
+          trackedSeconds: 3600,
+          uses: { sessions: 0, logs: 0, notes: 1, calendarDays: 0, cards: 0 },
+          timeline: [{ month: "2026-10", uses: 1, trackedSeconds: 3600 }],
+          hours: [],
+          related: [],
+        };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(result) });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/labels");
+  await page.getByRole("button", { name: `Show history of ${label.name}` }).tap();
+  const dialog = page.locator(".label-history-dialog");
+  await dialog.waitFor();
+  const recordLink = dialog.getByRole("link", { name: /LongUnbrokenPhoneHistoryRecord/ });
+  await recordLink.waitFor();
+  const bounds = await recordLink.boundingBox();
+  const dialogBounds = await dialog.boundingBox();
+  assert.ok(bounds && dialogBounds && bounds.x >= dialogBounds.x && bounds.x + bounds.width <= dialogBounds.x + dialogBounds.width, JSON.stringify({ bounds, dialogBounds }));
+  assert.equal(await recordLink.getAttribute("href"), "/notes/phone-history-note");
+  assert.ok(await dialog.getByText("A related Note stays readable in the history panel.", { exact: true }).isVisible());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
 it("moves focus into and returns focus from the Path create dialog", async (t) => {
   const { page } = await fixture(t, 1440);
   await visit(page, "/paths");
@@ -1026,6 +1544,36 @@ it("moves focus into and returns focus from the Path create dialog", async (t) =
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "detached" });
   assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
+});
+
+it("keeps Path dialog content scrollable without scrolling the background", async (t) => {
+  const { page } = await fixture(t, 1280);
+  await visit(page, "/paths");
+  await page.addStyleTag({ content: ".dashboard-shell > main { min-height: 1600px; } .path-create-dialog { max-height: 180px !important; }" });
+  await page.evaluate(() => window.scrollTo(0, 300));
+  const { scrollY: beforeDialog } = await page.evaluate(() => ({ scrollY: window.scrollY }));
+  assert.ok(beforeDialog > 0, "the underlying page is scrollable before the dialog opens");
+
+  const trigger = page.getByRole("button", { name: "Add path" });
+  await trigger.evaluate((element) => element.click());
+  const dialog = page.getByRole("dialog", { name: "Add a path" });
+  await dialog.waitFor();
+  const box = await dialog.boundingBox();
+  assert.ok(box);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 500);
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".path-create-dialog");
+    return element !== null && element.scrollTop > 0;
+  });
+  assert.equal(await page.evaluate(() => window.scrollY), beforeDialog);
+
+  await page.mouse.wheel(0, 2000);
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".path-create-dialog");
+    return element !== null && element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+  });
+  assert.equal(await page.evaluate(() => window.scrollY), beforeDialog);
 });
 
 it("opens path history when the browser loads its deep link directly", async (t) => {
@@ -1107,9 +1655,43 @@ it("merges Paths into the selected target after destructive confirmation", async
   await confirmation.getByRole("button", { name: "Confirm" }).click();
 
   await page.locator(".path-title", { hasText: "Writing" }).waitFor();
+  await page.locator(".path-title", { hasText: "Algorithms" }).waitFor({ state: "detached" });
   assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
   assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
   assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
+});
+
+it("shows the source, target, and irreversible merge result before phone confirmation", async (t) => {
+  const { page, paths, pathMergeWrites } = await fixture(t, 390, {
+    pathSeeds: [
+      { id: "phone-merge-source", name: "Phone source", description: "Source identity", status: "ACTIVE", pinned: false },
+      { id: "phone-merge-target", name: "Phone target", description: "Target identity", status: "ACTIVE", pinned: false },
+    ],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/paths");
+  const source = page.locator("article.path").first();
+  await source.getByRole("button", { name: "Edit", exact: true }).tap();
+  await source.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true }).tap();
+  const chooser = page.getByRole("dialog", { name: "Merge “Phone source” into…" });
+  await chooser.waitFor();
+  const target = chooser.getByRole("radio", { name: /Phone target/ });
+  await target.tap();
+  await chooser.getByRole("button", { name: "OK", exact: true }).tap();
+
+  const confirmation = page.getByRole("dialog", { name: "Merge Phone source into Phone target? All sessions will move and Phone source will be removed." });
+  await confirmation.waitFor();
+  const confirmationText = await confirmation.innerText();
+  for (const expected of ["Phone source", "Phone target", "All sessions will move", "will be removed"]) {
+    assert.ok(confirmationText.includes(expected), `The phone confirmation must identify ${expected}`);
+  }
+  const bounds = await confirmation.boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, JSON.stringify(bounds));
+  await confirmation.getByRole("button", { name: "Confirm", exact: true }).tap();
+  await page.locator(".path-title", { hasText: "Phone target" }).waitFor();
+  await page.locator(".path-title", { hasText: "Phone source" }).waitFor({ state: "detached" });
+  assert.deepEqual(pathMergeWrites, [{ sourceId: "phone-merge-source", targetPathId: "phone-merge-target" }]);
+  assert.deepEqual(paths.map(({ id }) => id), ["phone-merge-target"]);
 });
 
 it("confirms Path removal and restores it through the Undo action", async (t) => {
@@ -1131,10 +1713,43 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
   await snackbar.waitFor();
   assert.equal(paths.length, 0);
+  await page.waitForTimeout(7000);
+  assert.equal(await snackbar.isVisible(), true, "the named Undo action remains available for at least seven seconds");
   await snackbar.getByRole("button", { name: "Undo" }).click();
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
   assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);
   assert.ok(requests.includes("/paths/undo-path/restore"));
+});
+
+it("keeps Path removal Undo visible and tappable at phone width", async (t) => {
+  const { page, paths, requests } = await fixture(t, 390, {
+    pathSeeds: [{ id: "phone-undo-path", name: "Phone Undo path", description: "Restore from the snackbar", status: "ACTIVE", pinned: false }],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/paths");
+  const row = page.locator("article.path").first();
+  await row.getByRole("button", { name: "Remove", exact: true }).tap();
+  const dialog = page.getByRole("dialog", { name: "Remove Phone Undo path? You can undo this for a few seconds." });
+  await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Confirm", exact: true }).tap();
+  await row.waitFor({ state: "detached" });
+
+  const snackbar = page.getByRole("status").filter({ hasText: "Removed “Phone Undo path”." });
+  const undo = snackbar.getByRole("button", { name: "Undo" });
+  await undo.waitFor();
+  await page.waitForTimeout(1200);
+  const bounds = await undo.boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.y >= 0 && bounds.y + bounds.height <= 844, JSON.stringify(bounds));
+  const unobscured = await undo.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return Boolean(top && (top === element || element.contains(top)));
+  });
+  assert.equal(unobscured, true, "Undo must not be covered by another fixed control");
+  await undo.tap();
+  await page.locator(".path-title", { hasText: "Phone Undo path" }).waitFor();
+  assert.deepEqual(paths.map(({ id }) => id), ["phone-undo-path"]);
+  assert.ok(requests.includes("/paths/phone-undo-path/restore"));
 });
 
 it("preserves a Timeline activity note after failure and saves it on retry", async (t) => {
@@ -1223,13 +1838,13 @@ it("restores a hidden Path board tab after showing it from Paths", async (t) => 
 });
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {
-  const { page } = await fixture(t, 1440);
+  const { page } = await fixture(t, 1440, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+    calendarLabels: [{ id: "label-1", name: "Focus", color: "#3B82F6", scopes: ["TIME_ENTRY"] }],
+  });
   const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
-  await page.evaluate((query) => {
-    history.pushState({}, "", `/reports${query}`);
-    dispatchEvent(new PopStateEvent("popstate"));
-  }, search);
-  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.goto(`${server.resolvedUrls.local[0]}reports${search}`);
   await page.locator(".reports-page").waitFor();
   const assertReportQuery = async () => {
     await page.waitForFunction(() => location.pathname === "/reports" && new URLSearchParams(location.search).get("startDate") === "2026-09-01");
@@ -1238,6 +1853,12 @@ it("restores report filters after navigation and browser Back/Forward", async (t
     assert.equal(params.get("aggregation"), "month");
     assert.deepEqual(params.getAll("pathId"), ["path-1"]);
     assert.deepEqual(params.getAll("labelId"), ["label-1"]);
+    assert.equal(await page.getByRole("combobox", { name: "Report aggregation" }).inputValue(), "MONTH");
+    assert.equal(await page.getByRole("textbox", { name: "Datepicker input" }).inputValue(), expectedReportDateRange("2026-09-01", "2026-09-07"));
+    assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
+    assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
+    assert.equal(await page.locator(".total-display").innerText(), "01:00:00");
+    assert.match(await page.locator(".breakdown-card").innerText(), /Writing/);
   };
   await assertReportQuery();
 
@@ -1255,18 +1876,105 @@ it("restores report filters after navigation and browser Back/Forward", async (t
   await assertReportQuery();
 });
 
+it("restores a phone report filter across Chrome Back and Forward", async (t) => {
+  const { page } = await fixture(t, 390, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+  });
+  const reportUrl = `${server.resolvedUrls.local[0]}reports?startDate=2026-09-01&endDate=2026-09-07&aggregation=month`;
+  await page.goto(reportUrl);
+  await page.locator(".reports-page").waitFor();
+
+  const pathFilter = page.getByRole("combobox", { name: "Filter by paths" });
+  await pathFilter.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.locator(".breakdown-control").filter({ has: pathFilter }).locator(".v-field").tap();
+  await page.getByRole("option", { name: "Writing", exact: true }).tap();
+  await page.waitForFunction(() => new URL(location.href).searchParams.getAll("pathId").join(",") === "path-1");
+  const filteredUrl = page.url();
+  await page.getByLabel("Selected path: Writing").waitFor();
+
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Logs", exact: true }).tap();
+  await page.locator(".logs-page").waitFor();
+  await page.goBack();
+  await page.waitForTimeout(50);
+  assert.equal(page.url(), filteredUrl, "Back restores the report URL with its selected Path filter");
+  await page.getByLabel("Selected path: Writing").waitFor();
+
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/reports" && !new URL(location.href).searchParams.has("pathId"));
+  assert.equal(await page.getByLabel("Selected path: Writing").count(), 0);
+
+  await page.goForward();
+  await page.waitForFunction(() => new URL(location.href).searchParams.getAll("pathId").join(",") === "path-1");
+  await page.getByLabel("Selected path: Writing").waitFor();
+  await page.goForward();
+  await page.locator(".logs-page").waitFor();
+});
+
+it("opens Path, Label, and grouping filters above the floating tracker on a phone", async (t) => {
+  const { page } = await fixture(t, 390, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+    calendarLabels: [{ id: "label-1", name: "Focus", color: "#3B82F6", scopes: ["TIME_ENTRY"] }],
+  });
+  const labelsLoaded = page.waitForResponse((response) =>
+    response.url().includes("/labels?scope=TIME_ENTRY") && response.ok());
+  await page.goto(`${server.resolvedUrls.local[0]}reports?startDate=2026-09-01&endDate=2026-09-07&aggregation=month`);
+  await page.locator(".reports-page").waitFor();
+  await labelsLoaded;
+  const tracker = page.locator(".floating-tracker-bar");
+  await tracker.waitFor();
+  assert.equal(await tracker.isVisible(), true, "the floating timer is visible before opening filters");
+
+  const pathFilter = page.getByRole("combobox", { name: "Filter by paths" });
+  await pathFilter.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.locator(".breakdown-control").filter({ has: pathFilter }).locator(".v-field").tap();
+  await page.getByRole("option", { name: "Writing", exact: true }).tap();
+  await page.getByLabel("Selected path: Writing").waitFor();
+  await page.keyboard.press("Escape");
+
+  const labelFilter = page.locator(".breakdown-toolbar .label-picker-control");
+  await labelFilter.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await labelFilter.locator(".picker-chevron").tap();
+  await page.getByRole("option", { name: "Focus", exact: true }).tap();
+  await page.locator(".label-picker-control .selected-chip .chip-name").filter({ hasText: "Focus" }).waitFor();
+  await page.keyboard.press("Escape");
+
+  const groupFilter = page.getByRole("combobox", { name: "Group by" });
+  await groupFilter.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.locator(".breakdown-control").filter({ has: groupFilter }).locator(".v-field").tap();
+  await page.getByRole("option", { name: "Labels", exact: true }).tap();
+  await page.waitForFunction(() => new URL(location.href).searchParams.get("groupBy") === "labels");
+
+  assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
+  assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
+  assert.equal(await groupFilter.inputValue(), "Labels");
+  assert.equal(await tracker.isVisible(), false, "the floating timer hides while report controls are focused so it cannot cover them");
+});
+
 it("loads report filters from a direct query URL and keeps them on reload", async (t) => {
-  const { page, reportQueries } = await fixture(t, 1440);
+  const { page, reportQueries } = await fixture(t, 1440, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+    calendarLabels: [{ id: "label-1", name: "Focus", color: "#3B82F6", scopes: ["TIME_ENTRY"] }],
+  });
   const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
   await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
   await page.locator(".reports-page").waitFor();
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
-  assert.equal(new URL(page.url()).search, query);
+  const assertLoadedReportState = async () => {
+    await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+    assert.equal(new URL(page.url()).search, query);
+    assert.equal(await page.getByRole("textbox", { name: "Datepicker input" }).inputValue(), expectedReportDateRange("2026-09-01", "2026-09-07"));
+    assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
+    assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
+    assert.equal(await page.locator(".total-display").innerText(), "01:00:00");
+    assert.match(await page.locator(".breakdown-card").innerText(), /Writing/);
+  };
+  await assertLoadedReportState();
 
   await page.reload();
   await page.locator(".reports-page").waitFor();
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
-  assert.equal(new URL(page.url()).search, query);
+  await assertLoadedReportState();
   assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 
@@ -1430,6 +2138,54 @@ it("keeps report date and total controls reachable on a phone viewport", async (
   );
 });
 
+it("keeps report filters, chart, and breakdown usable after phone rotation", async (t) => {
+  const { page } = await fixture(t, 390, { themeSurfaces: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.locator(".reports-page").waitFor();
+  for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.evaluate(() => {
+      const selectors = [".report-date-range", ".report-chart-card .chart-frame", ".breakdown-card"];
+      return {
+        viewport: document.documentElement.clientWidth,
+        document: document.documentElement.scrollWidth,
+        regions: selectors.map((selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          return { selector, left: rect.left, right: rect.right };
+        }),
+      };
+    });
+    assert.ok(bounds.document <= bounds.viewport, `Report page overflows at ${viewport.width}×${viewport.height}: ${JSON.stringify(bounds)}`);
+    assert.ok(bounds.regions.every((region) => region && region.left >= 0 && region.right <= bounds.viewport), JSON.stringify(bounds.regions));
+    const pathFilter = page.getByRole("combobox", { name: "Filter by paths" });
+    const grouping = page.getByRole("combobox", { name: "Group by" });
+    await pathFilter.scrollIntoViewIfNeeded();
+    await grouping.scrollIntoViewIfNeeded();
+    assert.equal(await pathFilter.isVisible(), true);
+    assert.equal(await grouping.isVisible(), true);
+  }
+});
+
+it("keeps every primary route within the phone viewport", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of pages) {
+    await visit(page, path);
+    const bounds = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth,
+    }));
+    assert.ok(
+      bounds.document <= bounds.viewport && bounds.body <= bounds.viewport,
+      `${path} overflows the 390px phone viewport: ${JSON.stringify(bounds)}`,
+    );
+  }
+});
+
 it("selects a calendar range with touch taps and keyboard input", async (t) => {
   const phone = await fixture(t, 390);
   await phone.page.goto(`${server.resolvedUrls.local[0]}calendar`);
@@ -1445,6 +2201,8 @@ it("selects a calendar range with touch taps and keyboard input", async (t) => {
     .filter({ hasText: "Choose a start date" })
     .waitFor();
   const phoneDays = phone.page.locator("button.calendar-day");
+  const startDay = await phoneDays.nth(8).locator("time").textContent();
+  const endDay = await phoneDays.nth(10).locator("time").textContent();
   await phoneDays.nth(8).tap();
   assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
   await phone.page
@@ -1454,10 +2212,27 @@ it("selects a calendar range with touch taps and keyboard input", async (t) => {
   await phoneDays.nth(10).tap();
   assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
   await phone.page.locator(".day-editor-heading h2").filter({ hasText: "–" }).waitFor();
-  assert.equal(
-    await phone.page.getByRole("button", { name: "Apply to range" }).isEnabled(),
-    true,
+  const rangeTitle = await phone.page.locator(".day-editor-heading h2").textContent();
+  assert.ok(rangeTitle?.includes(` ${startDay} `) && rangeTitle.includes(` ${endDay},`), rangeTitle);
+  const phoneRangeActions = [
+    phone.page.getByRole("button", { name: "Cancel range" }),
+    phone.page.getByRole("button", { name: "Apply to range" }),
+  ];
+  for (const action of phoneRangeActions) {
+    await action.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const bounds = await action.boundingBox();
+    assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.y >= 0 && bounds.y + bounds.height <= 844, JSON.stringify(bounds));
+  }
+  await phone.page.getByRole("button", { name: "Cancel range" }).tap();
+  await phone.page.getByRole("button", { name: "Start date range selection" }).waitFor();
+  await phone.page.getByRole("button", { name: "Start date range selection" }).tap();
+  await phoneDays.nth(8).tap();
+  await phoneDays.nth(10).tap();
+  const applied = phone.page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/range") && response.request().method() === "PUT",
   );
+  await phone.page.getByRole("button", { name: "Apply to range" }).tap();
+  await applied;
 
   const desktop = await fixture(t, 1440);
   await desktop.page.goto(`${server.resolvedUrls.local[0]}calendar`);
@@ -1712,17 +2487,48 @@ it("reloads a saved Calendar label assignment on its selected day", async (t) =>
   assert.equal(await page.getByRole("checkbox", { name: "Sick leave" }).isChecked(), true);
 });
 
+it("assigns a Calendar label to a day by touch at phone width and retains it after reload", async (t) => {
+  const label = { id: "phone-calendar-label", name: "Phone vacation", color: "#2878D5", scopes: ["CALENDAR"] };
+  const { page } = await fixture(t, 390, { calendarLabels: [label] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/calendar");
+  await page.locator("button.calendar-day:not(.muted)").nth(2).tap();
+  const checkbox = page.getByRole("checkbox", { name: label.name });
+  await checkbox.tap();
+  assert.equal(await checkbox.isChecked(), true);
+  const save = page.getByRole("button", { name: "Save day" });
+  await save.scrollIntoViewIfNeeded();
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") && response.request().method() === "PUT",
+  );
+  await save.tap();
+  await saved;
+
+  await page.reload();
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => {
+    const input = document.querySelector('.day-label input[type="checkbox"]');
+    return input instanceof HTMLInputElement && input.checked;
+  });
+  assert.equal(await page.getByRole("checkbox", { name: label.name }).isChecked(), true);
+});
+
 it("creates a Calendar label with default scopes and reloads its assignment", async (t) => {
-  const { page, calendarLabels } = await fixture(t, 1440);
+  const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
   await page.locator(".calendar-page").waitFor();
   await page.getByRole("button", { name: "Open label picker" }).click();
   const input = page.locator('.label-picker-menu input[aria-label="Add or create calendar label"]');
   await input.fill("Vacation");
+  const createdLabelResponse = page.waitForResponse((response) =>
+    response.url().includes("/labels") && response.request().method() === "POST",
+  );
   await page.getByRole("option", { name: "Create Vacation" }).click();
+  const createdLabel = await createdLabelResponse;
+  assert.equal(createdLabel.ok(), true, "Calendar label creation completes before checking its defaults");
 
   assert.deepEqual(
-    { color: calendarLabels[0]?.color, scopes: calendarLabels[0]?.scopes },
+    await createdLabel.json().then(({ color, scopes }) => ({ color, scopes })),
     { color: "#F8FAFC", scopes: ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG", "BOARD"] },
   );
   const checkbox = page.getByRole("checkbox", { name: "Vacation" });
@@ -1882,6 +2688,20 @@ it("wraps a long Board card title inside its phone-width card", async (t) => {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 });
 
+it("reorders Board cards with the keyboard as an alternative to dragging", async (t) => {
+  const boardCards = [
+    { ...card, id: "card-first", position: 0 },
+    { ...card, id: "card-second", position: 1 },
+  ];
+  const { page, requests } = await fixture(t, 1440, { boardCards });
+  await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
+  const cards = page.locator("article.board-card");
+  await cards.nth(0).focus();
+  await page.keyboard.press("Alt+ArrowDown");
+  await until(() => requests.includes("/boards/board-1/cards/card-first/move"));
+  assert.ok(requests.includes("/boards/board-1/cards/card-first/move"));
+});
+
 it("shows an add-card action for a loaded empty Board column", async (t) => {
   const { page } = await fixture(t, 390, { boardCards: [] });
   await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
@@ -2015,6 +2835,7 @@ it("keeps a Note draft open when autosave fails during navigation and recovers o
 
   await page.goto(`${server.resolvedUrls.local[0]}notes`);
   await page.getByText("Draft preserved after failed autosave", { exact: true }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Retrying the Note update leaves one record in the collection");
   assert.equal(await title.count(), 0, "The editor is closed after the saved draft is recovered");
 });
 
@@ -2076,11 +2897,17 @@ it("archives the selected Note after confirmation and keeps it in the archive af
   await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
   const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
   await archivedTarget.waitFor();
+  await page.waitForFunction(() =>
+    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+  );
   assert.match(await archivedTarget.innerText(), /Keep this content in Archive/);
   assert.equal(await page.locator(".note-row.archived").count(), 1, "Only the confirmed note is archived");
 
   await page.reload();
   await page.locator(".note-row.archived", { hasText: "Browser archive target" }).waitFor();
+  await page.waitForFunction(() =>
+    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+  );
   assert.match(await page.locator(".note-row.archived", { hasText: "Browser archive target" }).innerText(), /Keep this content in Archive/);
 });
 
@@ -2108,6 +2935,42 @@ it("restores the Notes search query and filtered result from its direct URL afte
   assert.equal(await page.getByRole("textbox", { name: "Search notes" }).inputValue(), "distinctive");
 });
 
+it("creates a Note with touch at phone width and confirms label, save, and navigation feedback", async (t) => {
+  const labelName = "Phone note label";
+  const { page } = await fixture(t, 390, {
+    calendarLabels: [{ id: "phone-note-label", name: labelName, color: "#2563eb", scopes: ["NOTE"] }],
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/notes");
+  await page.getByRole("button", { name: "Create new note" }).tap();
+  await page.waitForFunction(() => /^\/notes\/[^/]+$/.test(location.pathname));
+  const title = page.getByRole("textbox", { name: "Note title" });
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await page.waitForFunction(() => !document.querySelector('[aria-label="Note title"]')?.disabled);
+  await title.fill("Phone touch-created note");
+  await body.tap();
+  await page.keyboard.type("Created and saved through phone-sized touch controls.");
+
+  const pickerButton = page.getByRole("button", { name: "Open label picker" });
+  const backButton = page.getByRole("button", { name: "Back to notes" });
+  const targetSizes = await Promise.all([pickerButton, backButton].map((locator) =>
+    locator.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }),
+  ));
+  assert.ok(targetSizes.every(({ width, height }) => width >= 44 && height >= 44), JSON.stringify(targetSizes));
+  await pickerButton.tap();
+  const labelSearch = page.getByRole("combobox", { name: "Note labels" });
+  await labelSearch.fill(labelName);
+  await page.getByRole("option").filter({ hasText: labelName }).tap();
+  await page.getByRole("button", { name: `Remove ${labelName}` }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+  await backButton.tap();
+  await page.waitForFunction(() => location.pathname === "/notes");
+  await page.getByRole("link", { name: "Open Phone touch-created note" }).waitFor();
+});
+
 it("opens and uses the Notes editor with touch-sized controls on mobile", async (t) => {
   const note = {
     id: "n1",
@@ -2126,23 +2989,32 @@ it("opens and uses the Notes editor with touch-sized controls on mobile", async 
   await noteLink.tap();
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/n1");
-  await page.getByRole("textbox", { name: "Note content" }).tap();
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await body.tap();
   const controls = await page.locator(".note-toolbar button").evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
   }));
   assert.ok(controls.length > 0 && controls.every(({ width, height }) => width >= 44 && height >= 44));
+  await page.keyboard.press("Control+A");
+  const savedNote = page.waitForResponse((response) =>
+    response.request().method() === "PUT" && new URL(response.url()).pathname === "/api/v1/notes/n1",
+  );
+  await page.getByRole("button", { name: "Bold", exact: true }).tap();
+  await body.locator("strong").waitFor();
+  await savedNote;
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.getByRole("button", { name: "Back to notes" }).tap();
   await page.waitForFunction(() => location.pathname === "/notes");
 });
 
 it("keeps the Notes draft and editor controls reachable across a keyboard-like viewport resize", async (t) => {
+  const longText = `Long mobile note content. ${"A paragraph that continues through the editor and needs page scrolling. ".repeat(40)}`;
   const note = {
     id: "n1",
     title: "Browser deep link",
-    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }),
-    contentText: "Loaded directly",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longText }] }] }),
+    contentText: longText,
     createdAt: "2026-10-01T10:00:00Z",
     updatedAt: "2026-10-02T10:00:00Z",
     version: 1,
@@ -2155,6 +3027,7 @@ it("keeps the Notes draft and editor controls reachable across a keyboard-like v
   const body = page.getByRole("textbox", { name: "Note content" });
   await body.waitFor();
   await body.tap();
+  await page.keyboard.press("Control+End");
   await page.keyboard.type("Draft stays here");
   const draft = await body.innerText();
   assert.match(draft, /Draft stays here/);
@@ -2168,6 +3041,14 @@ it("keeps the Notes draft and editor controls reachable across a keyboard-like v
   });
   assert.ok(editorVisible, "the focused editor should remain in the visible viewport");
   assert.equal(await body.evaluate((element) => element === document.activeElement), true);
+  const caretBounds = await body.evaluate(() => {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return null;
+    const rect = selection.getRangeAt(0).getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, height: rect.height, viewport: innerHeight };
+  });
+  assert.ok(caretBounds && caretBounds.top >= 0 && caretBounds.bottom <= caretBounds.viewport,
+    `the caret at the end of long Note text should stay visible above the keyboard-like viewport: ${JSON.stringify(caretBounds)}`);
   assert.ok(await page.getByRole("button", { name: "Back to notes" }).isVisible());
   const toolbarButton = page.locator(".note-toolbar button").first();
   const toolbarInViewport = await toolbarButton.evaluate((element) => {
@@ -2293,6 +3174,21 @@ it("applies light and dark appearance changes across routes and reloads", async 
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#f7f8fa");
 });
 
+it("changes the appearance preference with the native select at phone width", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, "/settings");
+  const preference = page.getByRole("combobox", { name: "Theme preference" });
+  const bounds = await preference.boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.height >= 44, JSON.stringify(bounds));
+  assert.equal(await preference.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize) >= 16), true);
+  await preference.tap();
+  await preference.selectOption("dark");
+  assert.equal(await preference.inputValue(), "dark");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+  assert.equal(await page.evaluate(() => localStorage.getItem("knowledge-base-theme")), "dark");
+});
+
 it("suppresses global search motion when reduced motion is preferred", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -2412,6 +3308,39 @@ it("opens global search from the header or shortcut and lists matching pages bef
   assert.equal(await page.getByRole("heading", { name: "Pages" }).count(), 1);
   assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
   assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
+});
+
+it("keeps temporary Development tooling out of authenticated search navigation", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  assert.equal(await page.getByRole("link", { name: "Development", exact: true }).count(), 0);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Development");
+  await dialog.locator(".global-search-empty").waitFor();
+  assert.equal(await dialog.getByRole("option", { name: "Development, page" }).count(), 0);
+});
+
+it("distinguishes no matches from failed search and clears stale results", async (t) => {
+  const { page } = await fixture(t, 1440, { failSearchQuery: "offline" });
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  const oldResult = page.getByRole("option", { name: /Reports research note/ });
+
+  await input.fill("Reports");
+  await oldResult.waitFor();
+  await input.fill("zzqx");
+  await dialog.locator(".global-search-empty").getByText(/No results for “zzqx”/).waitFor();
+  assert.equal(await dialog.getByRole("alert").count(), 0, "No matches are not reported as a request failure");
+
+  await input.fill("offline");
+  const alert = dialog.getByRole("alert");
+  await alert.waitFor();
+  assert.match(await alert.innerText(), /Try again/);
+  assert.equal(await oldResult.count(), 0, "results for an earlier query are not shown as current after failure");
+  assert.equal(await dialog.locator(".global-search-empty").count(), 0, "a failed request is not presented as a no-match result");
 });
 
 it("keeps global search usable with touch at phone width", async (t) => {
@@ -2582,18 +3511,21 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
   const boardRequests = () => requests.filter((path) => path.startsWith("/boards")).length;
   const warmedBoard = boardRequests();
 
-  await visit(page, "/board");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board" }).click();
+  await page.waitForFunction(() => location.pathname === "/board");
   await page.locator(".board-page").waitFor();
   await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
   await openGantt(page);
   assert.equal(boardRequests(), warmedBoard, "A warmed Board page and its Gantt view must not refetch boards");
 
-  await visit(page, "/reports");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Reports" }).click();
+  await page.waitForFunction(() => location.pathname === "/reports");
   await page.locator(".reports-page").waitFor();
   await page.waitForTimeout(300);
   assert.equal(count("/reports"), 1, "A warmed Reports page must not refetch its report");
 
-  await visit(page, "/calendar");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Calendar" }).click();
+  await page.waitForFunction(() => location.pathname === "/calendar");
   await page.waitForTimeout(300);
   assert.equal(count("/calendar/days"), 1, "A warmed Calendar must not refetch its month");
 

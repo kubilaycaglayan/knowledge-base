@@ -68,7 +68,10 @@ const timelineStart = isoDate(new Date());
 const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));
 
 before(async () => {
-  browser = await browserType.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
+  browser = await browserType.launch({
+    executablePath: process.env.BROWSER_PATH || undefined,
+    headless: process.env.BROWSER_HEADLESS !== "false",
+  });
   const context = await browser.newContext({
     viewport: iphoneProfile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
     ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
@@ -225,6 +228,10 @@ async function addCard(title) {
     }));
     throw new Error(`Card "${title}" never appeared (POST: ${posted}). Page: ${JSON.stringify(state)}. Console: ${JSON.stringify(consoleLog.slice(-5))}`, { cause });
   }
+  await page.reload();
+  await boardSettled();
+  if (title) await page.getByRole("heading", { name: title, exact: true }).waitFor();
+  else await page.locator('.board-card[aria-label="Untitled card"]').first().waitFor();
 }
 
 // Seeds cards straight over the API so pagination tests stay fast.
@@ -262,6 +269,11 @@ async function createBoard(name) {
   }, previousBoardId);
   await boardSettled();
   activeBoardName = name;
+  const createdBoardId = currentBoardId();
+  await page.reload();
+  await boardSettled();
+  assert.equal(currentBoardId(), createdBoardId, "the newly created Board remains selected after a fresh page read");
+  await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
 }
 
 // Most cases need a fresh board as fixture data, not a second test of the
@@ -438,6 +450,16 @@ describe("board real-stack acceptance", () => {
       await initialError.waitFor();
       assert.equal(await title.inputValue(), draft, "a failed save must preserve the title draft");
 
+      const acceptReloadWarning = (dialog) => void dialog.accept();
+      page.once("dialog", acceptReloadWarning);
+      try {
+        await page.reload();
+      } finally {
+        page.off("dialog", acceptReloadWarning);
+      }
+      await page.getByRole("heading", { name: "Card before retry", exact: true }).waitFor();
+      assert.equal(await title.inputValue(), "Card before retry", "a reload after the rejected save must show the persisted server value");
+
       await otherPage.goto(`${baseUrl}/board?board=${boardId}`);
       await otherPage.getByRole("heading", { name: "Boards" }).waitFor();
       const latestBeforeExternalEdit = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
@@ -453,7 +475,7 @@ describe("board real-stack acceptance", () => {
       });
 
       const conflict = page.getByRole("alert").filter({ hasText: "This card changed elsewhere. Retry to save your version." });
-      await initialError.getByRole("button", { name: "Retry" }).press("Enter");
+      await title.fill(draft);
       await conflict.waitFor();
       assert.equal(await title.inputValue(), draft, "a conflict refresh must not replace the user's draft");
       const refreshed = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
@@ -467,6 +489,8 @@ describe("board real-stack acceptance", () => {
       await page.getByRole("heading", { name: draft, exact: true }).waitFor();
       assert.deepEqual(writeStatuses, [503, 409, 200], "the draft is retried once after the current version is refreshed");
       assert.equal((await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`)).title, draft);
+      await otherPage.reload();
+      await otherPage.getByRole("heading", { name: draft, exact: true }).waitFor();
       await conflict.waitFor({ state: "detached" });
     } finally {
       page.off("response", recordResponse);

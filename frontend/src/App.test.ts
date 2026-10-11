@@ -104,6 +104,24 @@ describe("App", () => {
     expect(document.title).toBe("Knowledge Base · Sessions");
   });
 
+  it("uses the not-found page identity in the browser title", async () => {
+    localStorage.setItem("know_token", "token");
+    mount(App, {
+      global: {
+        stubs,
+        provide: {
+          [routeLocationKey as symbol]: {
+            path: "/unknown-route",
+            name: "not-found",
+            query: {},
+          },
+        },
+      },
+    });
+    await Promise.resolve();
+    expect(document.title).toBe("Knowledge Base · Page not found");
+  });
+
   it("switches to the authenticated shell after login", async () => {
     const wrapper = mount(App, { global: { stubs } });
 

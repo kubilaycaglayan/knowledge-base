@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { api } from "../lib/api";
+import { api, EXPIRED_SESSION_NOTICE_KEY } from "../lib/api";
 import { isDarkTheme, theme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 
@@ -34,13 +34,18 @@ const register = ref(false),
   passwordConfirmationVisible = ref(false),
   submitting = ref(false),
   passwordConfirmationError = ref(""),
-  error = ref("");
+  error = ref(""),
+  expiredSessionNotice = ref(
+    sessionStorage.getItem(EXPIRED_SESSION_NOTICE_KEY) === "1",
+  );
 const googleButton = ref<HTMLElement | null>(null);
 const googleClientId =
   (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || "";
 const googleConfigured = Boolean(googleClientId);
 
 async function acceptToken(result: { token: string }) {
+  sessionStorage.removeItem(EXPIRED_SESSION_NOTICE_KEY);
+  expiredSessionNotice.value = false;
   auth.setToken(result.token);
   emit("authenticated");
 }
@@ -141,6 +146,9 @@ onUnmounted(() => {
 <template>
   <section class="auth card" aria-labelledby="auth-title">
     <h1 id="auth-title">{{ register ? "Create account" : "Sign in" }}</h1>
+    <p v-if="expiredSessionNotice" class="notice" role="status">
+      Your unsaved changes may be lost. Sign in to continue.
+    </p>
     <form :aria-busy="submitting" @submit.prevent="submit">
       <label
         >Email<input

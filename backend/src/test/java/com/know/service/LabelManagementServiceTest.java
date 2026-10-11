@@ -38,6 +38,24 @@ class LabelManagementServiceTest {
   }
 
   @Test
+  void rejectsDuplicateCreationWithoutChangingExistingLabelOrScopes() {
+    UUID user = UUID.randomUUID();
+    Label existing = new Label(user, "Work", null);
+    when(labels.findByUserIdAndNameIgnoreCase(user, "work"))
+        .thenReturn(Optional.of(existing));
+
+    ResponseStatusException error = assertThrows(
+        ResponseStatusException.class,
+        () -> service().create(user, " work ", "#2878D5", List.of(LabelScopeType.LOG)));
+
+    assertEquals(409, error.getStatusCode().value());
+    assertEquals("Work", existing.getName());
+    assertNull(existing.getColor());
+    verify(labels, never()).save(any());
+    verifyNoInteractions(scopes);
+  }
+
+  @Test
   void refusesRemovingAUsedScope() {
     UUID user = UUID.randomUUID();
     Label label = new Label(user, "Work", "#2878D5");

@@ -232,7 +232,7 @@ function onEscape() {
 
       <p v-if="error" class="notice session-dialog-error" role="alert">{{ error }}</p>
 
-      <div v-if="confirming" class="session-dialog-confirm" role="alertdialog" aria-labelledby="session-dialog-confirm-text">
+      <div v-if="confirming" v-dialog-focus class="session-dialog-confirm" role="alertdialog" aria-labelledby="session-dialog-confirm-text">
         <p id="session-dialog-confirm-text">
           {{ confirming === "remove" ? "Remove this session? This can’t be undone." : "Discard your unsaved changes?" }}
         </p>
@@ -244,7 +244,7 @@ function onEscape() {
           <button v-else type="button" class="primary danger" @click="emit('close')">Discard</button>
         </div>
       </div>
-      <footer v-else-if="session && !editing && !loading" class="prompt-dialog-actions session-dialog-actions">
+      <footer v-if="session && !editing && !loading" :inert="Boolean(confirming)" class="prompt-dialog-actions session-dialog-actions">
         <button v-if="!running" type="button" class="text-button danger" @click="confirming = 'remove'">Remove…</button>
         <span class="session-dialog-spacer"></span>
         <button v-if="canRestart" type="button" class="text-button" :disabled="busy" @click="restart">Start again</button>

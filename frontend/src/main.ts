@@ -59,6 +59,11 @@ const router = createRouter({
       name: "note-editor",
       component: () => import("./views/NotesView.vue"),
     },
+    {
+      path: "/:pathMatch(.*)*",
+      name: "not-found",
+      component: () => import("./views/NotFoundView.vue"),
+    },
   ],
 });
 

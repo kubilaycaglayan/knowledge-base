@@ -10,8 +10,9 @@ or run record.
 | [OTOTEST-01](01-coverage-inventories.md) | Route, API, feature, and control inventories | High | Complete |
 | [OTOTEST-02](02-backend-api-coverage.md) | Backend API behavioral test mapping | High | Complete |
 | [OTOTEST-03](03-web-routes-and-controls.md) | Web routes and interactive controls | High | In progress |
-| [OTOTEST-04](04-real-stack-and-extension.md) | Real-stack journeys and Chrome extension integration | High | Proposed |
-| [OTOTEST-05](05-traceability-and-gates.md) | Ongoing traceability and CI gates | High | Proposed |
+| [OTOTEST-04](04-real-stack-and-extension.md) | Real-stack journeys and Chrome extension integration | High | Complete |
+| [OTOTEST-05](05-traceability-and-gates.md) | Ongoing traceability and CI gates | High | In progress |
+| [OTOTEST-06](06-test-runtime-efficiency.md) | Measure and reduce test runtime without losing coverage | Medium | Proposed |
 
 The source-backed [product test tree](product-test-tree.md) is the navigation
 and feature outline for building the detailed route, control, and endpoint
@@ -38,6 +39,11 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 - [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
+- [OTOTEST-05 acceptance checklist](05-acceptance-checklist.md)
+- [Execution evidence template](evidence-template.md)
+- [OTOTEST-05 local gate run record](runs/2026-10-10-ototest-05-local-gates.md)
+- [OTOTEST-06 — Test runtime efficiency](06-test-runtime-efficiency.md)
+- [OTOTEST-06 runtime acceptance checklist](06-acceptance-checklist.md)
 
 ## Milestone acceptance checklists
 
@@ -51,6 +57,9 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 - [OTOTEST-03 web routes and controls acceptance](03-acceptance-checklist.md)
   covers supported web routes and user-visible controls in desktop and mobile
   Chrome.
+- [OTOTEST-04 real-stack and extension acceptance](04-acceptance-checklist.md)
+  covers representative persisted browser journeys and the packaged desktop
+  Chrome extension.
 
 ## Out of scope
 

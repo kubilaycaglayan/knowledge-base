@@ -238,7 +238,7 @@ function onEscape() {
 
       <p v-if="error" class="notice log-dialog-error" role="alert">{{ error }}</p>
 
-      <div v-if="confirming" class="log-dialog-confirm" role="alertdialog" aria-labelledby="log-dialog-confirm-text">
+      <div v-if="confirming" v-dialog-focus class="log-dialog-confirm" role="alertdialog" aria-labelledby="log-dialog-confirm-text">
         <p id="log-dialog-confirm-text">
           {{ confirming === "remove" ? "Remove this log? This can’t be undone." : "Discard your unsaved changes?" }}
         </p>

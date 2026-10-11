@@ -15,6 +15,7 @@ const unscheduledDay = ref<string | null>(null);
 const unscheduledAnchorDay = ref<string | null>(null);
 let unscheduledGesture: { id: number; startIndex: number; moved: boolean } | null = null;
 let suppressUnscheduledClick = false;
+let keyboardRangeAnchor: string | null = null;
 const saving = ref(false), message = ref("");
 const barButton = ref<HTMLButtonElement | null>(null), titleOverflows = ref(false);
 let titleResizeObserver: ResizeObserver | null = null;
@@ -123,16 +124,102 @@ async function scheduleUnscheduled(startDate = unscheduledDay.value, dueDate?: s
   } finally { saving.value = false; unscheduledDay.value = null; unscheduledAnchorDay.value = null; }
 }
 function clickUnscheduled() { if (suppressUnscheduledClick) { suppressUnscheduledClick = false; return; } void scheduleUnscheduled(); }
+function keyboardUnscheduled(event: KeyboardEvent) {
+  if (saving.value || !props.days.length) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    keyboardRangeAnchor = null;
+    unscheduledDay.value = null;
+    unscheduledAnchorDay.value = null;
+    return;
+  }
+  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    event.preventDefault();
+    const current = unscheduledDay.value || props.days[0];
+    const currentIndex = Math.max(0, props.days.indexOf(current));
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex = Math.max(0, Math.min(props.days.length - 1, currentIndex + direction));
+    const next = props.days[nextIndex];
+    if (event.shiftKey) {
+      keyboardRangeAnchor ||= unscheduledDay.value || current;
+      unscheduledAnchorDay.value = keyboardRangeAnchor;
+      unscheduledDay.value = next;
+    } else {
+      keyboardRangeAnchor = null;
+      unscheduledAnchorDay.value = next;
+      unscheduledDay.value = next;
+    }
+    return;
+  }
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    const selected = unscheduledDay.value || props.days[0];
+    const anchor = unscheduledAnchorDay.value || selected;
+    const startDate = anchor <= selected ? anchor : selected;
+    const endDate = anchor <= selected ? selected : anchor;
+    void scheduleUnscheduled(startDate, endDate === startDate ? undefined : endDate);
+  }
+}
+async function shiftDateFromKeyboard(event: KeyboardEvent, mode: Mode) {
+  if (saving.value || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  event.preventDefault();
+  const direction = event.key === "ArrowRight" ? 1 : -1;
+  const start = props.card.startDate || props.card.dueDate;
+  const end = props.card.dueDate || props.card.startDate;
+  if (!start || !end) return;
+  const action = mode === "move" && event.shiftKey ? "end" : mode;
+  let startDate = action === "move" || action === "start" ? addCalendarDays(start, direction) : start;
+  let dueDate = action === "move" || action === "end" ? addCalendarDays(end, direction) : end;
+  if (action === "start" && startDate > end) startDate = end;
+  if (action === "end" && dueDate < start) dueDate = start;
+  if (startDate === start && dueDate === end) return;
+  saving.value = true;
+  message.value = "Saving dates…";
+  try {
+    const { title, body, priority, pathIds, labelIds } = props.card;
+    await store.updateCard(props.card, {
+      title, body, priority, pathIds, labelIds,
+      ...(action === "move"
+        ? { startDate: props.card.startDate ? startDate : undefined, dueDate: props.card.dueDate ? dueDate : undefined }
+        : { startDate, dueDate }),
+    });
+    message.value = "Dates saved.";
+  } catch {
+    message.value = "Could not save dates. Open the card to review its dates and try again.";
+    notices.notify(message.value);
+  } finally {
+    saving.value = false;
+  }
+}
 function cancel() { if (!gesture) return; suppressClick = gesture.moved; gesture = null; preview.value = null; }
 function open(event: MouseEvent) { if (suppressClick && event.detail) { suppressClick = false; return; } emit("edit", props.card); }
 </script>
 
 <template>
-  <button v-if="!card.startDate && !card.dueDate" class="timeline-unscheduled" type="button" :disabled="saving" title="Click to set one date, or drag to select a date range" :style="{ '--prospective-left': `${Math.max(0, Math.min(days.indexOf(unscheduledAnchorDay || unscheduledDay || ''), days.indexOf(unscheduledDay || ''))) * 100 / days.length}%`, '--prospective-width': `${(Math.abs(days.indexOf(unscheduledDay || '') - days.indexOf(unscheduledAnchorDay || unscheduledDay || '')) + 1) * 100 / days.length}%`, '--timeline-card-color': color || '#9f3f22' }" :aria-label="unscheduledAnchorDay && unscheduledDay !== unscheduledAnchorDay ? `Set ${card.title || 'Untitled card'} date range from ${unscheduledAnchorDay} to ${unscheduledDay}` : unscheduledDay ? `Set ${card.title || 'Untitled card'} date to ${unscheduledDay}` : `Choose a date for ${card.title || 'Untitled card'}`" @pointerdown="beginUnscheduled" @pointermove="previewUnscheduled" @pointerup="finishUnscheduled" @pointercancel="unscheduledGesture = null; unscheduledDay = null; unscheduledAnchorDay = null" @lostpointercapture="unscheduledGesture = null" @pointerleave="!unscheduledGesture && (unscheduledDay = null, unscheduledAnchorDay = null)" @click="clickUnscheduled"><span v-if="unscheduledDay" class="timeline-prospective-bar" aria-hidden="true"></span></button>
+  <button
+    v-if="!card.startDate && !card.dueDate"
+    class="timeline-unscheduled"
+    type="button"
+    :disabled="saving"
+    title="Click or press Enter to set one date; use arrow keys and Shift+arrows to select a date range"
+    aria-description="Use Left and Right arrows to choose a date. Hold Shift with an arrow to select a range. Enter saves; Escape clears the preview."
+    :style="{ '--prospective-left': `${Math.max(0, Math.min(days.indexOf(unscheduledAnchorDay || unscheduledDay || ''), days.indexOf(unscheduledDay || ''))) * 100 / days.length}%`, '--prospective-width': `${(Math.abs(days.indexOf(unscheduledDay || '') - days.indexOf(unscheduledAnchorDay || unscheduledDay || '')) + 1) * 100 / days.length}%`, '--timeline-card-color': color || '#9f3f22' }"
+    :aria-label="unscheduledAnchorDay && unscheduledDay !== unscheduledAnchorDay ? `Set ${card.title || 'Untitled card'} date range from ${unscheduledAnchorDay} to ${unscheduledDay}` : unscheduledDay ? `Set ${card.title || 'Untitled card'} date to ${unscheduledDay}` : `Choose a date for ${card.title || 'Untitled card'}`"
+    @keydown="keyboardUnscheduled"
+    @pointerdown="beginUnscheduled"
+    @pointermove="previewUnscheduled"
+    @pointerup="finishUnscheduled"
+    @pointercancel="unscheduledGesture = null; unscheduledDay = null; unscheduledAnchorDay = null"
+    @lostpointercapture="unscheduledGesture = null"
+    @pointerleave="!unscheduledGesture && $event.pointerType !== 'touch' && (unscheduledDay = null, unscheduledAnchorDay = null)"
+    @click="clickUnscheduled"
+  >
+    <span v-if="unscheduledDay" class="timeline-prospective-bar" aria-hidden="true"></span>
+  </button>
   <div v-if="position.left" class="timeline-card" :class="{ 'timeline-card-dragging': preview }" :style="{ ...position, '--timeline-card-color': color || '#9f3f22', '--timeline-card-text-color': foregroundColor }" :aria-busy="saving" @pointermove="move" @pointerup="finish" @pointercancel="cancel" @lostpointercapture="cancel" @keydown.esc="cancel">
-    <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust start date for ${card.title || 'Untitled card'}`" title="Drag to adjust start date; click to edit dates" @pointerdown="begin($event, 'start')" @click="open">│</button>
-    <button ref="barButton" class="timeline-bar" type="button" :disabled="saving" :aria-label="card.title || 'Untitled card'" aria-description="Drag to move dates; click to edit" @pointerdown="begin($event, 'move')" @click="open"><span class="timeline-bar-title">{{ card.title }}</span><span v-if="saving" class="gantt-saving" aria-hidden="true">◌</span><span v-if="titleOverflows && card.title" class="timeline-card-tooltip" aria-hidden="true">{{ card.title }}</span></button>
-    <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust end date for ${card.title || 'Untitled card'}`" title="Drag to adjust end date; click to edit dates" @pointerdown="begin($event, 'end')" @click="open">│</button>
+    <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust start date for ${card.title || 'Untitled card'}`" title="Use Left/Right arrows to adjust the start date; click to edit dates" aria-description="Left or Right arrow adjusts the start by one day." @keydown="shiftDateFromKeyboard($event, 'start')" @pointerdown="begin($event, 'start')" @click="open">│</button>
+    <button ref="barButton" class="timeline-bar" type="button" :disabled="saving" :aria-label="card.title || 'Untitled card'" aria-description="Use Left/Right arrows to move dates by one day. Hold Shift to adjust the end date. Click to edit." @keydown="shiftDateFromKeyboard($event, 'move')" @pointerdown="begin($event, 'move')" @click="open"><span class="timeline-bar-title">{{ card.title }}</span><span v-if="saving" class="gantt-saving" aria-hidden="true">◌</span><span v-if="titleOverflows && card.title" class="timeline-card-tooltip" aria-hidden="true">{{ card.title }}</span></button>
+    <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust end date for ${card.title || 'Untitled card'}`" title="Use Left/Right arrows to adjust the end date; click to edit dates" aria-description="Left or Right arrow adjusts the end by one day." @keydown="shiftDateFromKeyboard($event, 'end')" @pointerdown="begin($event, 'end')" @click="open">│</button>
     <span v-if="showPriority || showStatus && statusName || showPath && pathName" class="timeline-card-details" aria-hidden="true">
       <span v-if="showPriority" class="timeline-card-chip priority-chip" :class="`priority-${card.priority.toLowerCase()}`">{{ card.priority }}</span>
       <span v-if="showStatus && statusName" class="timeline-card-chip">{{ statusName }}</span>
@@ -161,5 +248,5 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 .gantt-saving { display:inline-block; margin-left:.3rem; animation:gantt-saving 1s linear infinite; }
 @keyframes gantt-saving { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gantt-saving { animation:none; } }
-@media (max-width:700px) { .timeline-resize { flex-basis:44px; min-width:44px; min-height:44px; } }
+@media (max-width:700px) { .timeline-unscheduled { min-height:44px; }.timeline-resize { flex-basis:44px; min-width:44px; min-height:44px; } }
 </style>
