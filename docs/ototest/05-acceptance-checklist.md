@@ -128,12 +128,12 @@ gate below, the maintained inventory or release record must identify:
   outcomes separately.
 - [ ] A record read records owned, missing, and foreign-ID outcomes where the
   route accepts a record identifier.
-- [ ] A mutation that references another record records ownership checks for
+- [x] A mutation that references another record records ownership checks for
   each referenced Path, Label, board, status, note, or activity identifier
-  used by that behavior.
+  used by that behavior. `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData` exercises foreign Path, Label, status, and board references across time entries, timers, notes, logs, cards, and calendar assignments; the API matrix records the integration layer and unchanged-owner-state assertion.
 - [ ] A new public API route records its deliberate public status and the
   reason for bypassing authentication.
-- [ ] Security evidence identifies the layer proving the boundary rather
+- [x] Security evidence identifies the layer proving the boundary rather
   than inferring it from a UI-hidden control.
 
 ### Flow: Classify one changed extension permission

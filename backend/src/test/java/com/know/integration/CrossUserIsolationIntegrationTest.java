@@ -334,6 +334,16 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
             new String[] {"POST", cards, "{\"title\":\"Mine\",\"labelIds\":[\"" + ids.get("label") + "\"]}"},
             new String[] {"POST", cards, "{\"title\":\"Mine\",\"statusId\":\"" + ids.get("status") + "\"}"},
             new String[] {
+              "PUT",
+              cards + "/" + intruderCard,
+              "{\"pathIds\":[\"" + ids.get("path") + "\"]}"
+            },
+            new String[] {
+              "PUT",
+              cards + "/" + intruderCard,
+              "{\"labelIds\":[\"" + ids.get("label") + "\"]}"
+            },
+            new String[] {
               "POST",
               cards + "/" + intruderCard + "/move",
               "{\"statusId\":\"" + ids.get("status") + "\",\"position\":0}"
