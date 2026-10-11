@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const workflow = readFileSync(".github/workflows/verify.yml", "utf8");
+const testingGuide = readFileSync("docs/testing.md", "utf8");
 const helper = readFileSync("frontend/scripts/browser-failure-artifacts.mjs", "utf8");
 const scrubber = readFileSync("frontend/scripts/scrub-playwright-trace.py", "utf8");
 
@@ -27,6 +28,8 @@ requireUploadPolicy(
   "line-history-e2e-artifacts/",
 );
 assert.match(workflow, /Failure logs and scrubbed browser evidence are attached to this \[workflow run\]\(\$RUN_URL\) and retained for 14 days\./);
+assert.match(workflow, /- name: Run web route and control browser acceptance\n        working-directory: frontend\n        run: npm run test:nav/);
+assert.match(testingGuide, /verify \/ web-and-extension.*Run web route and control browser acceptance.*npm run test:nav/);
 
 for (const filename of ["scripts/run-timer-websocket-e2e.sh", "scripts/run-line-history-e2e.sh"]) {
   const runner = readFileSync(filename, "utf8");
@@ -45,4 +48,4 @@ for (const sensitiveField of ["authorization", "cookie", "password", "email", "a
 assert.match(scrubber, /REDACTED_CREDENTIAL/);
 assert.match(scrubber, /REDACTED_ACCOUNT/);
 
-console.log("Browser artifact policy passed (run/commit linkage, failure-only upload, 14-day retention, and trace scrubbing).");
+console.log("Browser gate and artifact policy passed (route acceptance, run/commit linkage, failure-only upload, 14-day retention, and trace scrubbing).");

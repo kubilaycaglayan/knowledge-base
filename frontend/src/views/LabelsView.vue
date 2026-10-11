@@ -216,6 +216,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
 <template>
   <PromptDialog ref="promptDialog" />
   <section class="labels-view">
+    <h1 class="sr-only">Labels</h1>
     <header class="labels-heading">
       <input ref="searchInput" v-model="search" class="label-search" type="search"
         name="label-search" aria-label="Search labels" aria-keyshortcuts="/"

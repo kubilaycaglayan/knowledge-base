@@ -655,22 +655,26 @@ it("opens each primary navigation route and updates the active link and title", 
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   const destinations = [
-    ["Board", "/board", ".board-page", "Board"],
-    ["Logs", "/logs", ".logs-page", "Logs"],
-    ["Notes", "/notes", ".notes-page", "Notes"],
-    ["Calendar", "/calendar", ".calendar-page", "Calendar"],
-    ["Reports", "/reports", ".reports-page", "Reports"],
-    ["Paths", "/paths", ".paths-page", "Paths"],
-    ["Labels", "/labels", ".labels-view", "Labels"],
+    ["Board", "/board", ".board-page", "Board", "Boards"],
+    ["Logs", "/logs", ".logs-page", "Logs", "Logs"],
+    ["Notes", "/notes", ".notes-page", "Notes", "Notes"],
+    ["Calendar", "/calendar", ".calendar-page", "Calendar", "Calendar"],
+    ["Reports", "/reports", ".reports-page", "Reports", "Reports"],
+    ["Paths", "/paths", ".paths-page", "Paths", "Your paths"],
+    ["Labels", "/labels", ".labels-view", "Labels", "Labels"],
   ];
 
-  for (const [label, path, selector, title] of destinations) {
-    await nav.getByRole("link", { name: label, exact: true }).click();
+  for (const [label, path, selector, title, heading] of destinations) {
+    const link = nav.getByRole("link", { name: label, exact: true });
+    assert.equal(await link.evaluate((element) => element.tagName), "A");
+    assert.equal(await link.getAttribute("href"), path);
+    await link.click();
     await page.waitForFunction((expected) => location.pathname === expected, path);
     await page.locator(selector).waitFor();
     const activeLink = nav.getByRole("link", { name: label, exact: true });
     assert.equal(await activeLink.getAttribute("aria-current"), "page");
     await page.waitForFunction((expected) => document.title === expected, `Knowledge Base · ${title}`);
+    await page.getByRole("main").getByRole("heading", { name: heading, level: 1, exact: true }).waitFor();
   }
 
   await nav.getByRole("link", { name: "Board", exact: true }).click();
@@ -683,6 +687,20 @@ it("opens each primary navigation route and updates the active link and title", 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
+});
+
+it("preserves browser-native new-tab behavior for primary navigation links", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const boardLink = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board", exact: true });
+  assert.equal(await boardLink.evaluate((element) => element.tagName), "A");
+  assert.equal(await boardLink.getAttribute("href"), "/board");
+
+  const opened = page.context().waitForEvent("page");
+  await boardLink.click({ modifiers: ["Control"] });
+  const newTab = await opened;
+  await newTab.locator(".board-page").waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/board");
+  assert.equal(new URL(page.url()).pathname, "/");
 });
 
 it("restores the Log search query from a direct URL after reload", async (t) => {
