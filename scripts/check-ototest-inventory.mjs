@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
 import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
@@ -219,6 +219,22 @@ for (const { row, cells, evidenceIndex, statusIndex } of readControlStatusRows()
   if (evidenceIndex < 0) continue;
   for (const missingAssertion of rowsMissingNamedAssertions([cells], evidenceIndex, statusIndex)) {
     problems.push(`01-control-matrix.md:action row ${row} ${missingAssertion.identity}: covered evidence must name a test assertion`);
+  }
+}
+
+for (const [filename, rows, evidenceIndex, claimIndex, statusIndex] of [
+  ["01-route-matrix.md", readTable("01-route-matrix.md", "| Route / state |"), 2, 5, 4],
+  ["01-api-matrix.md", apiRows, 2, 3, 4],
+  ["01-extension-and-feature-map.md", extensionRows, 2, 2, 4],
+]) {
+  for (const { row, identity } of coveredStateClaimsMissingLayer(rows, evidenceIndex, claimIndex, statusIndex)) {
+    problems.push(`${filename}:row ${row} ${identity}: persistence and ownership claims must cite an integration evidence layer`);
+  }
+}
+for (const { row, cells, evidenceIndex, statusIndex } of readControlStatusRows()) {
+  if (evidenceIndex < 0) continue;
+  for (const missingLayer of coveredStateClaimsMissingLayer([cells], evidenceIndex, 3, statusIndex)) {
+    problems.push(`01-control-matrix.md:action row ${row} ${missingLayer.identity}: persistence and ownership claims must cite an integration evidence layer`);
   }
 }
 

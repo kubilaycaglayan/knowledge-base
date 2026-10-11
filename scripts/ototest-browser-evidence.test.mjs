@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -158,5 +158,17 @@ test("requires covered inventory rows to name an assertion rather than only a te
   ], 1, 2), [
     { row: 3, identity: "Java filename only" },
     { row: 4, identity: "filename only" },
+  ]);
+});
+
+test("requires persisted and ownership claims to cite an integration evidence layer", () => {
+  assert.deepEqual(coveredStateClaimsMissingLayer([
+    ["UI-only persistence claim", "ItemView.test.ts: `shows saved state`", "persisted item is returned after reload", "covered"],
+    ["actual integration", "ItemIntegrationTest.itemPersistsAfterUpdate", "persisted item is returned after reload", "covered"],
+    ["real browser integration", "item.real-stack.acceptance.test.mjs: `saves and reloads item`", "owner sees persisted item after reload", "covered"],
+    ["render-only UI behavior", "ItemView.test.ts: `shows the saved badge`", "save button shows loading feedback", "covered"],
+    ["gap", "ItemView.test.ts", "persisted item unavailable", "gap"],
+  ], 1, 2, 3), [
+    { row: 1, identity: "UI-only persistence claim" },
   ]);
 });

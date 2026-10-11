@@ -55,6 +55,16 @@ export function rowsMissingNamedAssertions(rows, evidenceIndex, statusIndex) {
   });
 }
 
+export function coveredStateClaimsMissingLayer(rows, evidenceIndex, claimIndex, statusIndex) {
+  const stateClaim = /\b(?:persist\w*|read.?back|owner(?:ship)?|owned|foreign|another user)\b/i;
+  const statefulLayer = /(?:[A-Za-z][A-Za-z0-9]*IntegrationTest\.|(?:real-stack|real-browser)\.acceptance\.test\.)/i;
+  return rows.flatMap((cells, index) => {
+    const claim = cells[claimIndex] ?? "";
+    if (cells[statusIndex] !== "covered" || !stateClaim.test(claim) || statefulLayer.test(cells[evidenceIndex] ?? "")) return [];
+    return [{ row: index + 1, identity: cells[0] ?? "" }];
+  });
+}
+
 export function invalidEvidenceStatuses(rows, statusIndex) {
   return rows.flatMap((cells, index) => {
     const status = cells[statusIndex] ?? "";

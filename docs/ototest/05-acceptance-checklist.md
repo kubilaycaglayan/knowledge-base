@@ -317,8 +317,11 @@ load, and route-state evidence must remain individually identifiable.
   Covered route, API, control, and extension rows must name an assertion; CI
   resolves browser and extension assertion titles and Java test methods, and
   rejects stale references. Detailed control actions are checked individually.
-- [ ] An assertion that only checks rendering is not used to claim mutation,
-  persistence, or ownership coverage.
+- [x] An assertion that only checks rendering is not used to claim mutation,
+  persistence, or ownership coverage. CI requires named assertions for covered
+  rows and requires stateful integration evidence when a row claims persisted
+  state, readback, or ownership. Mutating control claims were reviewed against
+  their named action assertions; gaps retain their gap status.
 
 ### Flow: Reconcile one coverage status
 
