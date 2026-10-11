@@ -9,7 +9,7 @@ export function unresolvedAcceptanceReferences(controlRows, sourcesByFile) {
       const testNames = new Set(
         [...testSource.matchAll(/(?:^|\n)\s*(?:it|test)(?:\.each\([\s\S]*?\))?\(\s*(["'`])(.+?)\1/g)].map((match) => match[2]),
       );
-      const pattern = new RegExp(`${escapedFile}\\)?\\s*:\\s*((?:\`[^\`]+\`(?:;\\s*)?)+)`, "g");
+      const pattern = new RegExp(`${escapedFile}(?:\\)|\\x60)?\\s*:\\s*((?:\\x60[^\\x60]+\\x60(?:;\\s*)?)+)`, "g");
       for (const match of evidence.matchAll(pattern)) {
         for (const [, reference] of match[1].matchAll(/`([^`]+)`/g)) {
           // Other source references can follow test assertions in the same
@@ -38,6 +38,18 @@ export function apiRowsMissingNamedEvidence(rows) {
     return /\b[A-Za-z][A-Za-z0-9]*Test\.[A-Za-z_][A-Za-z0-9_]*/.test(evidence)
       ? []
       : [{ row: index + 1, operation: cells[0] ?? "" }];
+  });
+}
+
+export function rowsMissingNamedAssertions(rows, evidenceIndex, statusIndex) {
+  return rows.flatMap((cells, index) => {
+    if (cells[statusIndex] !== "covered") return [];
+    const evidence = cells[evidenceIndex] ?? "";
+    const hasJavaMethod = /\b[A-Za-z][A-Za-z0-9]*Test\.[A-Za-z_][A-Za-z0-9_]*/.test(evidence);
+    const hasNamedJsAssertion = /(?:test|spec)\.(?:ts|tsx|js|mjs)(?:`\]\([^)]*\))?`?\s*:?\s*`[^`]+`/i.test(evidence);
+    return hasJavaMethod || hasNamedJsAssertion
+      ? []
+      : [{ row: index + 1, identity: cells[0] ?? "" }];
   });
 }
 

@@ -313,7 +313,10 @@ load, and route-state evidence must remain individually identifiable.
   invalidates its inventory link. The consistency gate fails on stale
   frontend names and missing Java test method declarations, so the inventory
   link must be repaired before the change can pass CI.
-- [ ] A test filename alone is not treated as proof of a particular behavior.
+- [x] A test filename alone is not treated as proof of a particular behavior.
+  Covered route, API, control, and extension rows must name an assertion; CI
+  resolves browser and extension assertion titles and Java test methods, and
+  rejects stale references. Detailed control actions are checked individually.
 - [ ] An assertion that only checks rendering is not used to claim mutation,
   persistence, or ownership coverage.
 

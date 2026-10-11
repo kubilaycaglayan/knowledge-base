@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
 import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
@@ -59,6 +59,12 @@ function readControlStatusRows() {
     if (!lines[index].startsWith("| Checklist ID |")) continue;
     const headings = lines[index].split("|").slice(1, -1).map((cell) => cell.trim());
     const statusIndex = headings.indexOf("Evidence status");
+    const evidenceIndex = headings.findIndex((heading) => [
+      "Evidence candidate",
+      "Existing named assertion and evidence class",
+      "Existing evidence and exact assertion",
+      "Applicable source/evidence inventory",
+    ].includes(heading));
     if (statusIndex < 0) {
       problems.push(`01-control-matrix.md:table at line ${index + 1}: missing Evidence status column`);
       continue;
@@ -78,7 +84,7 @@ function readControlStatusRows() {
       else if (identities.has(identity)) problems.push(`01-control-matrix.md:row ${rows.length + 1}: duplicate checklist ID ${identity}`);
       else identities.add(identity);
       if (!cells[1]) problems.push(`01-control-matrix.md:row ${rows.length + 1}: missing source and expected behavior`);
-      rows.push({ cells, statusIndex, row: rows.length + 1 });
+      rows.push({ cells, statusIndex, evidenceIndex, row: rows.length + 1 });
       index = rowIndex;
     }
   }
@@ -167,6 +173,7 @@ for (const testFile of findFiles(path.join(repositoryRoot, "backend/src/test/jav
   apiTestClasses.set(className, [...(apiTestClasses.get(className) ?? []), testFile]);
 }
 const controlEvidenceRows = readControlEvidenceRows();
+const extensionRows = readTable("01-extension-and-feature-map.md", "| Entry point / capability |");
 const apiEvidenceReferences = new Set(apiRows.flatMap((row) =>
   qualifiedJavaEvidenceReferences(row[2]).map(({ className, methodName }) => `${className}.${methodName}`)));
 const controlEvidenceReferences = new Set(controlEvidenceRows.flatMap(({ cells, evidenceIndex }) =>
@@ -187,15 +194,32 @@ for (const reference of new Set([...apiEvidenceReferences, ...controlEvidenceRef
 }
 
 const frontendTestSources = Object.fromEntries(
-  ["frontend/src", "frontend/scripts"]
+  ["frontend/src", "frontend/scripts", "chrome-extension"]
     .flatMap((directory) => findFiles(path.join(repositoryRoot, directory), (file) => /\.(?:test|spec)\.(?:ts|tsx|js|mjs)$/.test(file)))
     .map((file) => [path.basename(file), fs.readFileSync(file, "utf8")]),
 );
 for (const { document, row, file, reference } of unresolvedAcceptanceReferences(
-  [...routeEvidenceRows, ...controlEvidenceRows],
+  [...routeEvidenceRows, ...controlEvidenceRows, ...extensionRows.map((cells, index) => ({ cells, evidenceIndex: 2, row: index + 1, document: "01-extension-and-feature-map.md" }))],
   frontendTestSources,
 )) {
   problems.push(`${document}:row ${row}: ${file} assertion ${JSON.stringify(reference)} does not resolve`);
+}
+
+for (const [filename, rows, evidenceIndex, statusIndex] of [
+  ["01-route-matrix.md", readTable("01-route-matrix.md", "| Route / state |"), 2, 4],
+  ["01-api-matrix.md", apiRows, 2, 4],
+  ["01-control-matrix.md", readTable("01-control-matrix.md", "| Checklist IDs |"), 3, 6],
+  ["01-extension-and-feature-map.md", extensionRows, 2, 4],
+]) {
+  for (const { row, identity } of rowsMissingNamedAssertions(rows, evidenceIndex, statusIndex)) {
+    problems.push(`${filename}:row ${row} ${identity}: covered evidence must name a test assertion`);
+  }
+}
+for (const { row, cells, evidenceIndex, statusIndex } of readControlStatusRows()) {
+  if (evidenceIndex < 0) continue;
+  for (const missingAssertion of rowsMissingNamedAssertions([cells], evidenceIndex, statusIndex)) {
+    problems.push(`01-control-matrix.md:action row ${row} ${missingAssertion.identity}: covered evidence must name a test assertion`);
+  }
 }
 
 for (const [filename, header, statusIndex] of [

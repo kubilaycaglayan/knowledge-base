@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -70,6 +70,22 @@ test("resolves assertions against the file named by each matrix reference", () =
   }), []);
 });
 
+test("resolves named extension unit-test assertions", () => {
+  const rows = [row([
+    "storage",
+    "WXT manifest permissions",
+    "`options.test.js`: `loads the configured API base or the default`",
+    "Persistence is covered",
+    "covered",
+  ], 2, 1, "01-extension-and-feature-map.md")];
+  assert.deepEqual(unresolvedAcceptanceReferences(rows, {
+    "options.test.js": 'test("loads the configured API base or the default", async () => {});',
+  }), []);
+  assert.equal(unresolvedAcceptanceReferences(rows, {
+    "options.test.js": 'test("loads a configured API base", async () => {});',
+  })[0].reference, "loads the configured API base or the default");
+});
+
 test("reports stale route-matrix references with the route inventory location", () => {
   const rows = [row([
     "/paths",
@@ -129,5 +145,16 @@ test("requires each API operation row to name a qualified test assertion", () =>
     ["DELETE `/api/v1/paths/{id}`", "PathController.delete", "No assertion mapped yet", "Deletion effect needs evidence"],
   ]), [
     { row: 2, operation: "DELETE `/api/v1/paths/{id}`" },
+  ]);
+});
+
+test("requires covered inventory rows to name an assertion rather than only a test file", () => {
+  assert.deepEqual(rowsMissingNamedAssertions([
+    ["covered frontend", "[`example.test.mjs`](example.test.mjs): `saves the item`", "covered"],
+    ["covered Java", "ThingApiTest.savesTheItem", "covered"],
+    ["filename only", "`example.test.mjs` verifies the flow", "covered"],
+    ["gap may cite file", "`example.test.mjs`", "gap"],
+  ], 1, 2), [
+    { row: 3, identity: "filename only" },
   ]);
 });
