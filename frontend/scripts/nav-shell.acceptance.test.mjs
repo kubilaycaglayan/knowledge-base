@@ -264,9 +264,13 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     }
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
-      const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const selectedPath = paths.find((item) => url.searchParams.getAll("pathId").includes(item.id));
+      const chartPath = selectedPath
+        ? { id: selectedPath.id, label: selectedPath.name, seconds: 3600, color: "#3b82f6" }
+        : { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const selectedLabel = calendarLabels.find((item) => url.searchParams.getAll("labelId").includes(item.id));
       const chartDay = { date: today, totalSeconds: 3600, paths: [chartPath] };
-      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: [], calendarLabels: [] };
+      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: themeSurfaces && selectedLabel ? [{ id: selectedLabel.id, label: selectedLabel.name, seconds: 3600 }] : [], calendarLabels: [] };
     }
     else if (path === "/preferences" && method === "PUT") {
       Object.assign(preferences, route.request().postDataJSON());
@@ -1241,13 +1245,13 @@ it("restores a hidden Path board tab after showing it from Paths", async (t) => 
 });
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {
-  const { page } = await fixture(t, 1440);
+  const { page } = await fixture(t, 1440, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+    calendarLabels: [{ id: "label-1", name: "Focus", color: "#3B82F6", scopes: ["TIME_ENTRY"] }],
+  });
   const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
-  await page.evaluate((query) => {
-    history.pushState({}, "", `/reports${query}`);
-    dispatchEvent(new PopStateEvent("popstate"));
-  }, search);
-  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.goto(`${server.resolvedUrls.local[0]}reports${search}`);
   await page.locator(".reports-page").waitFor();
   const assertReportQuery = async () => {
     await page.waitForFunction(() => location.pathname === "/reports" && new URLSearchParams(location.search).get("startDate") === "2026-09-01");
@@ -1256,6 +1260,12 @@ it("restores report filters after navigation and browser Back/Forward", async (t
     assert.equal(params.get("aggregation"), "month");
     assert.deepEqual(params.getAll("pathId"), ["path-1"]);
     assert.deepEqual(params.getAll("labelId"), ["label-1"]);
+    assert.equal(await page.getByRole("combobox", { name: "Report aggregation" }).inputValue(), "MONTH");
+    assert.equal(await page.getByRole("textbox", { name: "Datepicker input" }).inputValue(), "01/09/2026 – 07/09/2026");
+    assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
+    assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
+    assert.equal(await page.locator(".total-display").innerText(), "01:00:00");
+    assert.match(await page.locator(".breakdown-card").innerText(), /Writing/);
   };
   await assertReportQuery();
 
@@ -1274,17 +1284,28 @@ it("restores report filters after navigation and browser Back/Forward", async (t
 });
 
 it("loads report filters from a direct query URL and keeps them on reload", async (t) => {
-  const { page, reportQueries } = await fixture(t, 1440);
+  const { page, reportQueries } = await fixture(t, 1440, {
+    themeSurfaces: true,
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE" }],
+    calendarLabels: [{ id: "label-1", name: "Focus", color: "#3B82F6", scopes: ["TIME_ENTRY"] }],
+  });
   const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
   await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
   await page.locator(".reports-page").waitFor();
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
-  assert.equal(new URL(page.url()).search, query);
+  const assertLoadedReportState = async () => {
+    await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+    assert.equal(new URL(page.url()).search, query);
+    assert.equal(await page.getByRole("textbox", { name: "Datepicker input" }).inputValue(), "01/09/2026 – 07/09/2026");
+    assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
+    assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
+    assert.equal(await page.locator(".total-display").innerText(), "01:00:00");
+    assert.match(await page.locator(".breakdown-card").innerText(), /Writing/);
+  };
+  await assertLoadedReportState();
 
   await page.reload();
   await page.locator(".reports-page").waitFor();
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
-  assert.equal(new URL(page.url()).search, query);
+  await assertLoadedReportState();
   assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 

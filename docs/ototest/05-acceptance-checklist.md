@@ -214,10 +214,10 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Restore one URL-backed filter
 
-- [ ] A supported filter is reflected in its documented URL query state.
-- [ ] Reloading the URL restores the same selected filter and corresponding
+- [x] A supported filter is reflected in its documented URL query state.
+- [x] Reloading the URL restores the same selected filter and corresponding
   visible results.
-- [ ] Browser Back and Forward restore the related route, query, and visible
+- [x] Browser Back and Forward restore the related route, query, and visible
   selection together.
 
 ### Flow: Navigate one supported route from the application shell
