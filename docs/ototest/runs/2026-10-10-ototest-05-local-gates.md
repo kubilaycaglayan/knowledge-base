@@ -166,3 +166,10 @@ The documentation-only hosted run [38104869153](https://github.com/kubilaycaglay
 - The broad product acceptance flows in `05-acceptance-checklist.md` have not
   all been manually performed; this record only supports the named automated
   assertions and evidence layers above.
+
+## 2026-10-11 supplement — milestone completion guard
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Completion policy tests | `node --test scripts/ototest-completion-guard.test.mjs` at source revision `97d9882f` | Pass: 4/4 cases cover in-progress milestones, unchecked acceptance items, missing hosted evidence, and valid completion evidence |
+| Hosted `verify` | [`verify` run 38107861789](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38107861789) | Pass for commit `97d9882f7c2209d1514d4f8e2cd8a6d79ae7212d`; all active jobs passed, including inventory integrity and the new completion-guard test; historical iOS jobs skipped as configured |
