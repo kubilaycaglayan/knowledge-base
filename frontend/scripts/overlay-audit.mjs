@@ -49,15 +49,38 @@ const focusSnapshot = (scopeSelector) => {
 // Walks a full keyboard focus cycle and checks that every focused control is
 // inside the viewport, shows a 2px focus indicator, and is not covered by
 // fixed or sticky UI at its center point.
-export async function auditFocusCycle(page, label, { key = "Tab", scope = null, limit = 120, stopOutside = false } = {}) {
+export async function auditFocusCycle(page, label, { key = "Tab", scope = null, limit = 120, stopOutside = false, onFocusState } = {}) {
   const problems = [];
   const seen = new Set();
   let completed = false;
   for (let index = 0; index < limit; index += 1) {
     await page.keyboard.press(key);
-    // Let focus-driven scrolling settle before measuring.
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    // Let focus-driven smooth scrolling settle before measuring. Two frames
+    // can catch an element mid-scroll on slower or heavily loaded runners.
+    await page.evaluate(() => new Promise((resolve) => {
+      let previous = null;
+      let stableFrames = 0;
+      const startedAt = performance.now();
+      const sample = () => {
+        const element = document.activeElement;
+        const rect = element instanceof HTMLElement ? element.getBoundingClientRect() : null;
+        const current = rect
+          ? [scrollX, scrollY, rect.top, rect.right, rect.bottom, rect.left]
+          : [scrollX, scrollY];
+        stableFrames = previous && current.every((value, i) => Math.abs(value - previous[i]) < 0.5)
+          ? stableFrames + 1
+          : 0;
+        previous = current;
+        if ((stableFrames >= 4 && performance.now() - startedAt >= 100) || performance.now() - startedAt >= 1500) {
+          resolve();
+        } else {
+          requestAnimationFrame(sample);
+        }
+      };
+      requestAnimationFrame(sample);
+    }));
     const focus = await page.evaluate(focusSnapshot, scope);
+    await onFocusState?.(focus);
     if (focus.body) {
       completed = seen.size > 0;
       break;

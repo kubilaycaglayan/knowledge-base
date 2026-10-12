@@ -944,9 +944,34 @@ for (const { name, path, open, keyboard, keyboardClose, modal = true } of overla
       });
       const auditFocus = async (overlay) => {
         await markScope(overlay);
-        problems.push(...await auditFocusCycle(page, label, { scope: '[data-audit-scope="true"]', stopOutside: !modal }));
-        // Moving focus within an open overlay must not dismiss it.
-        if (!modal && !await overlay.isVisible()) problems.push(`${label}: the overlay closed while keyboard focus moved through it`);
+        let focusLeftOverlay = false;
+        problems.push(...await auditFocusCycle(page, label, {
+          scope: '[data-audit-scope="true"]',
+          stopOutside: !modal,
+          onFocusState: async (focus) => {
+            if (!focus.inScope) focusLeftOverlay = true;
+            else if (!modal && !await overlay.isVisible()) {
+              // Give the browser's focus transfer and the menu's close
+              // transition time to agree before deciding it hid focused UI.
+              const outcome = await page.waitForFunction((selector) => {
+                const scope = document.querySelector(selector);
+                if (!scope?.contains(document.activeElement)) return "outside";
+                const style = getComputedStyle(scope);
+                return style.visibility !== "hidden" && scope.getBoundingClientRect().width > 0
+                  ? "visible"
+                  : false;
+              }, '[data-audit-scope="true"]', { timeout: 1000 })
+                .then((handle) => handle.jsonValue())
+                .catch(() => "stuck");
+              if (outcome === "outside") focusLeftOverlay = true;
+              else if (outcome === "stuck")
+                problems.push(`${label}: the overlay closed while keyboard focus remained inside it`);
+            }
+          },
+        }));
+        // A non-modal menu may close when Tab moves focus out of it.
+        if (!modal && !focusLeftOverlay && !await overlay.isVisible())
+          problems.push(`${label}: the overlay closed while keyboard focus remained inside it`);
       };
       // Non-modal menus and panels are opened from the keyboard for the focus
       // audit, then reopened by touch or pointer for containment and closing.
