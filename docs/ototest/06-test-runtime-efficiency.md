@@ -202,6 +202,12 @@ were made readiness-based where possible, while auth and browser tab cases
 remain serial. The board suite already had four concurrency-4 groups, so
 raising them to 8 and 12 did not produce a repeatable enough gain to keep.
 
+The tracker acceptance suite also uses isolated browser contexts and an
+ephemeral Vite port. Raising its six top-level scenarios from concurrency 4
+to 30 passed five consecutive runs (10 tests each) at a 7.15 s median, versus
+8.29 s at concurrency 4 (−13.8%). Thirty is the effective cap because only
+six independent scenarios exist.
+
 ### OTOTEST-06-T5 — Backend Gradle runtime
 
 - [x] Split the baseline Gradle wall time into JVM/Gradle startup, dependency
