@@ -116,6 +116,73 @@ describe("LabelsView", () => {
     expect(wrapper.findAll(".label-edit-dialog .color-palette button")).toHaveLength(15);
   });
 
+  it("saves a label color immediately from its swatch without opening the edit dialog", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path === "/labels/one" && options?.method === "PUT")
+        return { id: "one", name: "Study", color: "#F97316", scopes: ["NOTE"] };
+      return undefined;
+    });
+    const wrapper = mount(LabelsView, { attachTo: document.body, global: { stubs: { PromptDialog: true } } });
+    try {
+      await flushPromises();
+      const swatch = wrapper.get('button[aria-label="Change color for Study"]');
+      await swatch.trigger("click");
+      expect(swatch.attributes("aria-expanded")).toBe("true");
+      expect(wrapper.findAll(".label-color-popover .color-palette button")).toHaveLength(15);
+      expect(wrapper.find(".label-edit-dialog").exists()).toBe(false);
+      expect(wrapper.find('input[name="label-name"]').exists()).toBe(false);
+      expect(wrapper.find(".scope-selector").exists()).toBe(false);
+
+      await wrapper.get('button[aria-label="Set Study color: Orange (#F97316)"]').trigger("click");
+      await flushPromises();
+
+      expect(vi.mocked(api)).toHaveBeenCalledWith("/labels/one", {
+        method: "PUT",
+        body: JSON.stringify({ name: "Study", color: "#F97316", scopes: ["NOTE"] }),
+      });
+      expect(wrapper.find(".label-color-popover").exists()).toBe(false);
+      expect(wrapper.get('button[aria-label="Change color for Study"]').attributes("style")).toContain("rgb(249, 115, 22)");
+      expect(document.activeElement).toBe(wrapper.get('button[aria-label="Change color for Study"]').element);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it("keeps the color palette open and reports an immediate-save failure", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path === "/labels/one" && options?.method === "PUT") throw new Error("temporary failure");
+      return undefined;
+    });
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    await wrapper.get('button[aria-label="Change color for Study"]').trigger("click");
+    await wrapper.get('button[aria-label="Set Study color: Orange (#F97316)"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".label-color-popover [role=alert]").text()).toBe("Could not save this label color. Try again.");
+    expect(wrapper.find(".label-edit-dialog").exists()).toBe(false);
+    expect(wrapper.get('button[aria-label="Change color for Study"]').attributes("style")).toContain("rgb(40, 120, 213)");
+  });
+
+  it("closes the color picker with Escape and returns focus to its swatch", async () => {
+    vi.mocked(api).mockResolvedValue([{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }]);
+    const wrapper = mount(LabelsView, { attachTo: document.body, global: { stubs: { PromptDialog: true } } });
+    try {
+      await flushPromises();
+      const swatch = wrapper.get('button[aria-label="Change color for Study"]');
+      await swatch.trigger("click");
+      await wrapper.get(".label-color-popover").trigger("keydown.esc");
+      await flushPromises();
+      expect(wrapper.find(".label-color-popover").exists()).toBe(false);
+      expect(document.activeElement).toBe(swatch.element);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("reuses cached labels when the view is mounted again", async () => {
     vi.mocked(api).mockResolvedValue([
       { id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] },

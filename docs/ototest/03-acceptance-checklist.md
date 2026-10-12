@@ -1148,6 +1148,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Blank or whitespace-only names are rejected with visible feedback. Evidence: `LabelsView.test.ts` / `rejects blank and duplicate label names without losing the draft` submits whitespace and checks inline validation with no POST.
 - [x] Duplicate names are handled with a clear validation or existing-label result. Evidence: the same test checks the inline unique-name error and retained entered value.
 - [x] Selecting label color exposes an accessible name and selected state. Evidence: `ColorPalette.test.ts` / `announces the currently selected color through pressed state` checks the accessible selected color; `LabelsView.test.ts` checks the palette is present for create/edit.
+- [x] Clicking a label's color circle opens only the color palette, and choosing a color saves immediately without confirmation. Evidence: `LabelsView.test.ts` / `saves a label color immediately from its swatch without opening the edit dialog` checks the direct PUT, palette-only UI, updated swatch, and focus return; failure and Escape recovery are covered by adjacent tests.
 - [x] Selecting label scopes updates the visible scope summary. Evidence: `LabelsView.test.ts` / `creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections` checks the summary and submitted scope values.
 
 ### Flow: Edit one label
