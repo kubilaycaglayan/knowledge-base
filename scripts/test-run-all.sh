@@ -122,7 +122,27 @@ main() {
   }
   web_tests() {
     npm_install frontend &&
-      (cd frontend && npm test && npm run build && npm run test:tracker && npm run test:board && npm run test:nav)
+      (cd frontend && npm test && npm run build) &&
+      parallel_web_acceptance
+  }
+  parallel_web_acceptance() {
+    local prefix="/tmp/knowledge-base-test-run-all-web-${BASHPID}-$(date +%s%N)"
+    local failure=0 name
+    declare -A pids
+    for name in tracker board nav; do
+      (cd frontend && npm run "test:${name}") > "${prefix}-${name}.log" 2>&1 &
+      pids["$name"]=$!
+    done
+    for name in tracker board nav; do
+      if wait "${pids[$name]}"; then
+        printf '\n==> Frontend %s acceptance passed\n' "$name"
+      else
+        printf '\n==> Frontend %s acceptance FAILED\n' "$name" >&2
+        failure=1
+      fi
+      cat "${prefix}-${name}.log"
+    done
+    (( failure == 0 ))
   }
   extension_tests() {
     node --check chrome-extension/popup.js &&

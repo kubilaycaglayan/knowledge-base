@@ -208,6 +208,14 @@ to 30 passed five consecutive runs (10 tests each) at a 7.15 s median, versus
 8.29 s at concurrency 4 (−13.8%). Thirty is the effective cap because only
 six independent scenarios exist.
 
+The local aggregate runner starts tracker, board, and nav acceptance together
+after the frontend unit suite and build. The runners own separate Vite servers,
+ports, browser contexts, and fixture state. Five concurrent runs passed all
+341 tests each. Their median group time was 128 s versus 221.64 s for the sum
+of their individual medians, a 42.3% reduction; resource sharing added a few
+seconds to the nav and board suites but kept the long pole close to its
+standalone runtime.
+
 The first aggregate quick run after a clean `npm ci` exposed a board navigation
 timeout when Vite optimized Vuetify during the concurrent “All boards view”
 cases. The case passed alone. The board server now pre-optimizes the lazy
