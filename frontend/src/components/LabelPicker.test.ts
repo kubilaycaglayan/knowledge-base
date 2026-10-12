@@ -4,15 +4,22 @@ import { createPinia } from "pinia";
 import LabelPicker from "./LabelPicker.vue";
 
 describe("LabelPicker", () => {
-  it("opens through its semantic trigger, not the surrounding display surface", async () => {
+  it("opens when any non-chevron part of the control is clicked", async () => {
     const wrapper = mount(LabelPicker, {
       props: { modelValue: [], labels: [], label: "Labels" },
       global: { plugins: [createPinia()] },
     });
 
     await wrapper.get(".empty-picker").trigger("click");
+    expect(document.querySelector(".label-picker-menu")).not.toBeNull();
+
+    await wrapper.get('button[aria-label="Close label picker"]').trigger("click");
     expect(document.querySelector(".label-picker-menu")).toBeNull();
 
+    await wrapper.get(".label-picker-control").trigger("click");
+    expect(document.querySelector(".label-picker-menu")).not.toBeNull();
+
+    await wrapper.get('button[aria-label="Close label picker"]').trigger("click");
     const trigger = wrapper.get('button[aria-label="Open label picker"]');
     expect(trigger.element.tagName).toBe("BUTTON");
     await trigger.trigger("click");

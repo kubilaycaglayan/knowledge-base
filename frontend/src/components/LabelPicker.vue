@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
     <button v-if="triggerMode === 'icon'" class="label-picker-icon-trigger" :class="{ 'has-selection': modelValue.length > 0 }" type="button" :disabled="disabled" :aria-label="label || 'Choose labels'" :aria-expanded="open" :aria-controls="listboxId" @click="togglePicker">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 10.6 13.4 3.4A2 2 0 0 0 12 2.8H4a1.2 1.2 0 0 0-1.2 1.2v8a2 2 0 0 0 .6 1.4l7.2 7.2a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8Z" /><circle cx="7.5" cy="7.5" r="1.2" /></svg>
     </button>
-    <div v-else class="label-picker-control">
+    <div v-else class="label-picker-control" @click="openPicker">
       <span v-for="(label, index) in selectedLabels.slice(0, visibleCount)" :key="label.id" class="selected-chip" :style="{ ...(label.color ? { '--chip-color': label.color } : {}), ...(chipMaxWidth(index) ? { maxWidth: chipMaxWidth(index) } : {}) }">
         <span class="chip-dot" aria-hidden="true"></span><span class="chip-name">{{ label.name }}</span>
         <button type="button" :disabled="disabled" :aria-label="`Remove ${label.name}`" @click.stop="removeLabel(label)">×</button>

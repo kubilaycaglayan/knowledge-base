@@ -1518,7 +1518,8 @@ draft available for retry.
   which are activated through the keyboard-operated combobox, and the Board
   card surface, which also exposes a native keyboard-operable open button for
   titled and untitled cards. `FloatingTimeTracker.test.ts` and
-  `LabelPicker.test.ts` check their named native triggers; `board.acceptance.test.mjs`
+  `LabelPicker.test.ts` check the picker opens from its placeholder and control,
+  and check keyboard focus return; `board.acceptance.test.mjs`
   checks keyboard opening for both card-title states; Gantt date controls and
   reorder actions have keyboard alternatives in the named tests below. Detailed
   per-control outcome mapping remains open in the inventory criteria.
