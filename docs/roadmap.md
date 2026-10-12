@@ -137,6 +137,8 @@
   related labels (see `docs/label-history-acceptance-checklist.md`).
 - [x] Let the label color circle open a focused color palette on the web Labels
   page; choosing a color saves immediately without opening the label editor.
+- [x] Let people pin labels in the Logs list label picker so frequent labels
+  appear first; remember pins for the Logs view in the current browser.
 - [ ] Show label history in the iOS app (the API is ready).
 - [x] Add a separated related-records section to web label history, with paginated
   sessions, calendar dates, note excerpts, and logs.

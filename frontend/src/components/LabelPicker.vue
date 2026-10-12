@@ -16,8 +16,10 @@ const props = withDefaults(defineProps<{
   createColor?: string | null;
   disabled?: boolean;
   triggerMode?: "input" | "icon";
+  pinningEnabled?: boolean;
+  pinnedLabelIds?: string[];
 }>(), { density: "compact", triggerMode: "input" });
-const emit = defineEmits<{ "update:modelValue": [value: string[]]; "label-created": [label: Label]; "open-change": [open: boolean] }>();
+const emit = defineEmits<{ "update:modelValue": [value: string[]]; "label-created": [label: Label]; "open-change": [open: boolean]; "toggle-pin": [labelId: string] }>();
 const labelsStore = useLabelsStore();
 const listboxId = useId();
 const inputId = computed(() => props.inputId || `${listboxId}-input`);
@@ -30,6 +32,7 @@ const menuPosition = ref<Record<string, string>>({});
 const activeIndex = ref(0);
 const creating = ref(false);
 const error = ref("");
+const pinMode = ref(false);
 const availableWidth = ref(0);
 const chipWidths = ref<number[]>([]);
 const moreWidth = ref(42);
@@ -54,10 +57,20 @@ const matchingLabels = computed(() => {
     .sort((a, b) => a.rank - b.rank || a.label.name.localeCompare(b.label.name) || a.index - b.index)
     .map(({ label }) => label);
 });
-const dropdownLabels = computed(() => [
-  ...selectedLabels.value,
-  ...matchingLabels.value.filter((label) => !props.modelValue.includes(label.id)),
-]);
+const dropdownLabels = computed(() => {
+  const pinned = props.pinningEnabled
+    ? props.pinnedLabelIds?.flatMap((id) => {
+        const label = props.labels.find((item) => item.id === id);
+        return label && (props.modelValue.includes(id) || matchingLabels.value.some((match) => match.id === id)) ? [label] : [];
+      }) ?? []
+    : [];
+  const pinnedIds = new Set(pinned.map((label) => label.id));
+  return [
+    ...pinned,
+    ...selectedLabels.value.filter((label) => !pinnedIds.has(label.id)),
+    ...matchingLabels.value.filter((label) => !pinnedIds.has(label.id) && !props.modelValue.includes(label.id)),
+  ];
+});
 const exactLabel = computed(() => props.labels.find((label) =>
   label.name.toLocaleLowerCase() === normalizedQuery.value));
 const canCreate = computed(() => Boolean(normalizedQuery.value) && !exactLabel.value);
@@ -89,7 +102,7 @@ const activeDescendant = computed(() => !open.value || activeIndex.value < 0
   ? undefined
   : activeIndex.value < dropdownLabels.value.length
     ? `${listboxId}-option-${activeIndex.value}`
-    : canCreate.value ? `${listboxId}-option-create` : undefined);
+    : canCreate.value && !pinMode.value ? `${listboxId}-option-create` : undefined);
 
 async function openPicker() {
   if (props.disabled) return;
@@ -121,6 +134,12 @@ function chipMaxWidth(index: number) {
 
 function toggleLabel(label: Label) {
   if (props.disabled) return;
+  if (props.pinningEnabled && pinMode.value) {
+    emit("toggle-pin", label.id);
+    error.value = "";
+    input.value?.focus({ preventScroll: true });
+    return;
+  }
   const selected = props.modelValue.includes(label.id);
   emit("update:modelValue", selected
     ? props.modelValue.filter((id) => id !== label.id)
@@ -132,6 +151,12 @@ function removeLabel(label: Label) {
   if (props.disabled) return;
   emit("update:modelValue", props.modelValue.filter((id) => id !== label.id));
   void nextTick(() => root.value?.querySelector<HTMLButtonElement>(".picker-chevron")?.focus({ preventScroll: true }));
+}
+function togglePinMode() {
+  pinMode.value = !pinMode.value;
+  query.value = "";
+  activeIndex.value = 0;
+  input.value?.focus({ preventScroll: true });
 }
 async function createLabel() {
   const name = query.value.trim();
@@ -157,13 +182,13 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === "ArrowDown") {
     event.preventDefault();
     open.value = true;
-    activeIndex.value = Math.min(activeIndex.value + 1, dropdownLabels.value.length + (canCreate.value ? 1 : 0) - 1);
+    activeIndex.value = Math.min(activeIndex.value + 1, dropdownLabels.value.length + (canCreate.value && !pinMode.value ? 1 : 0) - 1);
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
     activeIndex.value = Math.max(0, activeIndex.value - 1);
   } else if (event.key === "Enter" && open.value) {
     event.preventDefault();
-    if (canCreate.value && activeIndex.value === dropdownLabels.value.length) void createLabel();
+    if (!pinMode.value && canCreate.value && activeIndex.value === dropdownLabels.value.length) void createLabel();
     else if (dropdownLabels.value[activeIndex.value]) toggleLabel(dropdownLabels.value[activeIndex.value]);
   } else if (event.key === "Escape") {
     open.value = false;
@@ -289,16 +314,21 @@ onBeforeUnmount(() => {
     <Teleport to="body">
     <div v-if="open" ref="menu" class="label-picker-menu" :style="menuPosition">
       <input :id="inputId" ref="input" v-model="query" role="combobox" aria-autocomplete="list" :aria-label="label || 'Search labels'" :aria-controls="listboxId" :aria-activedescendant="activeDescendant" :aria-expanded="open" placeholder="Search labels…" @keydown="onKeydown" />
-      <div :id="listboxId" class="label-picker-options" role="listbox" aria-label="Available labels" aria-multiselectable="true">
-        <button v-for="(label, index) in dropdownLabels" :key="label.id" :id="`${listboxId}-option-${index}`" type="button" role="option" :aria-selected="modelValue.includes(label.id)" :class="{ active: index === activeIndex, selected: modelValue.includes(label.id) }" @mouseenter="activeIndex = index" @click="toggleLabel(label)">
-          <span class="option-check" aria-hidden="true">{{ modelValue.includes(label.id) ? '✓' : '' }}</span>
+      <div v-if="pinningEnabled" class="picker-pin-header">
+        <p v-if="pinMode" class="picker-pin-description">Choose labels to keep at the top of this Logs picker.</p>
+        <button type="button" class="picker-pin-toggle" :aria-pressed="pinMode" @click="togglePinMode">{{ pinMode ? "Done pinning" : "Pin labels" }}</button>
+      </div>
+      <div :id="listboxId" class="label-picker-options" role="listbox" :aria-label="pinMode ? 'Labels to pin' : 'Available labels'" aria-multiselectable="true">
+        <button v-for="(label, index) in dropdownLabels" :key="label.id" :id="`${listboxId}-option-${index}`" type="button" role="option" :aria-selected="pinMode ? (pinnedLabelIds || []).includes(label.id) : modelValue.includes(label.id)" :class="{ active: index === activeIndex, selected: pinMode ? (pinnedLabelIds || []).includes(label.id) : modelValue.includes(label.id) }" @mouseenter="activeIndex = index" @click="toggleLabel(label)">
+          <span class="option-check" aria-hidden="true">{{ pinMode ? ((pinnedLabelIds || []).includes(label.id) ? '✓' : '＋') : (modelValue.includes(label.id) ? '✓' : '') }}</span>
           <span class="option-dot" :style="{ background: label.color || labelColors[0] }" aria-hidden="true"></span>
           <span class="option-name"><template v-for="(part, partIndex) in segments(label.name)" :key="partIndex"><mark v-if="part.match">{{ part.text }}</mark><template v-else>{{ part.text }}</template></template></span>
+          <span v-if="pinningEnabled && !pinMode && (pinnedLabelIds || []).includes(label.id)" class="option-pin-state">Pinned</span>
         </button>
-        <button v-if="canCreate" :id="`${listboxId}-option-create`" type="button" role="option" :aria-selected="false" :class="{ active: activeIndex === dropdownLabels.length }" :disabled="creating" @mouseenter="activeIndex = dropdownLabels.length" @click="createLabel">
+        <button v-if="canCreate && !pinMode" :id="`${listboxId}-option-create`" type="button" role="option" :aria-selected="false" :class="{ active: activeIndex === dropdownLabels.length }" :disabled="creating" @mouseenter="activeIndex = dropdownLabels.length" @click="createLabel">
           <span class="option-check" aria-hidden="true">＋</span><span class="create-copy">Create <strong>{{ query.trim() }}</strong></span><span v-if="creating" class="option-state">Creating…</span>
         </button>
-        <p v-if="!dropdownLabels.length && !canCreate" class="no-labels">No matching labels</p>
+        <p v-if="!dropdownLabels.length && (!canCreate || pinMode)" class="no-labels">No matching labels</p>
       </div>
       <p v-if="error" class="picker-error" role="alert">{{ error }}</p>
       <div class="picker-hint"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> select <kbd>esc</kbd> close</div>
@@ -341,6 +371,11 @@ onBeforeUnmount(() => {
 .option-check { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; color: var(--workspace-selected-text); font-weight: 700; }
 .option-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; }
 .option-name, .create-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.picker-pin-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 8px; }
+.picker-pin-description { flex: 1; margin: 0; color: var(--workspace-muted); font-size: 12px; }
+.picker-pin-toggle { min-height: 32px; padding: 4px 8px; border: 1px solid var(--workspace-border); border-radius: 5px; background: var(--workspace-surface); color: var(--workspace-text); cursor: pointer; touch-action: manipulation; }
+.picker-pin-toggle:hover, .picker-pin-toggle:focus-visible { background: var(--workspace-hover); }
+.option-pin-state { margin-left: auto; color: var(--workspace-muted); font-size: 11px; }
 .option-name mark { border-radius: 2px; background: color-mix(in srgb, var(--workspace-accent) 25%, transparent); color: inherit; font-weight: 700; }
 .no-labels, .picker-error { margin: 0; padding: 12px; color: var(--workspace-muted); }
 .picker-error { color: var(--workspace-danger); }
@@ -348,6 +383,6 @@ onBeforeUnmount(() => {
 kbd { min-width: 18px; padding: 1px 4px; border: 1px solid var(--workspace-border); border-radius: 4px; text-align: center; font: inherit; }
 .density-comfortable .label-picker-control { min-height: 54px; padding: 7px 10px 7px 12px; border-radius: 10px; }
 .density-comfortable .selected-chip, .density-comfortable .more-chip { min-height: 30px; padding: 3px 6px 3px 9px; border-radius: 7px; }
-@media (max-width: 600px) { .label-picker-control { min-height:44px; gap: 4px; padding-inline: 8px; } .picker-chevron { width: 44px; height: 44px; } .selected-chip { max-width: 135px; } .label-picker-menu { max-height: calc(100dvh - 16px); } }
+@media (max-width: 600px) { .label-picker-control { min-height:44px; gap: 4px; padding-inline: 8px; } .picker-chevron { width: 44px; height: 44px; } .picker-pin-toggle { min-height: 44px; } .selected-chip { max-width: 135px; } .label-picker-menu { max-height: calc(100dvh - 16px); } }
 @media (pointer: coarse) { .label-picker-control { min-height:44px; } .label-picker-icon-trigger { width:44px; min-width:44px; min-height:44px; } .picker-chevron { width:44px; height:44px; } .selected-chip { min-height:44px; padding-right:44px; } .selected-chip button { top:50%; right:0; width:44px; height:44px; transform:translateY(-50%); } .label-picker-options > button { min-height:48px; } }
 </style>

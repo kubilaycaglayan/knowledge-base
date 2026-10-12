@@ -22,6 +22,7 @@ const error = ref("");
 const status = ref<"idle" | "saving" | "saved">("idle");
 const savingEdit = ref(false);
 const logLabels = ref<LogLabel[]>([]);
+const pinnedLogLabelIds = ref<string[]>([]);
 const savingLabelsId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const composerTextarea = ref<HTMLTextAreaElement | null>(null);
@@ -32,6 +33,7 @@ const searchOpen = ref(false);
 const currentPage = ref(1);
 const searchInput = ref<HTMLInputElement | null>(null);
 const pageSize = 100;
+const pinnedLogLabelsStorageKey = "knowledge-base.logs.pinned-label-ids";
 const router = inject(routerKey, undefined);
 const route = inject(routeLocationKey, undefined);
 // /logs/:id opens one log over the list.
@@ -266,6 +268,26 @@ async function loadLogLabels() {
     error.value = "Unable to load log labels. Please try again.";
   }
 }
+function togglePinnedLogLabel(labelId: string) {
+  pinnedLogLabelIds.value = pinnedLogLabelIds.value.includes(labelId)
+    ? pinnedLogLabelIds.value.filter((id) => id !== labelId)
+    : [...pinnedLogLabelIds.value, labelId];
+  try {
+    window.localStorage.setItem(pinnedLogLabelsStorageKey, JSON.stringify(pinnedLogLabelIds.value));
+  } catch {
+    // Keep the current pin choice for this page session if storage is unavailable.
+  }
+}
+function loadPinnedLogLabels() {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(pinnedLogLabelsStorageKey) || "[]");
+    pinnedLogLabelIds.value = Array.isArray(value)
+      ? [...new Set(value.filter((id): id is string => typeof id === "string"))]
+      : [];
+  } catch {
+    pinnedLogLabelIds.value = [];
+  }
+}
 async function setLogLabels(log: Log, nextLabelIds: string[]) {
   if (savingLabelsId.value === log.id) return;
   savingLabelsId.value = log.id;
@@ -369,6 +391,7 @@ function refreshVisibleList() {
 }
 onMounted(async () => {
   readUrl();
+  loadPinnedLogLabels();
   window.addEventListener("keydown", onGlobalKeydown);
   window.addEventListener("popstate", readUrl);
   await Promise.all([load(), loadLogLabels()]);
@@ -550,7 +573,7 @@ onBeforeUnmount(() => {
               class="log-label-slot"
             >
               <div class="log-label-control">
-                <LabelPicker trigger-mode="icon" :model-value="log.labelIds || []" :labels="logLabels" :disabled="savingLabelsId === log.id" :label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" @update:model-value="setLogLabels(log, $event)" @label-created="logLabels = [...logLabels, $event]" />
+                <LabelPicker trigger-mode="icon" :model-value="log.labelIds || []" :labels="logLabels" :pinned-label-ids="pinnedLogLabelIds" pinning-enabled :disabled="savingLabelsId === log.id" :label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" @update:model-value="setLogLabels(log, $event)" @toggle-pin="togglePinnedLogLabel" @label-created="logLabels = [...logLabels, $event]" />
               </div>
               <span class="log-actions-separator" aria-hidden="true">|</span>
             </div>
