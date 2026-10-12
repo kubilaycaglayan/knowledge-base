@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { computed, inject, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { routerKey, routeLocationKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api, ApiError } from "../lib/api";
@@ -37,6 +37,8 @@ const color = ref(colors[0]);
 // inverse: checked scopes are places where the label should be hidden.
 const scopes = ref<Scope[]>(defaultScopes());
 const editingId = ref("");
+const colorShortcutId = ref("");
+const colorShortcutError = ref("");
 const draft = ref<{ name: string; color: string; scopes: Scope[] } | null>(
   null,
 );
@@ -172,6 +174,40 @@ async function save(label: Label) {
     saving.value = false;
   }
 }
+function openColorShortcut(label: Label) {
+  error.value = "";
+  colorShortcutError.value = "";
+  colorShortcutId.value = colorShortcutId.value === label.id ? "" : label.id;
+}
+async function saveShortcutColor(label: Label, selectedColor: string) {
+  if (saving.value) return;
+  saving.value = true;
+  colorShortcutError.value = "";
+  try {
+    const saved = await api<Label>(`/labels/${label.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: label.name,
+        color: selectedColor,
+        scopes: label.scopes,
+      }),
+    });
+    labelStore.replace(saved);
+    reportsStore.clear();
+    colorShortcutId.value = "";
+    await nextTick();
+    document.getElementById(`label-color-${label.id}`)?.focus();
+  } catch {
+    colorShortcutError.value = "Could not save this label color. Try again.";
+  } finally {
+    saving.value = false;
+  }
+}
+function closeColorShortcut(labelId: string) {
+  colorShortcutId.value = "";
+  colorShortcutError.value = "";
+  void nextTick(() => document.getElementById(`label-color-${labelId}`)?.focus());
+}
 function closeEditDialog() {
   if (saving.value) return;
   cancelEdit();
@@ -253,12 +289,29 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
         :key="label.id"
         class="label-row"
       >
-        <span
+        <span class="label-color-control">
+          <button
+            :id="`label-color-${label.id}`"
             class="label-swatch"
+            type="button"
+            :aria-label="`Change color for ${label.name}`"
+            :aria-expanded="colorShortcutId === label.id"
+            :aria-controls="colorShortcutId === label.id ? `label-palette-${label.id}` : undefined"
+            title="Change label color"
             :style="{ backgroundColor: label.color || colors[0] }"
-            aria-hidden="true"
-          ></span
-          ><strong>{{ label.name }}</strong
+            @click="openColorShortcut(label)"
+            @keydown.esc.prevent.stop="closeColorShortcut(label.id)"
+          ></button>
+          <div v-if="colorShortcutId === label.id" :id="`label-palette-${label.id}`" class="label-color-popover" @keydown.esc.prevent.stop="closeColorShortcut(label.id)">
+            <ColorPalette
+              :model-value="label.color || colors[0]"
+              :legend="`Change ${label.name} color`"
+              :option-label="`Set ${label.name} color`"
+              @update:model-value="saveShortcutColor(label, $event)"
+            />
+            <p v-if="colorShortcutError" class="notice" role="alert" aria-live="polite">{{ colorShortcutError }}</p>
+          </div>
+        </span><strong>{{ label.name }}</strong
           ><span class="scope-list">{{
             label.scopes
               .map(
@@ -551,10 +604,37 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
   overflow-wrap: anywhere;
 }
 .label-swatch {
-  width: 12px;
-  height: 12px;
+  display: block;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   flex: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: inset 0 0 0 2px var(--workspace-surface), 0 0 0 1px var(--workspace-control-border);
+}
+.label-swatch:hover { box-shadow: inset 0 0 0 2px var(--workspace-surface), 0 0 0 2px var(--workspace-muted); }
+.label-swatch:focus-visible { outline: 2px solid var(--workspace-accent); outline-offset: 2px; }
+.label-color-control { position: relative; display: inline-flex; flex: none; }
+.label-color-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--workspace-border);
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+.label-color-popover :deep(.color-palette legend) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.label-color-popover .notice { max-width: 220px; color: var(--workspace-danger); font-size: 13px; }
+@media (max-width: 700px) {
+  .label-color-popover { left: -8px; }
 }
 .scope-list {
   color: var(--workspace-muted);

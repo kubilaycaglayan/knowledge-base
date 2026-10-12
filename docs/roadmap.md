@@ -135,6 +135,8 @@
 - [x] Show each label's history on the web Labels page (History icon button):
   first and last use, uses per kind, monthly tracked hours, hours of day, and
   related labels (see `docs/label-history-acceptance-checklist.md`).
+- [x] Let the label color circle open a focused color palette on the web Labels
+  page; choosing a color saves immediately without opening the label editor.
 - [ ] Show label history in the iOS app (the API is ready).
 - [x] Add a separated related-records section to web label history, with paginated
   sessions, calendar dates, note excerpts, and logs.
