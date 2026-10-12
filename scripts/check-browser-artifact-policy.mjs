@@ -33,7 +33,11 @@ assert.match(workflow, /- name: Run web route and control browser acceptance\n  
 assert.match(testingGuide, /verify \/ web-browser-acceptance.*Run web route and control browser acceptance.*npm run test:nav/);
 assert.match(routeSuite, /cacheDir: viteCacheDir/);
 assert.match(routeSuite, /server: \{ host: "127\.0\.0\.1", port: 0, hmr: false \}/);
-assert.match(routeSuite, /pre-optimizes lazy Vuetify shell dependencies before browser assertions/);
+assert.match(routeSuite, /before\(async \(\) => \{[\s\S]*await Promise\.all\(Object\.values\(optimizer\.metadata\.discovered\)/);
+assert.ok(
+  routeSuite.indexOf("await Promise.all(Object.values(optimizer.metadata.discovered)") < routeSuite.indexOf("browser = await chromium.launch"),
+  "Vite dependency optimization must finish before the browser acceptance tests start",
+);
 
 for (const filename of ["scripts/run-timer-websocket-e2e.sh", "scripts/run-line-history-e2e.sh"]) {
   const runner = readFileSync(filename, "utf8");

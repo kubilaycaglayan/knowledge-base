@@ -480,7 +480,12 @@ it("signs in, syncs a timer through the packaged popup, and recovers from an una
 
   authExpired = true;
   const expiredSession = await context.newPage();
+  let mainFrameNavigations = 0;
+  const expiredSessionReload = expiredSession.waitForEvent("framenavigated", (frame) =>
+    frame === expiredSession.mainFrame() && ++mainFrameNavigations === 2);
   await expiredSession.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expiredSessionReload;
+  await expiredSession.waitForLoadState("load");
   await expiredSession.getByRole("heading", { name: "Sign In" }).waitFor();
   const storage = await expiredSession.evaluate(() => chrome.storage.local.get("token"));
   assert.equal(storage.token, undefined, "an expired token is removed before returning to sign-in");

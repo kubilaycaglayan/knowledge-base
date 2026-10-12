@@ -36,15 +36,6 @@ before(async () => {
     server: { host: "127.0.0.1", port: 0, hmr: false },
   });
   await server.listen();
-  browser = await chromium.launch({ headless: true });
-});
-after(async () => {
-  await browser?.close();
-  await server?.close();
-  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
-});
-
-it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", async () => {
   const optimizer = server.environments.client.depsOptimizer;
   await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
   const optimized = optimizer.metadata.optimized;
@@ -60,6 +51,12 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   ]) {
     assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
   }
+  browser = await chromium.launch({ headless: true });
+});
+after(async () => {
+  await browser?.close();
+  await server?.close();
+  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
 });
 
 async function fixture(t, width, { warmup = false, clock = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
@@ -529,7 +526,7 @@ it("preserves browser-native new-tab behavior for primary navigation links", asy
   assert.equal(new URL(page.url()).pathname, "/");
 });
 
-it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
+it("supports keyboard navigation between primary links", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
@@ -540,11 +537,10 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
 
   const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
   await calendarLink.focus();
-  const newTab = page.context().waitForEvent("page");
-  await page.keyboard.press("Control+Enter");
-  const opened = await newTab;
-  await opened.locator(".calendar-page").waitFor();
-  assert.equal(new URL(opened.url()).pathname, "/calendar");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/calendar");
+  await page.locator(".calendar-page").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/calendar");
 });
 
 it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {
