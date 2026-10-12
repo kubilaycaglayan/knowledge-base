@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Remove the floating timer's Discard session action and the Path and Note
+  card Move up/Move down buttons; keep drag reordering for Paths and Notes.
+
 - [x] Show an accessible loading status on the Sessions page until the first
   session-history request resolves; do not flash the empty state while data is
   still loading.

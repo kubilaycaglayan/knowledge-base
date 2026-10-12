@@ -264,11 +264,6 @@ async function moveNote(note: Note, target: Note) {
     error.value = "Could not reorder notes.";
   }
 }
-function moveNoteByOffset(note: Note, offset: -1 | 1) {
-  const index = notes.value.findIndex((item) => item.id === note.id);
-  const target = notes.value[index + offset];
-  if (target) void moveNote(note, target);
-}
 function toggleArchive() {
   showArchived.value = !showArchived.value;
   page.value = 0;
@@ -676,26 +671,6 @@ onBeforeUnmount(() => {
                   : formatDate(note.updatedAt)
               }}</time
             ><span
-              ><template v-if="!showArchived && !query">
-                <button
-                  class="flat-button note-order-button"
-                  type="button"
-                  :disabled="notes[0]?.id === note.id"
-                  :aria-label="`Move ${note.title || 'untitled note'} up`"
-                  title="Move note up"
-                  @click.stop="moveNoteByOffset(note, -1)"
-                >
-                  ↑</button
-                ><button
-                  class="flat-button note-order-button"
-                  type="button"
-                  :disabled="notes[notes.length - 1]?.id === note.id"
-                  :aria-label="`Move ${note.title || 'untitled note'} down`"
-                  title="Move note down"
-                  @click.stop="moveNoteByOffset(note, 1)"
-                >
-                  ↓</button
-              ></template
               ><button
                 v-if="showArchived"
                 class="flat-button"
@@ -1042,11 +1017,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.note-order-button {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 10px;
 }
 .note-tags i,
 .note-tag {
