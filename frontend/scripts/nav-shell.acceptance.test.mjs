@@ -608,7 +608,8 @@ it("navigates home from the logo without a page reload and reuses cached session
   );
 });
 
-describe("nav shell browser acceptance", { concurrency: 7 }, () => {
+const navSuiteConcurrency = Number.parseInt(process.env.NAV_CONCURRENCY || "7", 10);
+describe("nav shell browser acceptance", { concurrency: navSuiteConcurrency }, () => {
 it("keeps shell actions reachable without horizontal overflow at narrow, wide, and 50%-zoom-equivalent widths", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
