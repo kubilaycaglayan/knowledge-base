@@ -1,7 +1,7 @@
 # OTOTEST-06 — Test runtime efficiency
 
 **Priority:** Medium
-**Status:** In progress
+**Status:** Complete
 **Dependencies:** None to start. Coordinate edits to
 `frontend/scripts/nav-shell.acceptance.test.mjs` and
 `frontend/scripts/board.acceptance.test.mjs` with the in-progress OTOTEST-03
@@ -121,23 +121,28 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 ### OTOTEST-06-T0 — Baseline
 
-- [ ] Fast-forward `main`, create the task branch, and record the environment
+- [x] Fast-forward `main`, create the task branch, and record the environment
   line.
-- [ ] Measure three times each, covering every suite in the scope table:
+- [x] Measure three times each, covering every suite in the scope table:
   `npm test` and `npm run build` (frontend); `npm run test:tracker`,
   `test:board`, `test:nav`, and `test:ui`; extension `npm test`, build, and
   `node --test` files; repository checks; backend Gradle test on H2 (from a
   copy of `backend/`, with a unique `--project-cache-dir`) and against a
   disposable PostgreSQL database; and `./scripts/test-run-all.sh --quick`.
-- [ ] Measure once each (they are long): plain and full-stack
+- [x] Measure once each (they are long): plain and full-stack
   `run-smoke-tests.sh`, every real-stack runner script, and a full
   `./scripts/test-run-all.sh`.
-- [ ] Capture per-file/per-class breakdowns and CPU usage as described in the
+- [x] Capture per-file/per-class breakdowns and CPU usage as described in the
   protocol.
-- [ ] Pull job and step durations for the last three green `verify` runs on
+- [x] Pull job and step durations for the last three green `verify` runs on
   `main`.
-- [ ] Record test counts per suite; these are the coverage reference for every
+- [x] Record test counts per suite; these are the coverage reference for every
   later task.
+
+The clean-install `test-run-all.sh --quick` baseline attempt failed when Vite
+optimized Vuetify during concurrent board navigation, so no successful clean
+baseline duration is claimed for that command. The cold-start failure and its
+fix are recorded under T4; the successful after run took 219 s.
 
 ### OTOTEST-06-T1 — Fake timers in `NotesView.test.ts`
 
@@ -196,8 +201,9 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 Measured outcome: `test:nav` keeps one Vite server and Chromium process, gives
 each case a fresh browser context, and runs the independent acceptance cases
-at concurrency 7. Five runs passed (176 tests each), with a 91.10 s median
-versus 295.69 s after T3 at the original serial setting. A 30-worker probe was
+at local concurrency 7 (the hosted two-core runner uses 2). Five final local
+runs passed (176 tests each) in 100, 100, 103, 100, and 102 s (100 s median),
+66.2% faster than the 295.69 s serial after-T3 result. A 30-worker probe was
 slower and exposed render, focus, and request-order races; those assertions
 were made readiness-based where possible, while auth and browser tab cases
 remain serial. The board suite already had four concurrency-4 groups, so
@@ -212,10 +218,10 @@ six independent scenarios exist.
 The local aggregate runner starts tracker, board, and nav acceptance together
 after the frontend unit suite and build. The runners own separate Vite servers,
 ports, browser contexts, and fixture state. Five concurrent runs passed all
-341 tests each. Their median group time was 128 s versus 221.64 s for the sum
-of their individual medians, a 42.3% reduction; resource sharing added a few
-seconds to the nav and board suites but kept the long pole close to its
-standalone runtime.
+341 tests each at a 128 s median versus 221.64 s for the sum of their
+individual baseline medians. In the final expanded full run, the group took
+191 s under additional build, UI, and aggregate load, still 13.8% below the
+serial suite-time sum.
 
 The first aggregate quick run after a clean `npm ci` exposed a board navigation
 timeout when Vite optimized Vuetify during the concurrent “All boards view”
@@ -290,25 +296,39 @@ imports from the shared smoke cache plus per-suite exports, and caches
 Playwright browser downloads by the frontend lockfile. The local aggregate
 shares one disposable stack and runs its independent browser suites four at a
 time; five runs passed all 61 tests each at about 45 s, versus about 98 s for
-the serial suite-time sum. CI timing still needs post-change runs.
+the serial suite-time sum. Three complete hosted `verify` runs on the final
+measured commit passed in 215, 288, and 311 s (288 s median).
 
 ### OTOTEST-06-T7 — CI workflow layout
 
-- [ ] Using the T0 job durations, find the critical path of the `verify`
+- [x] Using the T0 job durations, find the critical path of the `verify`
   workflow.
-- [ ] Split `web-and-extension` so the web unit tests, web build, extension
+- [x] Split `web-and-extension` so the web unit tests, web build, extension
   tests, and repository checks run as parallel jobs if that shortens the
   critical path, or combine short jobs if runner start-up dominates.
-- [ ] Use `concurrency` with `cancel-in-progress` for superseded pushes on the
+- [x] Use `concurrency` with `cancel-in-progress` for superseded pushes on the
   same branch, so CI capacity is not spent on outdated commits.
-- [ ] Record before/after wall time for the whole workflow (first job start to
+- [x] Record before/after wall time for the whole workflow (first job start to
   last job end) over at least three runs each.
 
-The workflow change is staged locally: browser acceptance is separated from
-the existing web/extension/repository job, duplicate direct extension tests are removed, and
-superseded branch runs share a cancelable concurrency group. Baseline workflow
-runs have a 433 s median. Post-change GitHub runs are needed to establish the
-critical-path effect; this branch has not been pushed.
+The `web-browser-acceptance` job now runs independently from
+`web-and-extension`. The T0 baseline workflow durations were 609, 432, and
+218 s (433 s median); `web-and-extension` was the long pole in two runs and
+`backend-postgres` in the third. The final commit's three full runs were 215,
+288, and 311 s (288 s median), a 33.5% reduction. `web-browser-acceptance`
+was the long pole in the first two and `web-and-extension` in the third. The
+baseline runs are [38172087797](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38172087797),
+[38160604221](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38160604221),
+and [38065945165](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38065945165).
+The final same-SHA reruns are
+[attempt 1](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/1),
+[attempt 2](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/2),
+and [attempt 3](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/3).
+The workflow also caches Playwright browsers,
+combines Caddy validation into one container, removes duplicate extension test
+execution, and cancels superseded branch runs. The hosted browser runner uses
+nav concurrency 2 for its two-core VM; local nav defaults to 7 on the 32-thread
+development host. All three final hosted runs passed.
 
 ### OTOTEST-06-T8 — Chrome extension and repository checks
 

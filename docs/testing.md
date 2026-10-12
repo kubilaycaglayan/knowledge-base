@@ -24,15 +24,25 @@ audit counts:
 | Suite | Baseline | Current | Concurrency / coverage |
 | --- | ---: | ---: | --- |
 | Frontend Vitest | 23.54 s | 10.90 s | 70 files, 866 tests; threaded pool |
-| UI route/theme/state audit | 171.68 s | 43.55 s | 168 audits; ten isolated scenarios concurrently |
-| Tracker / board / nav acceptance | 221.64 s summed | 128 s group median | 341 tests, three isolated runners concurrently |
+| UI route/theme/state audit | 171.68 s | 54 s median | 168 audits; ten isolated scenarios concurrently after serial route warmup |
+| Tracker / board / nav acceptance | 221.64 s summed | 191 s in final full run | 341 tests, three isolated runners concurrently |
+| Browser route/control acceptance | 313.28 s serial | 100 s at local concurrency 7 | 176 tests; hosted CI uses concurrency 2 |
 | Backend H2 / PostgreSQL | 45.54 / 54.93 s | 37.75 / 55.48 s | H2 up to four forks; PostgreSQL serial |
-| Real-stack browser E2E group | 98 s serial sum | 44.85 s median | 59 tests; four suites concurrently |
+| Real-stack browser E2E group | 98 s serial sum | 44.85 s median | 61 tests; four suites concurrently |
+| Full local aggregate | 300 s core baseline | 401 s with expanded coverage | Includes UI audit and Orca; matching core previously measured at 248 s |
+| GitHub Actions `verify` | 433 s median | 288 s median | Three final full runs: 215, 288, and 311 s |
 
 The local aggregate runs UI audits at `UI_CONCURRENCY=10`, then tracker, board,
 and nav acceptance together, then board, timer, line-history, and search
 real-stack suites four at a time with separate generated accounts. The
-four-way real-stack stage and UI audit each passed five consecutive runs.
+four-way real-stack stage and UI audit each passed five consecutive runs. The
+UI audit warms route-level dependencies before launching its ten independent
+theme/state scenarios, preventing Vite optimizer reloads from destroying a
+browser context on a cold CI runner. The nav suite defaults to seven workers
+locally and uses two on the hosted two-core runner; its 176 tests passed five
+consecutive final local runs and three final hosted workflow runs. Focus and
+control-readiness checks wait for browser state to settle instead of sampling
+fixed delays.
 Backend PostgreSQL tests remain serial to protect the empty-database migration
 guard. Use `node scripts/check-test-timing.mjs` to prevent unreviewed timer
 sleeps in component tests and fixed waits above 100 ms in mocked board/nav
@@ -113,10 +123,10 @@ isolated API container without publishing its port to the host. Parser regressio
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |
 | Frontend unit and component | `verify / web-and-extension` (`npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build`) | `cd frontend && npm test` | 10.90 s median, 70 files / 866 tests; Node 22 |
-| UI route/theme/state audit | `verify / web-and-extension` (`UI_CONCURRENCY=10 npm run test:ui`) | `cd frontend && npm run test:ui` | 43.55 s median, 168 audits; ten isolated scenarios concurrently |
+| UI route/theme/state audit | `verify / web-and-extension` (`UI_CONCURRENCY=10 npm run test:ui`) | `cd frontend && npm run test:ui` | 54 s median, 168 audits; ten isolated scenarios concurrently after route warmup |
 | Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | H2 37.75 s median; Docker and Gradle 8.13/JDK 21 container |
 | PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | 55.48 s full suite median plus migrated startup; Docker and PostgreSQL 16 |
-| Browser route/control acceptance | `verify / web-browser-acceptance` — **Run web route and control browser acceptance** (`NAV_CONCURRENCY=2 npm run test:nav`) | `cd frontend && npm run test:nav` (mocked API, headless Chromium; local default concurrency 7) | 91.10 s median at concurrency 7; Node 22 and Playwright Chromium |
+| Browser route/control acceptance | `verify / web-browser-acceptance` — **Run web route and control browser acceptance** (`NAV_CONCURRENCY=2 npm run test:nav`) | `cd frontend && npm run test:nav` (mocked API, headless Chromium; local default concurrency 7) | 100 s across five final runs at concurrency 7; Node 22 and Playwright Chromium |
 | Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; local aggregate also runs board and search | Fixture-backed `npm run test:*` suites beyond the listed CI jobs are opt-in; use disposable stacks | Plain/full smoke 71–76 s; standalone browser runners 22–54 s after images are built. The local aggregate runs four independent real-stack suites concurrently in about 45 s; Orca takes about 31 s. |
 | Packaged extension browser | `verify / web-and-extension` — **Run packaged extension browser acceptance** | `(cd frontend && npx playwright install --with-deps chromium) && ./scripts/run-extension-browser-e2e.sh` (desktop Chromium under Xvfb; isolated temporary profile and loopback API fixture) | About 5 seconds after browser dependencies are installed; Chromium, Playwright, Xvfb, Node 22 |
 | Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | 0.98 s median for 278 checks; Node 22 |
