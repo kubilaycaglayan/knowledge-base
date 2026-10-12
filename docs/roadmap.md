@@ -80,6 +80,10 @@
 
 - [x] Search labels by name with `/` focus (it was ⌘K/Ctrl+K until global search took that shortcut), Escape to clear, and a shareable `q` URL filter.
 
+- [x] Open the label picker when any part of its control is clicked, including
+  the “Choose labels…” placeholder and selected label chips; keep the chevron
+  available to open or close it.
+
 - [x] Share tracker fields, queued saves, and synchronization across web routes;
   persist idle selections per account and reconcile them in web, extension,
   and iOS clients, including reconnects and labels created on another client.
