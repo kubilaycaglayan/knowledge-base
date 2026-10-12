@@ -36,15 +36,6 @@ before(async () => {
     server: { host: "127.0.0.1", port: 0, hmr: false },
   });
   await server.listen();
-  browser = await chromium.launch({ headless: true });
-});
-after(async () => {
-  await browser?.close();
-  await server?.close();
-  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
-});
-
-it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", async () => {
   const optimizer = server.environments.client.depsOptimizer;
   await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
   const optimized = optimizer.metadata.optimized;
@@ -60,6 +51,12 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   ]) {
     assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
   }
+  browser = await chromium.launch({ headless: true });
+});
+after(async () => {
+  await browser?.close();
+  await server?.close();
+  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
 });
 
 async function fixture(t, width, { warmup = false, clock = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
