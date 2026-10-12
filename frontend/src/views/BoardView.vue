@@ -113,6 +113,11 @@ const kanbanEl = ref<HTMLElement | null>(null), kanbanMaxHeight = ref(0);
 function measureKanbanHeight() {
   const kanban = kanbanEl.value;
   if (!kanban) return;
+  // The floating timer's label picker focuses its search input on open. On
+  // mobile, that brings up the keyboard and shrinks visualViewport; keep the
+  // board's current height while the picker is open so its columns do not
+  // jump around behind the picker.
+  if (document.querySelector(".floating-tracker-host .label-picker.is-open")) return;
   const bounds = kanban.getBoundingClientRect();
   const tracker = document.querySelector<HTMLElement>(".floating-tracker-host");
   const trackerBounds = tracker?.getBoundingClientRect();

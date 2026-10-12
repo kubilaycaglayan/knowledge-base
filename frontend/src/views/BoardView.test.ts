@@ -156,6 +156,41 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("keeps Kanban column height stable when the floating timer label picker opens the mobile keyboard", async () => {
+    seedBoard(["Backlog"]);
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    const visualViewport = new EventTarget() as EventTarget & { height: number; offsetTop: number };
+    visualViewport.height = 800;
+    visualViewport.offsetTop = 0;
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: visualViewport });
+    const tracker = document.createElement("div");
+    tracker.className = "floating-tracker-host";
+    tracker.innerHTML = '<div class="label-picker is-open"></div>';
+    document.body.append(tracker);
+    const wrapper = mountBoard();
+    try {
+      const kanban = wrapper.get(".kanban").element as HTMLElement;
+      vi.spyOn(kanban, "getBoundingClientRect").mockReturnValue({ top: 100 } as DOMRect);
+      vi.spyOn(tracker, "getBoundingClientRect").mockImplementation(() => ({
+        top: visualViewport.height - 150,
+        height: 100,
+      } as DOMRect));
+      await flushPromises();
+      const initialHeight = wrapper.get(".kanban").attributes("style");
+
+      visualViewport.height = 380;
+      visualViewport.dispatchEvent(new Event("resize"));
+      await flushPromises();
+
+      expect(wrapper.get(".kanban").attributes("style")).toBe(initialHeight);
+    } finally {
+      await wrapper.unmount();
+      tracker.remove();
+      if (originalVisualViewport) Object.defineProperty(window, "visualViewport", originalVisualViewport);
+      else Reflect.deleteProperty(window, "visualViewport");
+    }
+  });
+
   it("keeps all active cards in the Gantt gutter while limiting bars to the visible dates", async () => {
     const store = seedBoard(["Backlog"]);
     const card = (id: string, dates: Record<string, string> = {}) => ({
