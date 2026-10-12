@@ -140,28 +140,28 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 ### OTOTEST-06-T1 — Fake timers in `NotesView.test.ts`
 
-- [ ] Replace real sleeps with `vi.useFakeTimers()` and
+- [x] Replace real sleeps with `vi.useFakeTimers()` and
   `await vi.advanceTimersByTimeAsync(<debounce>)`, followed by
   `flushPromises()` where the test already uses it. Restore real timers in
   `afterEach`.
-- [ ] Take the debounce values from `NotesView.vue` (or export named
+- [x] Take the debounce values from `NotesView.vue` (or export named
   constants) instead of hard-coding 700/280 again, so a production timing
   change cannot silently desynchronize the tests.
-- [ ] Check tests that combine timers with TipTap, router navigation, or
+- [x] Check tests that combine timers with TipTap, router navigation, or
   `beforeunload` behavior; keep real timers in a specific test only if fake
   timers break real behavior, and note the reason in the test.
-- [ ] Expected effect: file from ~18 s to ~1–2 s; `npm test` wall time from
+- [x] Expected effect: file from ~18 s to ~1–2 s; `npm test` wall time from
   ~24 s to the next critical path (~5–8 s).
 
 ### OTOTEST-06-T2 — Remaining real sleeps in Vitest
 
-- [ ] Apply the T1 approach to `src/lib/warmup.test.ts` and any other test
+- [x] Apply the T1 approach to `src/lib/warmup.test.ts` and any other test
   that waits on a real timer.
-- [ ] Re-run the per-file breakdown. If one file still dominates (for example
+- [x] Re-run the per-file breakdown. If one file still dominates (for example
   `BoardView.test.ts` at 4.3 s with 116 tests), consider splitting it by
   feature area so Vitest can schedule the parts in parallel. Keep test names
   unchanged.
-- [ ] Measure Vitest environment and import overhead from the JSON reporter.
+- [x] Measure Vitest environment and import overhead from the JSON reporter.
   Evaluate, one at a time: `css: false` or `css: { include: [...] }` for files
   that do not assert styles, `pool: 'threads'` versus the default `forks`,
   and dependency optimization for Vuetify. Keep only options that measurably
@@ -204,24 +204,39 @@ raising them to 8 and 12 did not produce a repeatable enough gain to keep.
 
 ### OTOTEST-06-T5 — Backend Gradle runtime
 
-- [ ] Split the baseline Gradle wall time into JVM/Gradle startup, dependency
+- [x] Split the baseline Gradle wall time into JVM/Gradle startup, dependency
   resolution, compilation, Spring context startup, and test execution.
-- [ ] CI: cache Gradle dependencies (mount a cache directory into the
+- [x] CI: cache Gradle dependencies (mount a cache directory into the
   `gradle:8.13-jdk21` container and persist it with `actions/cache`, keyed on
   the build files), or switch to `actions/setup-java` plus
   `gradle/actions/setup-gradle`. Measure cold and warm.
-- [ ] Reduce distinct Spring contexts: count contexts started (enable
+- [x] Reduce distinct Spring contexts: count contexts started (enable
   `logging.level.org.springframework.test.context.cache=DEBUG` for a run) and
   consolidate identical `@MockBean`/`@TestPropertySource` combinations in the
   16 `@WebMvcTest` classes into a shared base or annotation where the
   configuration is truly the same.
-- [ ] Evaluate `maxParallelForks` (for example `Runtime.runtime.availableProcessors().intdiv(2) ?: 1`)
+- [x] Evaluate `maxParallelForks` (for example `Runtime.runtime.availableProcessors().intdiv(2) ?: 1`)
   and JUnit parallel execution separately. Integration tests share H2 and
   registered users; enable parallelism only if tests are proven isolated.
-- [ ] CI: decide whether the `backend` (H2) job is still needed when
+- [x] CI: decide whether the `backend` (H2) job is still needed when
   `backend-postgres` runs the full suite, or whether `backend` can run only
   the non-PostgreSQL-specific subset. Record the coverage reasoning; do not
   drop a layer silently.
+
+Measured outcome: H2 uses up to four forks (half the detected processors,
+capped at four) and passed five consecutive full runs at a 37.75 s median,
+17.1% faster than the 45.54 s warm serial baseline. Eight forks passed once
+but took 41.0 s, so were not retained. PostgreSQL runs use one fork: four
+parallel JVMs raced the existing empty-database guard against Flyway creating
+`flyway_schema_history`; serial PostgreSQL then passed five fresh-database
+runs at a 55.48 s median and the empty-to-migrated CI sequence passed. The
+H2 job remains because it checks the H2 compatibility path while the
+PostgreSQL job checks production-dialect behavior. The two jobs now mount a
+GitHub Actions cache for the Gradle user home; local warm-cache timing was
+45.54 s versus 71.41 s on the first dependency-resolving run. Spring cache
+debugging recorded six distinct contexts per fork (maximum cache size six),
+so no context consolidation was justified; integration classes already share
+their context within each fork.
 
 ### OTOTEST-06-T6 — Real-stack and smoke stages
 

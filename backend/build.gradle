@@ -34,4 +34,8 @@ dependencies {
     testRuntimeOnly 'com.h2database:h2'
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform()
+    def postgresTestTarget = System.getenv('KB_TEST_POSTGRES_URL')
+    maxParallelForks = postgresTestTarget ? 1 : Math.min(4, Math.max(1, Runtime.runtime.availableProcessors().intdiv(2)))
+}

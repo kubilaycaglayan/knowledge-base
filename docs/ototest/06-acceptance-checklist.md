@@ -30,9 +30,9 @@ Keep raw reports out of the repository.
 | `npm run test:ui` | | | | | | |
 | Extension `npm test` + build + `node --test` files | | | | | | |
 | Repository checks (`check-*`, shell syntax, Caddy) | — | — | | | | |
-| Backend Gradle test, H2 (warm) | | | | | | |
-| Backend Gradle test, H2 (cold) | | | | | | |
-| Backend Gradle test, PostgreSQL | | | | | | |
+| Backend Gradle test, H2 (warm) | 98 | 610 (89 skipped) | 45.54 | 340 | KnowIntegrationTest 6.1 | Three warm runs; Gradle 8.13 JDK 21 container |
+| Backend Gradle test, H2 (cold) | 98 | 610 (89 skipped) | 71.41 | — | KnowIntegrationTest 6.1 | First run also resolved dependencies and compiled |
+| Backend Gradle test, PostgreSQL | 98 | 610 | 54.93 | — | KnowIntegrationTest 7.7 | Disposable local PostgreSQL 16, empty database; one run |
 | Smoke `run-smoke-tests.sh` | — | — | | | — | build / ready / test split: |
 | Smoke `SMOKE_FULL_STACK=1` | — | — | | | — | build / ready / test split: |
 | `run-board-e2e.sh` | | | | | | build / ready / test split: |
@@ -55,7 +55,7 @@ value is an improvement.
 | T2 | Vitest `threads` pool (29786515) | Frontend `npm test` | 866 → 866 | 11.25 | 10.90 | -0.35 | -3.1% | Yes; full suite 5/5 | Yes |
 | T3 | Playwright controlled clocks (e89f6926) | `test:board`, `test:nav` | 155 → 155; 176 → 176 | 120.08; 313.28 | 124.36; 295.69 | +4.28; -17.59 | +3.6%; -5.6% | Board 5/5; nav covered in T4 5/5 | Yes; the board ring test fell from 7.1s to 0.8s, though suite wall time varied |
 | T4 | Parallel nav browser cases (7 workers) | `test:nav` | 176 → 176 | 295.69 (serial after T3) | 91.10 | -204.59 | -69.1% | Yes; full suite 5/5 | Yes; 30 workers was slower and flaky; board 8/12-worker probes were not retained |
-| T5 | | Backend Gradle, CI backend jobs | | | | | | | |
+| T5 | H2 Gradle forks (4), PostgreSQL serial guard, CI Gradle cache | Backend Gradle | 610 → 610 (H2: 89 skipped; PG: 0 skipped) | 45.54 warm H2; 54.93 PG | 37.75 H2; 55.48 PG | -7.79 H2; +0.55 PG | -17.1% H2; +1.0% PG | Yes; H2 5/5 and PG 5/5 | Yes; 8 forks took 41.0s; PG stays serial to preserve the empty-database guard |
 | T6 | | Smoke, real-stack runners, CI e2e jobs | | | | | | | |
 | T7 | | CI `verify` workflow | | | | | | | |
 | T8 | | Extension, repository checks | | | | | | | |
