@@ -1,10 +1,12 @@
-import { config, flushPromises, mount } from "@vue/test-utils";
+import { config, enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
+import { afterEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import LogsView from "./LogsView.vue";
 import { api } from "../lib/api";
 import { useLogsStore } from "../stores/logs";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
+enableAutoUnmount(afterEach);
 
 const log = (
   id: string,
@@ -27,6 +29,7 @@ describe("LogsView", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/");
+    window.localStorage.removeItem("knowledge-base.logs.pinned-label-ids");
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
     vi.mocked(api).mockImplementation(async (path) =>
@@ -502,6 +505,48 @@ describe("LogsView", () => {
     expect(
       wrapper.get('button[aria-label^="Choose labels"]').classes(),
     ).not.toContain("has-selection");
+  });
+
+  it("pins labels to the top of Logs label pickers and restores pins on a later visit", async () => {
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG"
+        ? [
+            { id: "important", name: "Important", color: "#2878D5" },
+            { id: "work", name: "Work", color: "#2F855A" },
+          ]
+        : [log("new", "Recent thought", "2026-09-11T11:30:00Z")],
+    );
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    const trigger = wrapper.get('button[aria-label^="Choose labels"]');
+    await trigger.trigger("click");
+    const listboxId = trigger.attributes("aria-controls");
+    const menu = () => document.getElementById(listboxId!)!.closest<HTMLElement>(".label-picker-menu")!;
+    menu().querySelector<HTMLButtonElement>(".picker-pin-toggle")?.click();
+    await flushPromises();
+    expect(menu().querySelector(".picker-pin-description")).not.toBeNull();
+    const workOption = [...menu().querySelectorAll<HTMLElement>('.label-picker-options [role="option"]')]
+      .find((option) => option.querySelector(".option-name")?.textContent === "Work")!;
+    expect(workOption.getAttribute("aria-selected")).toBe("false");
+    workOption.click();
+    await flushPromises();
+    expect([...menu().querySelectorAll<HTMLElement>('.label-picker-options [role="option"]')]
+      .find((option) => option.querySelector(".option-name")?.textContent === "Work")?.getAttribute("aria-selected")).toBe("true");
+    expect(window.localStorage.getItem("knowledge-base.logs.pinned-label-ids")).toBe('["work"]');
+    menu().querySelector<HTMLButtonElement>(".picker-pin-toggle")?.click();
+    await flushPromises();
+    expect([...menu().querySelectorAll<HTMLElement>('.label-picker-options [role="option"] .option-name')]
+      .map((option) => option.textContent)).toEqual(["Work", "Important"]);
+    wrapper.unmount();
+
+    const restored = mount(LogsView);
+    await flushPromises();
+    const restoredTrigger = restored.get('button[aria-label^="Choose labels"]');
+    await restoredTrigger.trigger("click");
+    const restoredMenu = document.getElementById(restoredTrigger.attributes("aria-controls")!)!.closest<HTMLElement>(".label-picker-menu")!;
+    expect([...restoredMenu.querySelectorAll<HTMLElement>('.label-picker-options [role="option"] .option-name')]
+      .map((option) => option.textContent)).toEqual(["Work", "Important"]);
+    restored.unmount();
   });
 
   it("closes log labels when the user clicks elsewhere", async () => {
