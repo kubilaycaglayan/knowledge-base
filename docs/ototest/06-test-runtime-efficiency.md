@@ -208,6 +208,14 @@ to 30 passed five consecutive runs (10 tests each) at a 7.15 s median, versus
 8.29 s at concurrency 4 (−13.8%). Thirty is the effective cap because only
 six independent scenarios exist.
 
+The first aggregate quick run after a clean `npm ci` exposed a board navigation
+timeout when Vite optimized Vuetify during the concurrent “All boards view”
+cases. The case passed alone. The board server now pre-optimizes the lazy
+Vuetify dependencies in a disposable cold cache before starting Chromium, as
+the nav suite already does. The fix passed five full cold-cache runs (155/155
+each) at a 123.39 s median, compared with the 120.08 s baseline. It removes the
+reproduced optimizer reload failure; it does not claim a runtime improvement.
+
 ### OTOTEST-06-T5 — Backend Gradle runtime
 
 - [x] Split the baseline Gradle wall time into JVM/Gradle startup, dependency

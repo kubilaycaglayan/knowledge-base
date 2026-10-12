@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -8,7 +9,7 @@ import { chromium, devices, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
 
-let server, browser;
+let server, browser, viteCacheDir;
 const browserEngine = process.env.BOARD_BROWSER === "webkit" ? webkit : chromium;
 const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
 const boardTemplate = { id: "board-1", name: "Product", archived: false };
@@ -531,8 +532,45 @@ for (const width of [390, 1440]) it(`ends the timeline at a future card from its
   await page.screenshot({ path: join(screenshotDir, `gantt-offscreen-right-jump-${width}.png`) });
 });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED }); });
-after(async () => { await browser?.close(); await server?.close(); });
+before(async () => {
+  // Start from a cold cache and finish optimization before concurrent browser
+  // cases begin, so Vite cannot reload their pages during lazy Vuetify imports.
+  viteCacheDir = await mkdtemp(join(tmpdir(), "knowledge-base-board-vite-"));
+  server = await createServer({
+    cacheDir: viteCacheDir,
+    optimizeDeps: {
+      include: [
+        "vuetify/components/VBtn",
+        "vuetify/components/VIcon",
+        "vuetify/components/VList",
+        "vuetify/components/VSelect",
+        "vuetify/components/VSnackbar",
+        "vuetify/components/VMenu",
+        "vuetify/components/VChip",
+        "vuetify/components/VTable",
+      ],
+    },
+    server: { host: "127.0.0.1", port: 0, hmr: false },
+  });
+  await server.listen();
+  const optimizer = server.environments.client.depsOptimizer;
+  await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
+  const optimized = optimizer.metadata.optimized;
+  for (const dependency of [
+    "vuetify/components/VBtn",
+    "vuetify/components/VIcon",
+    "vuetify/components/VList",
+    "vuetify/components/VSelect",
+    "vuetify/components/VSnackbar",
+    "vuetify/components/VMenu",
+    "vuetify/components/VChip",
+    "vuetify/components/VTable",
+  ]) {
+    assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
+  }
+  browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED });
+});
+after(async () => { await browser?.close(); await server?.close(); if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true }); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null, failCardMoveOnce = false) {
   const iphoneWebKit = process.env.BOARD_BROWSER === "webkit" && width <= 390;
