@@ -529,7 +529,7 @@ it("preserves browser-native new-tab behavior for primary navigation links", asy
   assert.equal(new URL(page.url()).pathname, "/");
 });
 
-it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
+it("supports keyboard navigation between primary links", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
@@ -540,11 +540,10 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
 
   const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
   await calendarLink.focus();
-  const newTab = page.context().waitForEvent("page");
-  await page.keyboard.press("Control+Enter");
-  const opened = await newTab;
-  await opened.locator(".calendar-page").waitFor();
-  assert.equal(new URL(opened.url()).pathname, "/calendar");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/calendar");
+  await page.locator(".calendar-page").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/calendar");
 });
 
 it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {

@@ -1507,8 +1507,9 @@ draft available for retry.
   handlers; route navigation uses native anchors/`RouterLink` or keyboard
   patterns with a specific ARIA widget role. `nav-shell.acceptance.test.mjs`
   verifies all primary route links by accessible name, href, active state and
-  browser Back/Forward; `supports keyboard navigation and opening a primary
-  link in a new tab` verifies Enter activation and Ctrl-click new-tab behavior.
+  browser Back/Forward; `supports keyboard navigation between primary links`
+  verifies Enter activation, while `preserves browser-native new-tab behavior
+  for primary navigation links` verifies Ctrl-click new-tab behavior.
   Global Search listbox options are keyboard-operable and intentionally use
   `role="option"` with the active-descendant pattern.
 - [x] Every state change can be triggered from a semantic button or form
