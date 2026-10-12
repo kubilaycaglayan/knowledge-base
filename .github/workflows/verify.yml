@@ -163,7 +163,7 @@ jobs:
         run: npm ci && npx playwright install --with-deps chromium
       - name: Run web route and control browser acceptance
         working-directory: frontend
-        run: NAV_CONCURRENCY=4 npm run test:nav
+        run: NAV_CONCURRENCY=2 npm run test:nav
 
   smoke:
     runs-on: ubuntu-latest
