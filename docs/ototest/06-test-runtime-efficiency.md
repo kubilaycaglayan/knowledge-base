@@ -1,7 +1,7 @@
 # OTOTEST-06 — Test runtime efficiency
 
 **Priority:** Medium
-**Status:** Proposed
+**Status:** Complete
 **Dependencies:** None to start. Coordinate edits to
 `frontend/scripts/nav-shell.acceptance.test.mjs` and
 `frontend/scripts/board.acceptance.test.mjs` with the in-progress OTOTEST-03
@@ -36,6 +36,7 @@ frontend. Each one is measured in the baseline and has an owning task.
 | Real-stack browser E2E | `run-board-e2e.sh`, `run-search-e2e.sh`, `run-timer-websocket-e2e.sh`, `run-line-history-e2e.sh`, `run-line-history-orca.sh`; CI `timer-websocket-e2e`, `line-history-e2e`, `line-history-orca` | T6 |
 | Aggregate local run | `scripts/test-run-all.sh` (`--quick` and full) | T0, milestone comparison |
 | CI workflow as a whole | `.github/workflows/verify.yml` | T7 |
+| CI policy/meta tests | Vitest scope, OTOTEST contract and browser artifact checks | T0, T8 |
 
 iOS suites, including the `ios`, `ios-note-document`, and
 `hard06-notes-focused` workflows, are out of scope, consistent with the
@@ -120,48 +121,53 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 ### OTOTEST-06-T0 — Baseline
 
-- [ ] Fast-forward `main`, create the task branch, and record the environment
+- [x] Fast-forward `main`, create the task branch, and record the environment
   line.
-- [ ] Measure three times each, covering every suite in the scope table:
+- [x] Measure three times each, covering every suite in the scope table:
   `npm test` and `npm run build` (frontend); `npm run test:tracker`,
   `test:board`, `test:nav`, and `test:ui`; extension `npm test`, build, and
   `node --test` files; repository checks; backend Gradle test on H2 (from a
   copy of `backend/`, with a unique `--project-cache-dir`) and against a
   disposable PostgreSQL database; and `./scripts/test-run-all.sh --quick`.
-- [ ] Measure once each (they are long): plain and full-stack
+- [x] Measure once each (they are long): plain and full-stack
   `run-smoke-tests.sh`, every real-stack runner script, and a full
   `./scripts/test-run-all.sh`.
-- [ ] Capture per-file/per-class breakdowns and CPU usage as described in the
+- [x] Capture per-file/per-class breakdowns and CPU usage as described in the
   protocol.
-- [ ] Pull job and step durations for the last three green `verify` runs on
+- [x] Pull job and step durations for the last three green `verify` runs on
   `main`.
-- [ ] Record test counts per suite; these are the coverage reference for every
+- [x] Record test counts per suite; these are the coverage reference for every
   later task.
+
+The clean-install `test-run-all.sh --quick` baseline attempt failed when Vite
+optimized Vuetify during concurrent board navigation, so no successful clean
+baseline duration is claimed for that command. The cold-start failure and its
+fix are recorded under T4; the successful after run took 219 s.
 
 ### OTOTEST-06-T1 — Fake timers in `NotesView.test.ts`
 
-- [ ] Replace real sleeps with `vi.useFakeTimers()` and
+- [x] Replace real sleeps with `vi.useFakeTimers()` and
   `await vi.advanceTimersByTimeAsync(<debounce>)`, followed by
   `flushPromises()` where the test already uses it. Restore real timers in
   `afterEach`.
-- [ ] Take the debounce values from `NotesView.vue` (or export named
+- [x] Take the debounce values from `NotesView.vue` (or export named
   constants) instead of hard-coding 700/280 again, so a production timing
   change cannot silently desynchronize the tests.
-- [ ] Check tests that combine timers with TipTap, router navigation, or
+- [x] Check tests that combine timers with TipTap, router navigation, or
   `beforeunload` behavior; keep real timers in a specific test only if fake
   timers break real behavior, and note the reason in the test.
-- [ ] Expected effect: file from ~18 s to ~1–2 s; `npm test` wall time from
+- [x] Expected effect: file from ~18 s to ~1–2 s; `npm test` wall time from
   ~24 s to the next critical path (~5–8 s).
 
 ### OTOTEST-06-T2 — Remaining real sleeps in Vitest
 
-- [ ] Apply the T1 approach to `src/lib/warmup.test.ts` and any other test
+- [x] Apply the T1 approach to `src/lib/warmup.test.ts` and any other test
   that waits on a real timer.
-- [ ] Re-run the per-file breakdown. If one file still dominates (for example
+- [x] Re-run the per-file breakdown. If one file still dominates (for example
   `BoardView.test.ts` at 4.3 s with 116 tests), consider splitting it by
   feature area so Vitest can schedule the parts in parallel. Keep test names
   unchanged.
-- [ ] Measure Vitest environment and import overhead from the JSON reporter.
+- [x] Measure Vitest environment and import overhead from the JSON reporter.
   Evaluate, one at a time: `css: false` or `css: { include: [...] }` for files
   that do not assert styles, `pool: 'threads'` versus the default `forks`,
   and dependency optimization for Vuetify. Keep only options that measurably
@@ -169,104 +175,193 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 ### OTOTEST-06-T3 — Controlled clock in mocked browser suites
 
-- [ ] Replace fixed `page.waitForTimeout(...)` calls in
+- [x] Replace fixed `page.waitForTimeout(...)` calls in
   `board.acceptance.test.mjs` and `nav-shell.acceptance.test.mjs` with
   condition waits (`locator.waitFor`, `expect.poll`-style polling, or
   `page.waitForFunction`) when they wait for state.
-- [ ] Use Playwright's clock API (`page.clock.install()` /
+- [x] Use Playwright's clock API (`page.clock.install()` /
   `page.clock.runFor()`) for waits that test time-based behavior, such as the
   3-second highlight-ring fade and the `waitForTimeout(6000)` in
   `nav-shell`. Assert the same intermediate and final states.
-- [ ] Expected effect: removes about 10 s of fixed waits from `test:board` and
+- [x] Expected effect: removes about 10 s of fixed waits from `test:board` and
   6 s from `test:nav` before any parallelism.
 
 ### OTOTEST-06-T4 — Parallel mocked browser suites
 
-- [ ] Find out why `test:nav` and `test:board` use `--test-concurrency=1`
+- [x] Find out why `test:nav` and `test:board` use `--test-concurrency=1`
   (shared Vite server, shared browser, port, or mocked-route state). Record
   the reason.
-- [ ] If tests are independent per browser context, run them with a bounded
+- [x] If tests are independent per browser context, run them with a bounded
   concurrency (for example 4–8 locally, matching CI vCPUs in CI) or split each
   file into several files that share the Vite server setup through a helper.
-- [ ] Reuse one Vite dev server and one Chromium process per worker; keep a
+- [x] Reuse one Vite dev server and one Chromium process per worker; keep a
   fresh context per test for isolation.
-- [ ] Run each suite five times at the new concurrency; any order-dependent
+- [x] Run each suite five times at the new concurrency; any order-dependent
   failure blocks the change.
+
+Measured outcome: `test:nav` keeps one Vite server and Chromium process, gives
+each case a fresh browser context, and runs the independent acceptance cases
+at local concurrency 7 (the hosted two-core runner uses 2). Five final local
+runs passed (176 tests each) in 100, 100, 103, 100, and 102 s (100 s median),
+66.2% faster than the 295.69 s serial after-T3 result. A 30-worker probe was
+slower and exposed render, focus, and request-order races; those assertions
+were made readiness-based where possible, while auth and browser tab cases
+remain serial. The board suite already had four concurrency-4 groups, so
+raising them to 8 and 12 did not produce a repeatable enough gain to keep.
+
+The tracker acceptance suite also uses isolated browser contexts and an
+ephemeral Vite port. Raising its six top-level scenarios from concurrency 4
+to 30 passed five consecutive runs (10 tests each) at a 7.15 s median, versus
+8.29 s at concurrency 4 (−13.8%). Thirty is the effective cap because only
+six independent scenarios exist.
+
+The local aggregate runner starts tracker, board, and nav acceptance together
+after the frontend unit suite and build. The runners own separate Vite servers,
+ports, browser contexts, and fixture state. Five concurrent runs passed all
+341 tests each at a 128 s median versus 221.64 s for the sum of their
+individual baseline medians. In the final expanded full run, the group took
+191 s under additional build, UI, and aggregate load, still 13.8% below the
+serial suite-time sum.
+
+The first aggregate quick run after a clean `npm ci` exposed a board navigation
+timeout when Vite optimized Vuetify during the concurrent “All boards view”
+cases. The case passed alone. The board server now pre-optimizes the lazy
+Vuetify dependencies in a disposable cold cache before starting Chromium, as
+the nav suite already does. The fix passed five full cold-cache runs (155/155
+each) at a 123.39 s median, compared with the 120.08 s baseline. It removes the
+reproduced optimizer reload failure; it does not claim a runtime improvement.
 
 ### OTOTEST-06-T5 — Backend Gradle runtime
 
-- [ ] Split the baseline Gradle wall time into JVM/Gradle startup, dependency
+- [x] Split the baseline Gradle wall time into JVM/Gradle startup, dependency
   resolution, compilation, Spring context startup, and test execution.
-- [ ] CI: cache Gradle dependencies (mount a cache directory into the
+- [x] CI: cache Gradle dependencies (mount a cache directory into the
   `gradle:8.13-jdk21` container and persist it with `actions/cache`, keyed on
   the build files), or switch to `actions/setup-java` plus
   `gradle/actions/setup-gradle`. Measure cold and warm.
-- [ ] Reduce distinct Spring contexts: count contexts started (enable
+- [x] Reduce distinct Spring contexts: count contexts started (enable
   `logging.level.org.springframework.test.context.cache=DEBUG` for a run) and
   consolidate identical `@MockBean`/`@TestPropertySource` combinations in the
   16 `@WebMvcTest` classes into a shared base or annotation where the
   configuration is truly the same.
-- [ ] Evaluate `maxParallelForks` (for example `Runtime.runtime.availableProcessors().intdiv(2) ?: 1`)
+- [x] Evaluate `maxParallelForks` (for example `Runtime.runtime.availableProcessors().intdiv(2) ?: 1`)
   and JUnit parallel execution separately. Integration tests share H2 and
   registered users; enable parallelism only if tests are proven isolated.
-- [ ] CI: decide whether the `backend` (H2) job is still needed when
+- [x] CI: decide whether the `backend` (H2) job is still needed when
   `backend-postgres` runs the full suite, or whether `backend` can run only
   the non-PostgreSQL-specific subset. Record the coverage reasoning; do not
   drop a layer silently.
 
+Measured outcome: H2 uses up to four forks (half the detected processors,
+capped at four) and passed five consecutive full runs at a 37.75 s median,
+17.1% faster than the 45.54 s warm serial baseline. Eight forks passed once
+but took 41.0 s, so were not retained. PostgreSQL runs use one fork: four
+parallel JVMs raced the existing empty-database guard against Flyway creating
+`flyway_schema_history`; serial PostgreSQL then passed five fresh-database
+runs at a 55.48 s median and the empty-to-migrated CI sequence passed. The
+H2 job remains because it checks the H2 compatibility path while the
+PostgreSQL job checks production-dialect behavior. The two jobs now mount a
+GitHub Actions cache for the Gradle user home; local warm-cache timing was
+45.54 s versus 71.41 s on the first dependency-resolving run. Spring cache
+debugging recorded six distinct contexts per fork (maximum cache size six),
+so no context consolidation was justified; integration classes already share
+their context within each fork.
+
 ### OTOTEST-06-T6 — Real-stack and smoke stages
 
-- [ ] Measure image build, stack readiness, and test time separately for each
+- [x] Measure image build, stack readiness, and test time separately for each
   runner and for the CI jobs.
-- [ ] Replace `sleep 2` readiness loops with Compose health checks and
+- [x] Replace `sleep 2` readiness loops with Compose health checks and
   `docker compose up --wait` where the services define health checks, or a
   shorter poll with the same total timeout.
-- [ ] In CI, build the test images once (Buildx with the GitHub Actions cache,
+- [x] In CI, build the test images once (Buildx with the GitHub Actions cache,
   `cache-from/cache-to: type=gha`) and reuse them for smoke and real-stack
   jobs, or run the real-stack suites against one shared stack as
   `test-run-all.sh` already does locally.
-- [ ] Cache Playwright browsers in CI (`~/.cache/ms-playwright`, keyed on the
+- [x] Cache Playwright browsers in CI (`~/.cache/ms-playwright`, keyed on the
   Playwright version) and install system dependencies only when needed.
-- [ ] Keep disposable Compose project names, generated credentials, and
+- [x] Keep disposable Compose project names, generated credentials, and
   project-scoped `down --volumes` cleanup; `node scripts/check-smoke-cleanup.mjs`
   must still pass.
+- [x] Run independent real-stack browser suites concurrently on the local
+  shared disposable stack while keeping each suite's account and logs separate.
+
+The smoke and each real-stack runner now report image/startup, readiness, and
+acceptance time separately. Readiness polling uses 250 ms intervals with the
+original timeout budgets. The measured full-stack smoke took 75.91 s
+(image/startup 53.58 s, API readiness 5.42 s, checks 14.65 s); the plain smoke
+took 71.36 s (50.28 s, 5.43 s, and 13.81 s). The standalone E2E phase splits
+and test counts are in the checklist. GitHub Actions uses BuildKit GHA cache
+imports from the shared smoke cache plus per-suite exports, and caches
+Playwright browser downloads by the frontend lockfile. The local aggregate
+shares one disposable stack and runs its independent browser suites four at a
+time; five runs passed all 61 tests each at about 45 s, versus about 98 s for
+the serial suite-time sum. Three complete hosted `verify` runs on the final
+measured commit passed in 215, 288, and 311 s (288 s median).
 
 ### OTOTEST-06-T7 — CI workflow layout
 
-- [ ] Using the T0 job durations, find the critical path of the `verify`
+- [x] Using the T0 job durations, find the critical path of the `verify`
   workflow.
-- [ ] Split `web-and-extension` so the web unit tests, web build, extension
+- [x] Split `web-and-extension` so the web unit tests, web build, extension
   tests, and repository checks run as parallel jobs if that shortens the
   critical path, or combine short jobs if runner start-up dominates.
-- [ ] Use `concurrency` with `cancel-in-progress` for superseded pushes on the
+- [x] Use `concurrency` with `cancel-in-progress` for superseded pushes on the
   same branch, so CI capacity is not spent on outdated commits.
-- [ ] Record before/after wall time for the whole workflow (first job start to
+- [x] Record before/after wall time for the whole workflow (first job start to
   last job end) over at least three runs each.
+
+The `web-browser-acceptance` job now runs independently from
+`web-and-extension`. The T0 baseline workflow durations were 609, 432, and
+218 s (433 s median); `web-and-extension` was the long pole in two runs and
+`backend-postgres` in the third. The final commit's three full runs were 215,
+288, and 311 s (288 s median), a 33.5% reduction. `web-browser-acceptance`
+was the long pole in the first two and `web-and-extension` in the third. The
+baseline runs are [38172087797](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38172087797),
+[38160604221](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38160604221),
+and [38065945165](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38065945165).
+The final same-SHA reruns are
+[attempt 1](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/1),
+[attempt 2](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/2),
+and [attempt 3](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38197379786/attempts/3).
+The workflow also caches Playwright browsers,
+combines Caddy validation into one container, removes duplicate extension test
+execution, and cancels superseded branch runs. The hosted browser runner uses
+nav concurrency 2 for its two-core VM; local nav defaults to 7 on the 32-thread
+development host. All three final hosted runs passed.
 
 ### OTOTEST-06-T8 — Chrome extension and repository checks
 
-- [ ] From the baseline, list the extension tests, extension build, and each
+- [x] From the baseline, list the extension tests, extension build, and each
   `scripts/check-*.mjs` / shell / Caddy check with its time. These are
   expected to be short; act only on items that take a noticeable share of
   the run.
-- [ ] The extension `npm test` and the CI step run overlapping `node --test`
+- [x] The extension `npm test` and the CI step run overlapping `node --test`
   file lists. Remove duplicated execution while keeping every file run at
   least once.
-- [ ] Run independent repository checks concurrently where their output stays
+- [x] Run independent repository checks concurrently where their output stays
   readable, and validate all Caddy configs in one container as
   `test-run-all.sh` already does, instead of one `docker run` per config in
   CI.
 
+Extension tests (9 files, 55 tests) and repository checks (278 checks) are
+short: 0.20 s and 0.98 s median respectively; the three Caddy validations
+together take 0.30 s in one container. Three parallel repository-check probes
+took 1.07, 0.98, and 0.84 s, matching the 0.98 s serial baseline median. The
+parallel wrapper was removed as it did not improve runtime. The CI duplicate
+invocation of four extension test files is removed because `npm test` already
+covers all nine. CI validates all three Caddy configs in one container.
+
 ### OTOTEST-06-T9 — Documentation and guardrails
 
-- [ ] Update `docs/testing.md` with the measured runtimes per suite and the
+- [x] Update `docs/testing.md` with the measured runtimes per suite and the
   timing conventions: fake timers for debounce/autosave in Vitest, Playwright
   clock instead of fixed waits, and when serial execution is required.
-- [ ] Add a lightweight check (for example to `scripts/check-*.mjs`) that
+- [x] Add a lightweight check (for example to `scripts/check-*.mjs`) that
   fails on new `setTimeout(resolve, <n>)` sleeps in `frontend/src/**/*.test.ts`
   and new `waitForTimeout(<n>)` above a small threshold in browser suites,
   with an allowlist that requires a reason.
-- [ ] Update the roadmap, milestone index, and this document's status
+- [x] Update the roadmap, milestone index, and this document's status
   together.
 
 ## Acceptance

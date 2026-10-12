@@ -227,20 +227,13 @@ async function check(page, label, screenshot = true) {
     });
   results.push({ label, ...dimensions, violations: violations.length });
 }
-try {
-  for (const mode of ["light", "dark"]) {
-    for (const state of process.env.UI_STATES?.split(",") || [
-      "populated",
-      "empty",
-      "long",
-      "dense",
-      "error",
-    ]) {
+async function runScenario(mode, state) {
       const context = await browser.newContext({
         viewport: { width: 1440, height: 1050 },
         colorScheme: mode,
         reducedMotion: "reduce",
       });
+      try {
       context.setDefaultTimeout(15000);
       await context.addInitScript(() => {
         if (!sessionStorage.getItem("design-fixture-initialized")) {
@@ -526,10 +519,64 @@ try {
           }
         }
       }
-      await context.close();
+      } finally {
+        await context.close();
+      }
       console.log(`Reviewed ${mode} / ${state}`);
+}
+
+try {
+  const modes = ["light", "dark"];
+  const states = process.env.UI_STATES?.split(",") || [
+    "populated",
+    "empty",
+    "long",
+    "dense",
+    "error",
+  ];
+  const scenarios = modes.flatMap((mode) => states.map((state) => ({ mode, state })));
+  const requestedConcurrency = Number(process.env.UI_CONCURRENCY || 10);
+  assert(Number.isInteger(requestedConcurrency) && requestedConcurrency > 0, "UI_CONCURRENCY must be a positive integer");
+
+  // Let Vite discover and prebundle route-level lazy imports before parallel
+  // pages start. Otherwise the first visits can trigger a dependency reload
+  // that destroys an in-flight page context on slower CI runners.
+  const warmupContext = await browser.newContext();
+  try {
+    await warmupContext.route("**/api/**", (route) =>
+      route.fulfill({ contentType: "application/json", body: "{}" }),
+    );
+    const warmupPage = await warmupContext.newPage();
+    for (const path of routes) {
+      if (path === "/auth") {
+        await warmupPage.evaluate(() => localStorage.removeItem("know_token"));
+        await warmupPage.goto("http://127.0.0.1:5191/");
+      } else {
+        await warmupPage.goto(`http://127.0.0.1:5191${path}`);
+      }
+      await warmupPage.waitForLoadState("networkidle");
     }
+  } finally {
+    await warmupContext.close();
   }
+
+  let nextScenario = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(requestedConcurrency, scenarios.length) }, async () => {
+      while (nextScenario < scenarios.length) {
+        const scenario = scenarios[nextScenario++];
+        try {
+          await runScenario(scenario.mode, scenario.state);
+        } catch (error) {
+          failures.push({
+            label: `${scenario.mode}-${scenario.state}-scenario-error`,
+            error: error instanceof Error ? error.stack || error.message : String(error),
+          });
+        }
+      }
+    }),
+  );
+
   // Saved preference beats the system default and survives reload/navigation.
   const context = await browser.newContext({ colorScheme: "dark" });
   const page = await context.newPage();

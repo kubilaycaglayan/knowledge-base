@@ -1,0 +1,2 @@
+export const NOTE_SEARCH_DEBOUNCE_MS = 250;
+export const NOTE_SAVE_DEBOUNCE_MS = 650;

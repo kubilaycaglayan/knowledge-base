@@ -32,7 +32,10 @@ const required = [
     'export BUILDX_BUILDER="$buildx_builder"',
     "Buildx builds are scoped to the temporary builder",
   ],
-  ["for attempt in {1..180}; do", "fresh-database API health startup budget"],
+  [
+    "for attempt in {1..1440}; do",
+    "fresh-database API health startup budget uses 250ms polling",
+  ],
   ["PROXY_HTTPS_PORT:=26443", "isolated full-stack HTTPS proxy port"],
   [
     "docker-compose.smoke-gha-cache.yml",
@@ -59,6 +62,8 @@ const required = [
 for (const [fragment, description] of required)
 if (!smoke.includes(fragment))
     throw new Error(`Cleanup contract failed: ${description}`);
+if (!/for attempt in \{1\.\.1440\}; do[\s\S]*?sleep 0\.25/.test(smoke))
+  throw new Error("Cleanup contract failed: API health polling must retain its 360-second timeout");
 if (smoke.includes('if [[ "$attempt" == 30 ]]; then\n    echo "API did not become healthy"'))
   throw new Error("Cleanup contract failed: API health must not retain the premature 30-attempt timeout");
 console.log(`Cleanup contract passed (${required.length} checks)`);

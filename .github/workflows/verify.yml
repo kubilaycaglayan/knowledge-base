@@ -4,13 +4,25 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/knowledge-base-gradle-cache
+          key: gradle-${{ runner.os }}-${{ hashFiles('backend/build.gradle', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: Prepare Gradle dependency cache mount
+        run: mkdir -p "$RUNNER_TEMP/knowledge-base-gradle-cache"
       - name: Run backend tests
-        run: docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+        run: docker run --rm -v "$PWD/backend:/app" -v "$RUNNER_TEMP/knowledge-base-gradle-cache:/home/gradle/.gradle" -w /app gradle:8.13-jdk21 gradle test --no-daemon
 
   backend-postgres:
     runs-on: ubuntu-latest
@@ -36,14 +48,22 @@ jobs:
       KB_TEST_POSTGRES_MODE: empty
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/knowledge-base-gradle-cache
+          key: gradle-${{ runner.os }}-${{ hashFiles('backend/build.gradle', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: Prepare Gradle dependency cache mount
+        run: mkdir -p "$RUNNER_TEMP/knowledge-base-gradle-cache"
       - name: Run all backend tests with PostgreSQL integration profile
-        run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+        run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -v "$RUNNER_TEMP/knowledge-base-gradle-cache:/home/gradle/.gradle" -w /app gradle:8.13-jdk21 gradle test --no-daemon
       - name: Print fresh PostgreSQL and Flyway evidence
         run: grep -hE 'PostgreSQL test target:|PostgreSQL version:|PostgreSQL empty-database check:|Successfully applied [0-9]+ migrations' backend/build/test-results/test/*.xml | sort -u
       - name: Validate startup against migrated disposable database
         env:
           KB_TEST_POSTGRES_MODE: migrated
-        run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --tests '*SearchPostgresIntegrationTest'
+        run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -v "$RUNNER_TEMP/knowledge-base-gradle-cache:/home/gradle/.gradle" -w /app gradle:8.13-jdk21 gradle test --no-daemon --tests '*SearchPostgresIntegrationTest'
       - name: Print migrated PostgreSQL evidence
         run: grep -hE 'PostgreSQL test target:|PostgreSQL version:|PostgreSQL migrated-database check:' backend/build/test-results/test/*.xml | sort -u
 
@@ -55,7 +75,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            chrome-extension/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
       - name: Build web client
         working-directory: frontend
         run: npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build
@@ -83,15 +110,60 @@ jobs:
         working-directory: frontend
         run: node --test scripts/browser-failure-artifacts.test.mjs
       - name: Validate extension and deployment scripts
-        run: cd chrome-extension && npm ci && npm test && npm run build && node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')" && cd .. && node scripts/check-ototest-extension-permissions.mjs chrome-extension/.output/chrome-mv3/manifest.json && node --test scripts/ototest-extension-permissions.test.mjs && node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js chrome-extension/google-auth.test.js chrome-extension/api-config.test.js chrome-extension/clockify-validation.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+        run: |
+          cd chrome-extension
+          npm ci
+          npm test
+          npm run build
+          node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')"
+          cd ..
+          node scripts/check-ototest-extension-permissions.mjs chrome-extension/.output/chrome-mv3/manifest.json
+          node --test scripts/ototest-extension-permissions.test.mjs
+          node --check chrome-extension/core.js
+          node --check chrome-extension/popup.js
+          node --check chrome-extension/options.js
+          node scripts/check-accessibility.mjs
+          node scripts/check-security.mjs
+          node scripts/check-cloudflare-waf.mjs
+          node scripts/check-smoke-cleanup.mjs
+          node scripts/check-hardening-status.mjs
+          node scripts/check-test-timing.mjs
+          node --test scripts/test-test-timing.test.mjs
+          bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh
+          docker run --rm -e DOMAIN=localhost \
+            -v "$PWD/deployment/Caddyfile:/configs/deployment.Caddyfile:ro" \
+            -v "$PWD/deployment/Caddyfile.cloudflare:/configs/deployment.cloudflare.Caddyfile:ro" \
+            -v "$PWD/frontend/Caddyfile:/configs/frontend.Caddyfile:ro" \
+            caddy:2-alpine sh -c 'for config in /configs/*.Caddyfile; do caddy validate --adapter caddyfile --config "$config" || exit 1; done'
       - name: Install Chromium for browser acceptance
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Run web route and control browser acceptance
+      - name: Run route, theme, and state UI audit
         working-directory: frontend
-        run: npm run test:nav
+        run: UI_CONCURRENCY=10 npm run test:ui
       - name: Run packaged extension browser acceptance
         run: ./scripts/run-extension-browser-e2e.sh
+
+  web-browser-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+      - name: Install browser test dependencies
+        working-directory: frontend
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Run web route and control browser acceptance
+        working-directory: frontend
+        run: NAV_CONCURRENCY=2 npm run test:nav
 
   smoke:
     runs-on: ubuntu-latest
@@ -118,6 +190,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install browser test dependencies
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium
@@ -148,6 +225,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install browser test dependencies
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium
@@ -186,6 +268,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install Playwright
         working-directory: frontend
         run: npm ci

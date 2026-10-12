@@ -29,8 +29,8 @@ requireUploadPolicy(
   "line-history-e2e-artifacts/",
 );
 assert.match(workflow, /Failure logs and scrubbed browser evidence are attached to this \[workflow run\]\(\$RUN_URL\) and retained for 14 days\./);
-assert.match(workflow, /- name: Run web route and control browser acceptance\n        working-directory: frontend\n        run: npm run test:nav/);
-assert.match(testingGuide, /verify \/ web-and-extension.*Run web route and control browser acceptance.*npm run test:nav/);
+assert.match(workflow, /- name: Run web route and control browser acceptance\n        working-directory: frontend\n        run: NAV_CONCURRENCY=2 npm run test:nav/);
+assert.match(testingGuide, /verify \/ web-browser-acceptance.*Run web route and control browser acceptance.*npm run test:nav/);
 assert.match(routeSuite, /cacheDir: viteCacheDir/);
 assert.match(routeSuite, /server: \{ host: "127\.0\.0\.1", port: 0, hmr: false \}/);
 assert.match(routeSuite, /pre-optimizes lazy Vuetify shell dependencies before browser assertions/);

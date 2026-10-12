@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -8,7 +9,7 @@ import { chromium, devices, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
 
-let server, browser;
+let server, browser, viteCacheDir;
 const browserEngine = process.env.BOARD_BROWSER === "webkit" ? webkit : chromium;
 const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
 const boardTemplate = { id: "board-1", name: "Product", archived: false };
@@ -531,8 +532,45 @@ for (const width of [390, 1440]) it(`ends the timeline at a future card from its
   await page.screenshot({ path: join(screenshotDir, `gantt-offscreen-right-jump-${width}.png`) });
 });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED }); });
-after(async () => { await browser?.close(); await server?.close(); });
+before(async () => {
+  // Start from a cold cache and finish optimization before concurrent browser
+  // cases begin, so Vite cannot reload their pages during lazy Vuetify imports.
+  viteCacheDir = await mkdtemp(join(tmpdir(), "knowledge-base-board-vite-"));
+  server = await createServer({
+    cacheDir: viteCacheDir,
+    optimizeDeps: {
+      include: [
+        "vuetify/components/VBtn",
+        "vuetify/components/VIcon",
+        "vuetify/components/VList",
+        "vuetify/components/VSelect",
+        "vuetify/components/VSnackbar",
+        "vuetify/components/VMenu",
+        "vuetify/components/VChip",
+        "vuetify/components/VTable",
+      ],
+    },
+    server: { host: "127.0.0.1", port: 0, hmr: false },
+  });
+  await server.listen();
+  const optimizer = server.environments.client.depsOptimizer;
+  await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
+  const optimized = optimizer.metadata.optimized;
+  for (const dependency of [
+    "vuetify/components/VBtn",
+    "vuetify/components/VIcon",
+    "vuetify/components/VList",
+    "vuetify/components/VSelect",
+    "vuetify/components/VSnackbar",
+    "vuetify/components/VMenu",
+    "vuetify/components/VChip",
+    "vuetify/components/VTable",
+  ]) {
+    assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
+  }
+  browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED });
+});
+after(async () => { await browser?.close(); await server?.close(); if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true }); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null, failCardMoveOnce = false) {
   const iphoneWebKit = process.env.BOARD_BROWSER === "webkit" && width <= 390;
@@ -1922,6 +1960,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   // CH-02, CH-03
   it("rings the card just closed and fades the ring out", async (t) => {
     const { page } = await fixture(t, 1280);
+    await page.clock.install();
     const card = page.locator(".board-card").first();
     const ring = () => card.evaluate((element) => { const style = getComputedStyle(element, "::after"); return { content: style.content, name: style.animationName, duration: style.animationDuration, property: style.transitionProperty, opacity: Number(style.opacity), events: style.pointerEvents, marked: element.classList.contains("just-closed") }; });
     await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -1934,10 +1973,14 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(now.duration, "3s");
     assert.equal(now.events, "none");
     assert.deepEqual(await card.boundingBox(), before, "The ring does not move or resize the card");
-    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+      const fade = document.getAnimations().find((animation) => animation.animationName?.startsWith("card-return-fade"));
+      if (!fade) throw new Error("The highlight fade animation is not running");
+      fade.currentTime = 1500;
+    });
     now = await ring();
     assert.ok(now.opacity > 0 && now.opacity < 1, `The ring is fading (${now.opacity})`);
-    await page.waitForTimeout(1700);
+    await page.clock.fastForward(3000);
     assert.equal((await ring()).marked, false, "The ring is gone after 3 seconds");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1947,7 +1990,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(now.marked);
     assert.equal(now.name, "none", "Reduced motion shows the ring without animating");
     assert.equal(now.opacity, 1);
-    await page.waitForTimeout(3200);
+    await page.clock.fastForward(3200);
     assert.equal((await ring()).marked, false);
   });
 

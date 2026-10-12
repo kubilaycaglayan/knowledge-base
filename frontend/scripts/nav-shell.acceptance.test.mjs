@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, before, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
 import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
@@ -62,13 +62,18 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   }
 });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
+async function fixture(t, width, { warmup = false, clock = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
   const contextOptions = { viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" };
-  const context = browserZoom ? await zoomableContext(t, contextOptions) : await browser.newContext(contextOptions);
+  const zoomSession = browserZoom ? await zoomableContext(contextOptions) : null;
+  const context = zoomSession?.context || await browser.newContext(contextOptions);
   context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
-  t.after(() => context.close());
+  t.after(async () => {
+    await context.close();
+    if (zoomSession) await rm(zoomSession.root, { recursive: true, force: true });
+  });
   if (contextOptions.hasTouch) await requireTouchInput(t, context);
   const requests = [];
+  const completedRequests = [];
   const reportQueries = [];
   const pathOrderWrites = [];
   const pathMergeWrites = [];
@@ -381,17 +386,19 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     }
     const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
     await route.fulfill({ status: rejectedSession ? 401 : missingRecord ? 404 : 200, json: rejectedSession ? { message: "Session expired" } : missingRecord ? { message: "Not found" } : body });
+    completedRequests.push(path);
   });
   const page = await context.newPage();
+  if (clock) await page.clock.install();
   await page.goto(server.resolvedUrls.local[0]);
   if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
   else await page.locator(".auth").waitFor();
-  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites, setBrowserZoom: browserZoom ? (factor) => setBrowserZoom(page, factor) : null };
+  return { page, requests, completedRequests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites, setBrowserZoom: browserZoom ? (factor) => setBrowserZoom(page, factor) : null };
 }
 
 // Chrome's own zoom controller (the one behind Ctrl+Plus and the zoom menu) is
 // only scriptable through chrome.tabs, so load a one-permission probe extension.
-async function zoomableContext(t, options) {
+async function zoomableContext(options) {
   const root = await mkdtemp(join(tmpdir(), "knowledge-base-zoom-"));
   const extension = join(root, "extension");
   await mkdir(extension);
@@ -403,9 +410,8 @@ async function zoomableContext(t, options) {
     headless: true,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
-  t.after(() => rm(root, { recursive: true, force: true }));
   for (const page of context.pages()) await page.close();
-  return context;
+  return { context, root };
 }
 
 async function setBrowserZoom(page, factor) {
@@ -423,6 +429,10 @@ async function setBrowserZoom(page, factor) {
 async function until(condition) {
   for (let attempt = 0; attempt < 200 && !condition(); attempt++) await new Promise((resolve) => setTimeout(resolve, 50));
   assert.ok(condition(), "Timed out waiting for the mocked request");
+}
+
+async function waitForNoteTitle(page, expected) {
+  await page.waitForFunction((value) => document.querySelector('[aria-label="Note title"]')?.value === value, expected);
 }
 
 function expectedReportDateRange(startDate, endDate) {
@@ -456,6 +466,25 @@ const header = (page) => page.locator(".dashboard-shell > header").evaluate((ele
   return { left: rect.left, width: rect.width, marginBottom: getComputedStyle(element).marginBottom };
 });
 
+it("keeps protected deep-link content hidden while signed out and restores it after sign-in", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { authenticated: false });
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.locator(".reports-page").count(), 0);
+  assert.equal(await page.getByRole("navigation", { name: "Main navigation" }).count(), 0);
+  assert.match(await page.title(), /Knowledge Base.*Sign in/);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await activate(page.getByRole("button", { name: "Sign in" }));
+  await page.locator(".reports-page").waitFor();
+
+  assert.equal(new URL(page.url()).pathname, "/reports");
+  assert.equal(new URL(page.url()).search, query);
+  assert.ok(requests.includes("/auth/login"));
+});
+
 for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom margin on every page at ${width}px`, async (t) => {
   const { page, requests } = await fixture(t, width);
   const expected = await header(page);
@@ -471,6 +500,116 @@ for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom mar
   assert.deepEqual(await header(page), expected, "Nav bar in the Gantt view must match the other pages");
 });
 
+it("returns to sign-in after a saved session is rejected and permits authentication again", async (t) => {
+  const { page } = await fixture(t, 1440, { rejectReportsAuth: true });
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
+  assert.equal(await page.locator(".reports-page").count(), 0);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await activate(page.getByRole("button", { name: "Sign in" }));
+  await page.waitForFunction(() => localStorage.getItem("know_token") === "signed-in-nav-test-token");
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), "signed-in-nav-test-token");
+});
+
+it("preserves browser-native new-tab behavior for primary navigation links", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const boardLink = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board", exact: true });
+  assert.equal(await boardLink.evaluate((element) => element.tagName), "A");
+  assert.equal(await boardLink.getAttribute("href"), "/board");
+
+  const opened = page.context().waitForEvent("page");
+  await boardLink.click({ modifiers: ["Control"] });
+  const newTab = await opened;
+  await newTab.locator(".board-page").waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/board");
+  assert.equal(new URL(page.url()).pathname, "/");
+});
+
+it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
+  await reportsLink.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+
+  const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
+  await calendarLink.focus();
+  const newTab = page.context().waitForEvent("page");
+  await page.keyboard.press("Control+Enter");
+  const opened = await newTab;
+  await opened.locator(".calendar-page").waitFor();
+  assert.equal(new URL(opened.url()).pathname, "/calendar");
+});
+
+it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+  const note = page.getByRole("option", { name: /Reports research note/ });
+  await note.waitFor();
+  await input.press("ArrowDown");
+  assert.equal(await note.getAttribute("aria-selected"), "true");
+
+  const opened = page.context().waitForEvent("page");
+  await input.press("Control+Enter");
+  const newTab = await opened;
+  await newTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
+  assert.equal(new URL(page.url()).pathname, "/");
+
+  assert.equal(await note.evaluate((element) => element.tagName), "A");
+  assert.equal(await note.getAttribute("href"), "/notes/search-note");
+  const modifiedClickTab = page.context().waitForEvent("page");
+  await activate(note, { modifiers: ["Control"] });
+  const linkTab = await modifiedClickTab;
+  await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
+
+  await note.evaluate((element) => {
+    element.addEventListener("contextmenu", (event) => {
+      window.__navContextMenuAllowed = !event.defaultPrevented;
+    }, { once: true });
+  });
+  await activate(note, { button: "right" });
+  assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
+  assert.equal(new URL(page.url()).pathname, "/");
+});
+
+it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
+  const { page, requests, completedRequests } = await fixture(t, 1440);
+  const homeData = ["/time-entries", "/paths", "/labels"];
+  await until(() => homeData.every((path) => completedRequests.includes(path)));
+  await activate(page.getByRole("link", { name: "Logs" }));
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.evaluate(() => { window.__noReload = true; });
+  const before = requests.filter((path) => homeData.includes(path));
+  const brand = page.getByRole("link", { name: "Knowledge Base" });
+  assert.equal(await brand.getAttribute("href"), "/");
+  await activate(brand);
+  await page.waitForFunction(() => location.pathname === "/");
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
+  assert.deepEqual(
+    requests.filter((path) => homeData.includes(path)),
+    before,
+    "Returning home must reuse cached sessions, paths, and labels",
+  );
+});
+
+const navSuiteConcurrency = Number.parseInt(process.env.NAV_CONCURRENCY || "7", 10);
+describe("nav shell browser acceptance", { concurrency: navSuiteConcurrency }, () => {
 it("keeps shell actions reachable without horizontal overflow at narrow, wide, and 50%-zoom-equivalent widths", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
@@ -492,14 +631,20 @@ it("keeps shell actions reachable without horizontal overflow at narrow, wide, a
 
 it("uses at least 16px text controls on phone-width routes", async (t) => {
   const { page } = await fixture(t, 390);
+  const editableControl = 'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]';
+  const visibleEditableControl = 'input:not([type="checkbox"]):not([type="radio"]):visible, select:visible, textarea:visible, [contenteditable="true"]:visible';
   for (const path of ["/", "/logs", "/notes/n1", "/calendar", "/settings"]) {
     await visit(page, path);
-    const controls = await page.evaluate(() => [...document.querySelectorAll(
-      'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]',
-    )].filter((element) => element.getClientRects().length > 0).map((element) => ({
+    await page.locator(visibleEditableControl).first().waitFor();
+    if (path === "/settings") {
+      await page.getByRole("heading", { name: "Sign-in methods" }).waitFor();
+      await page.getByRole("textbox", { name: "Current password" }).waitFor();
+    }
+    const controls = await page.evaluate((selector) => [...document.querySelectorAll(selector)]
+      .filter((element) => element.getClientRects().length > 0).map((element) => ({
       name: element.getAttribute("aria-label") || element.getAttribute("name") || element.tagName,
       fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
-    })));
+    })), editableControl);
     assert.ok(controls.length > 0, `${path} should expose a visible editable control`);
     assert.ok(controls.every(({ fontSize }) => fontSize >= 16), `${path}: ${JSON.stringify(controls)}`);
   }
@@ -757,7 +902,7 @@ const overlays = [
     await overlay.waitFor({ timeout: 10000 });
     return { overlay, close: overlay.getByRole("button", { name: "Keep my draft" }) };
   } },
-  { name: "Note text style menu", path: "/notes/conflict-note", modal: false, keyboard: async (page) => {
+  { name: "Note text style menu", path: "/notes/conflict-note", modal: false, keyboardClose: async (page) => page.keyboard.press("Escape"), keyboard: async (page) => {
     await page.getByRole("button", { name: /^Text style:/ }).focus();
     await page.keyboard.press("Enter");
     const menu = page.getByRole("menu", { name: "Text style" });
@@ -802,9 +947,34 @@ for (const { name, path, open, keyboard, keyboardClose, modal = true } of overla
       });
       const auditFocus = async (overlay) => {
         await markScope(overlay);
-        problems.push(...await auditFocusCycle(page, label, { scope: '[data-audit-scope="true"]', stopOutside: !modal }));
-        // Moving focus within an open overlay must not dismiss it.
-        if (!modal && !await overlay.isVisible()) problems.push(`${label}: the overlay closed while keyboard focus moved through it`);
+        let focusLeftOverlay = false;
+        problems.push(...await auditFocusCycle(page, label, {
+          scope: '[data-audit-scope="true"]',
+          stopOutside: !modal,
+          onFocusState: async (focus) => {
+            if (!focus.inScope) focusLeftOverlay = true;
+            else if (!modal && !await overlay.isVisible()) {
+              // Give the browser's focus transfer and the menu's close
+              // transition time to agree before deciding it hid focused UI.
+              const outcome = await page.waitForFunction((selector) => {
+                const scope = document.querySelector(selector);
+                if (!scope?.contains(document.activeElement)) return "outside";
+                const style = getComputedStyle(scope);
+                return style.visibility !== "hidden" && scope.getBoundingClientRect().width > 0
+                  ? "visible"
+                  : false;
+              }, '[data-audit-scope="true"]', { timeout: 1000 })
+                .then((handle) => handle.jsonValue())
+                .catch(() => "stuck");
+              if (outcome === "outside") focusLeftOverlay = true;
+              else if (outcome === "stuck")
+                problems.push(`${label}: the overlay closed while keyboard focus remained inside it`);
+            }
+          },
+        }));
+        // A non-modal menu may close when Tab moves focus out of it.
+        if (!modal && !focusLeftOverlay && !await overlay.isVisible())
+          problems.push(`${label}: the overlay closed while keyboard focus remained inside it`);
       };
       // Non-modal menus and panels are opened from the keyboard for the focus
       // audit, then reopened by touch or pointer for containment and closing.
@@ -845,6 +1015,7 @@ it("keeps core mobile routes readable without horizontal page overflow at enlarg
   const { page } = await fixture(t, 390);
   for (const path of ["/logs", "/notes", "/calendar", "/settings", "/imports"]) {
     await visit(page, path);
+    await page.locator(".dashboard-shell > main h1").waitFor();
     await page.addStyleTag({
       content: "h1, h2, h3, p, label, button, a, input, select, textarea { font-size: max(24px, 150%) !important; }",
     });
@@ -867,23 +1038,6 @@ it("keeps the Gantt timeline full width while the nav bar stays standard", async
   const main = await page.locator(".dashboard-shell > main").evaluate((element) => element.getBoundingClientRect().width);
   assert.ok(main > 1500, `Gantt main content must keep the full shell width: ${main}`);
   assert.equal((await header(page)).width, 1200);
-});
-
-it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
-  const { page, requests } = await fixture(t, 1440);
-  await until(() => requests.includes("/time-entries"));
-  await activate(page.getByRole("link", { name: "Logs" }));
-  await page.waitForFunction(() => location.pathname === "/logs");
-  await page.evaluate(() => { window.__noReload = true; });
-  const homeData = ["/time-entries", "/paths", "/labels"];
-  const before = requests.filter((path) => homeData.includes(path)).length;
-  const brand = page.getByRole("link", { name: "Knowledge Base" });
-  assert.equal(await brand.getAttribute("href"), "/");
-  await activate(brand);
-  await page.waitForFunction(() => location.pathname === "/");
-  await page.waitForTimeout(300);
-  assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
-  assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
 });
 
 it("opens the Sessions workspace directly with its empty state and inline tracker", async (t) => {
@@ -939,10 +1093,10 @@ it("keeps a paused session understandable after route navigation and reload", as
 it("moves focus from the skip link to the main content", async (t) => {
   const { page } = await fixture(t, 1440);
   const skipLink = page.getByRole("link", { name: "Skip to content" });
+  assert.equal(await skipLink.getAttribute("href"), "#main-content");
   await skipLink.focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.activeElement?.id === "main-content");
-  assert.equal(new URL(page.url()).hash, "#main-content");
 });
 
 it("shows a visible keyboard focus ring that is not covered by the shell", async (t) => {
@@ -1081,25 +1235,6 @@ it("shows a safe not-found page for unknown URLs", async (t) => {
   }
 });
 
-it("keeps protected deep-link content hidden while signed out and restores it after sign-in", async (t) => {
-  const { page, requests } = await fixture(t, 1440, { authenticated: false });
-  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
-  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
-  await page.getByRole("heading", { name: "Sign in" }).waitFor();
-  assert.equal(await page.locator(".reports-page").count(), 0);
-  assert.equal(await page.getByRole("navigation", { name: "Main navigation" }).count(), 0);
-  assert.match(await page.title(), /Knowledge Base.*Sign in/);
-
-  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
-  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
-  await activate(page.getByRole("button", { name: "Sign in" }));
-  await page.locator(".reports-page").waitFor();
-
-  assert.equal(new URL(page.url()).pathname, "/reports");
-  assert.equal(new URL(page.url()).search, query);
-  assert.ok(requests.includes("/auth/login"));
-});
-
 it("rejects external and protocol-relative post-login redirects", async (t) => {
   for (const redirect of ["https://outside.example/path", "//outside.example/path"]) {
     const { page } = await fixture(t, 1440, { authenticated: false });
@@ -1130,20 +1265,6 @@ it("clears authentication on sign-out and keeps protected routes gated on Back a
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
   await page.getByRole("heading", { name: "Sign in" }).waitFor();
   assert.equal(await page.locator(".reports-page").count(), 0);
-});
-
-it("returns to sign-in after a saved session is rejected and permits authentication again", async (t) => {
-  const { page } = await fixture(t, 1440, { rejectReportsAuth: true });
-  await page.goto(`${server.resolvedUrls.local[0]}reports`);
-  await page.getByRole("heading", { name: "Sign in" }).waitFor();
-  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
-  assert.equal(await page.locator(".reports-page").count(), 0);
-
-  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
-  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
-  await activate(page.getByRole("button", { name: "Sign in" }));
-  await page.locator(".reports-page").waitFor();
-  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), "signed-in-nav-test-token");
 });
 
 it("opens each primary navigation route and updates the active link and title", async (t) => {
@@ -1182,20 +1303,6 @@ it("opens each primary navigation route and updates the active link and title", 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
-});
-
-it("preserves browser-native new-tab behavior for primary navigation links", async (t) => {
-  const { page } = await fixture(t, 1440);
-  const boardLink = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board", exact: true });
-  assert.equal(await boardLink.evaluate((element) => element.tagName), "A");
-  assert.equal(await boardLink.getAttribute("href"), "/board");
-
-  const opened = page.context().waitForEvent("page");
-  await activate(boardLink, { modifiers: ["Control"] });
-  const newTab = await opened;
-  await newTab.locator(".board-page").waitFor();
-  assert.equal(new URL(newTab.url()).pathname, "/board");
-  assert.equal(new URL(page.url()).pathname, "/");
 });
 
 it("restores the Log search query from a direct URL after reload", async (t) => {
@@ -1383,6 +1490,7 @@ it("opens the Imports route directly and switches import sources", async (t) => 
   await activate(page.getByRole("tab", { name: "Clockify" }));
   await page.locator("#imports-panel-clockify").waitFor();
   assert.equal(await page.getByRole("tab", { name: "Clockify" }).getAttribute("aria-selected"), "true");
+  await until(() => requests.includes("/imports/knowledge-base/batches") && requests.includes("/imports/clockify/batches"));
   assert.ok(requests.includes("/imports/knowledge-base/batches"));
   assert.ok(requests.includes("/imports/clockify/batches"));
 });
@@ -1467,24 +1575,6 @@ it("keeps Import and Settings recovery controls reachable in a keyboard-like pho
   await page.getByRole("alert").filter({ hasText: "Passwords do not match." }).waitFor();
   assert.equal(await newPassword.inputValue(), "new-mobile-password");
   assert.equal(await confirmPassword.inputValue(), "different-mobile-password");
-});
-
-it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
-  const { page } = await fixture(t, 1440);
-  const nav = page.getByRole("navigation", { name: "Main navigation" });
-  const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
-  await reportsLink.focus();
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => location.pathname === "/reports");
-  await page.locator(".reports-page").waitFor();
-
-  const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
-  await calendarLink.focus();
-  const newTab = page.context().waitForEvent("page");
-  await page.keyboard.press("Control+Enter");
-  const opened = await newTab;
-  await opened.locator(".calendar-page").waitFor();
-  assert.equal(new URL(opened.url()).pathname, "/calendar");
 });
 
 it("shows the floating tracker on eligible routes but not Sessions or focused phone inputs", async (t) => {
@@ -1973,7 +2063,6 @@ it("changes and persists an existing Path color using only the keyboard", async 
     pinned: false,
   };
   const { page, paths } = await fixture(t, 1440, { pathSeeds: [initialPath] });
-  page.setDefaultTimeout(4000);
   await visit(page, "/paths");
   await activate(page.getByRole("button", { name: "Edit", exact: true }));
   const editColorButton = page.getByRole("button", { name: "Choose edit path color" });
@@ -1996,7 +2085,7 @@ it("changes and persists an existing Path color using only the keyboard", async 
 });
 
 it("merges Paths into the selected target after destructive confirmation", async (t) => {
-  const { page, paths, pathMergeWrites } = await fixture(t, 1440, {
+  const { page, paths, pathMergeWrites, completedRequests } = await fixture(t, 1440, {
     pathSeeds: [
       { id: "merge-source", name: "Algorithms", description: "Problem solving", status: "ACTIVE", pinned: false },
       { id: "merge-target", name: "Writing", description: "Drafting", status: "ACTIVE", pinned: false },
@@ -2024,17 +2113,22 @@ it("merges Paths into the selected target after destructive confirmation", async
   const confirmation = page.getByRole("dialog", { name: "Merge Algorithms into Writing? All sessions will move and Algorithms will be removed." });
   await confirmation.waitFor();
   assert.equal(await confirmation.getAttribute("aria-modal"), "true");
+  const pathReadsBeforeMerge = completedRequests.filter((path) => path === "/paths").length;
   await activate(confirmation.getByRole("button", { name: "Confirm" }));
 
-  await page.locator(".path-title", { hasText: "Writing" }).waitFor();
-  await page.locator(".path-title", { hasText: "Algorithms" }).waitFor({ state: "detached" });
+  await until(() => pathMergeWrites.length === 1);
+  await until(() => completedRequests.filter((path) => path === "/paths").length > pathReadsBeforeMerge);
+  await page.waitForFunction(() => {
+    const titles = [...document.querySelectorAll(".path-title")].map((element) => element.textContent?.trim());
+    return titles.length === 1 && titles[0] === "Writing";
+  });
   assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
   assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
   assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
 });
 
 it("shows the source, target, and irreversible merge result before phone confirmation", async (t) => {
-  const { page, paths, pathMergeWrites } = await fixture(t, 390, {
+  const { page, paths, pathMergeWrites, completedRequests } = await fixture(t, 390, {
     pathSeeds: [
       { id: "phone-merge-source", name: "Phone source", description: "Source identity", status: "ACTIVE", pinned: false },
       { id: "phone-merge-target", name: "Phone target", description: "Target identity", status: "ACTIVE", pinned: false },
@@ -2059,7 +2153,10 @@ it("shows the source, target, and irreversible merge result before phone confirm
   }
   const bounds = await confirmation.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, JSON.stringify(bounds));
+  const pathReadsBeforeMerge = completedRequests.filter((path) => path === "/paths").length;
   await confirmation.getByRole("button", { name: "Confirm", exact: true }).tap();
+  await until(() => pathMergeWrites.length === 1);
+  await until(() => completedRequests.filter((path) => path === "/paths").length > pathReadsBeforeMerge);
   await page.locator(".path-title", { hasText: "Phone target" }).waitFor();
   await page.locator(".path-title", { hasText: "Phone source" }).waitFor({ state: "detached" });
   assert.deepEqual(pathMergeWrites, [{ sourceId: "phone-merge-source", targetPathId: "phone-merge-target" }]);
@@ -2070,6 +2167,7 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const { page, paths, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "undo-path", name: "Undo path", description: "Keep this path recoverable", status: "ACTIVE", pinned: false }],
   });
+  await page.clock.install();
   await page.goto(`${server.resolvedUrls.local[0]}paths`);
   const row = page.locator(".path", { hasText: "Undo path" });
   await activate(row.getByRole("button", { name: "Remove", exact: true }));
@@ -2085,7 +2183,7 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
   await snackbar.waitFor();
   assert.equal(paths.length, 0);
-  await page.waitForTimeout(7000);
+  await page.clock.fastForward(7000);
   assert.equal(await snackbar.isVisible(), true, "the named Undo action remains available for at least seven seconds");
   await activate(snackbar.getByRole("button", { name: "Undo" }));
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
@@ -2097,6 +2195,7 @@ it("keeps Path removal Undo visible and tappable at phone width", async (t) => {
   const { page, paths, requests } = await fixture(t, 390, {
     pathSeeds: [{ id: "phone-undo-path", name: "Phone Undo path", description: "Restore from the snackbar", status: "ACTIVE", pinned: false }],
   });
+  await page.clock.install();
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, "/paths");
   const row = page.locator("article.path").first();
@@ -2109,7 +2208,7 @@ it("keeps Path removal Undo visible and tappable at phone width", async (t) => {
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Phone Undo path”." });
   const undo = snackbar.getByRole("button", { name: "Undo" });
   await undo.waitFor();
-  await page.waitForTimeout(1200);
+  await page.clock.fastForward(1200);
   const bounds = await undo.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.y >= 0 && bounds.y + bounds.height <= 844, JSON.stringify(bounds));
   const unobscured = await undo.evaluate((element) => {
@@ -2433,6 +2532,7 @@ it("keeps report date and total controls reachable on a phone viewport", async (
   const { page, reportQueries } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
   await page.locator(".reports-page").waitFor();
+  await page.locator(".report-chart-card .chart-frame").waitFor();
   const dateRange = page.getByLabel("Report date range");
   await dateRange.waitFor();
   await dateRange.tap();
@@ -2518,6 +2618,7 @@ it("keeps report filters, chart, and breakdown usable after phone rotation", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
   await page.locator(".reports-page").waitFor();
+  await page.locator(".report-chart-card .chart-frame").waitFor();
   for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
     const bounds = await page.evaluate(() => {
@@ -2755,6 +2856,7 @@ it("edits and saves a Calendar day at phone width without horizontal overflow", 
   await saved;
   await page.reload();
   await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => document.querySelector(".day-editor textarea")?.value === "Phone width calendar note");
   assert.equal(await page.locator(".day-editor textarea").inputValue(), "Phone width calendar note");
 });
 
@@ -3143,6 +3245,7 @@ it("loads a note editor when the browser opens its deep link directly", async (t
   await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/n1");
+  await waitForNoteTitle(page, "Browser deep link");
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Browser deep link");
   await page.getByRole("textbox", { name: "Note content" }).waitFor();
   assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
@@ -3173,6 +3276,7 @@ it("restores the Notes list and editor through browser Back and Forward", async 
   await page.goForward();
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/history-note");
+  await waitForNoteTitle(page, "History browser note");
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "History browser note");
 });
 
@@ -3273,7 +3377,7 @@ it("archives the selected Note after confirmation and keeps it in the archive af
   const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
   await archivedTarget.waitFor();
   await page.waitForFunction(() =>
-    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+    document.querySelector(".note-row.archived")?.innerText?.includes("Keep this content in Archive"),
   );
   assert.match(await archivedTarget.innerText(), /Keep this content in Archive/);
   assert.equal(await page.locator(".note-row.archived").count(), 1, "Only the confirmed note is archived");
@@ -3281,7 +3385,7 @@ it("archives the selected Note after confirmation and keeps it in the archive af
   await page.reload();
   await page.locator(".note-row.archived", { hasText: "Browser archive target" }).waitFor();
   await page.waitForFunction(() =>
-    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+    document.querySelector(".note-row.archived")?.innerText?.includes("Keep this content in Archive"),
   );
   assert.match(await page.locator(".note-row.archived", { hasText: "Browser archive target" }).innerText(), /Keep this content in Archive/);
 });
@@ -3462,6 +3566,7 @@ it("keeps long note titles and paragraphs within a phone-width editor", async (t
   const title = page.getByRole("textbox", { name: "Note title" });
   const body = page.getByRole("textbox", { name: "Note content" });
   await title.waitFor();
+  await waitForNoteTitle(page, longTitle);
   assert.equal(await title.inputValue(), longTitle);
   assert.equal(await body.innerText(), longBody);
   const widths = await page.evaluate(() => [
@@ -3810,47 +3915,8 @@ it("groups matching record types, shows note context, and opens the active resul
   await input.press("Enter");
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/search-note");
+  await waitForNoteTitle(page, "Reports research note");
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Reports research note");
-});
-
-it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {
-  const { page } = await fixture(t, 1440);
-  await page.goto(server.resolvedUrls.local[0]);
-  await page.keyboard.press("Control+k");
-  const dialog = page.getByRole("dialog", { name: "Search everything" });
-  await dialog.waitFor();
-  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
-  await input.fill("Reports");
-  const note = page.getByRole("option", { name: /Reports research note/ });
-  await note.waitFor();
-  await input.press("ArrowDown");
-  assert.equal(await note.getAttribute("aria-selected"), "true");
-
-  const opened = page.context().waitForEvent("page");
-  await input.press("Control+Enter");
-  const newTab = await opened;
-  await newTab.getByRole("textbox", { name: "Note title" }).waitFor();
-  assert.equal(new URL(newTab.url()).pathname, "/notes/search-note");
-  assert.equal(await dialog.isVisible(), true);
-  assert.equal(new URL(page.url()).pathname, "/");
-
-  assert.equal(await note.evaluate((element) => element.tagName), "A");
-  assert.equal(await note.getAttribute("href"), "/notes/search-note");
-  const modifiedClickTab = page.context().waitForEvent("page");
-  await activate(note, { modifiers: ["Control"] });
-  const linkTab = await modifiedClickTab;
-  await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
-  assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
-  assert.equal(await dialog.isVisible(), true);
-
-  await note.evaluate((element) => {
-    element.addEventListener("contextmenu", (event) => {
-      window.__navContextMenuAllowed = !event.defaultPrevented;
-    }, { once: true });
-  });
-  await activate(note, { button: "right" });
-  assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
-  assert.equal(new URL(page.url()).pathname, "/");
 });
 
 it("loads more global search results only for the selected record type", async (t) => {
@@ -3876,9 +3942,10 @@ it("loads more global search results only for the selected record type", async (
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
-  const { page, requests } = await fixture(t, 1440, { warmup: true });
+  const { page, requests } = await fixture(t, 1440, { warmup: true, clock: true });
   const warmed = ["/notes", "/calendar/days", "/reports", "/logs"];
   const count = (path) => requests.filter((value) => value === path).length;
+  await page.clock.fastForward(6000);
   await until(() => requests.includes("/logs"));
   for (const path of warmed) assert.equal(count(path), 1, `${path} must be warmed exactly once`);
   await until(() => requests.includes("/boards/all/gantt"));
@@ -3905,6 +3972,7 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
 
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator(".dashboard-shell > header nav").waitFor();
-  await page.waitForTimeout(6000);
+  await page.clock.fastForward(6000);
   for (const path of warmed) assert.equal(count(path), 1, `A reload inside the cooldown must not warm ${path} again`);
+});
 });

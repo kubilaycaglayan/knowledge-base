@@ -11,6 +11,10 @@ password="Search-e2e-$(date +%s%N)"
 port="${SEARCH_E2E_PROXY_PORT:-26480}"
 artifact_dir="${SEARCH_E2E_ARTIFACT_DIR:-$PWD/harden-tests/local-artifacts/search-$(date +%s%N)}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  export SMOKE_BUILD_CACHE_SCOPE=search-e2e
+  compose+=(-f docker-compose.smoke-gha-cache.yml)
+fi
 cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
@@ -18,18 +22,24 @@ export COMPOSE_PROJECT_NAME="$project"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$password}"
 export JWT_SECRET="${JWT_SECRET:-search-e2e-jwt-secret-$(date +%s%N)}"
 export PROXY_HTTP_PORT="$port"
+runner_started_ms="$(date +%s%3N)"
+phase_started_ms="$runner_started_ms"
 "${compose[@]}" up -d --build db api web proxy >/dev/null
-for attempt in {1..90}; do
+build_start_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+phase_started_ms="$(date +%s%3N)"
+for attempt in {1..720}; do
   api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "http://localhost:${port}/api/v1/auth/me" || true)"
   if [[ "$api_status" == "401" ]] && curl -fsS --connect-timeout 2 --max-time 5 "http://localhost:${port}/" | grep -q 'id="app"'; then
     break
   fi
-  if [[ "$attempt" == 90 ]]; then
+  if [[ "$attempt" == 720 ]]; then
     echo "Search E2E stack did not become ready (last API status: ${api_status:-none})" >&2
     exit 1
   fi
-  sleep 2
+  sleep 0.25
 done
+readiness_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+phase_started_ms="$(date +%s%3N)"
 
 mkdir -p "$artifact_dir"
 printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$(git rev-parse HEAD)" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"
@@ -45,3 +55,6 @@ if [[ "$test_status" != 0 ]]; then
   exit "$test_status"
 fi
 rm -f "$test_log"
+acceptance_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+printf 'E2E timing (ms): build+startup=%s readiness=%s acceptance=%s total=%s\n' \
+  "$build_start_ms" "$readiness_ms" "$acceptance_ms" "$(( $(date +%s%3N) - runner_started_ms ))"
