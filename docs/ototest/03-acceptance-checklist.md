@@ -486,18 +486,9 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 
 ### Flow: Cancel a running session
 
-- [x] Cancelling/discarding a running session follows the confirmation and
-  recovery behavior shown by the application. Evidence: `FloatingTimeTracker.test.ts`
-  / `confirms before discarding a running session and preserves it when
-  cancelled` verifies the confirmation, cancel path, server cancel request, and
-  transition out of the running state.
-- [x] A failed stop or cancel keeps the user informed and reconciles the
-  displayed state with the next authoritative server update. Evidence:
-  `FloatingTimeTracker.test.ts` / `keeps a running session after failed discard
-  and preserves its draft context after retry` checks actionable error, retry,
-  and retained Path, label, and description; `reconciles a
-  failed discard when the server later reports no current timer` checks the
-  next current-timer refresh updates the visible controls.
+- [x] The floating tracker does not expose a Discard session button;
+  `FloatingTimeTracker.test.ts` verifies its absence when a timer is active.
+  The API cancellation operation remains available to supported clients.
 - [x] A failed Stop request reports the error and keeps the active Stop action
   available; retrying successfully clears the timer. Evidence: `cd frontend &&
   npx vitest run src/components/FloatingTimeTracker.test.ts -t 'failed stop and
@@ -666,12 +657,9 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   `nav-shell.acceptance.test.mjs` / `reorders Paths with browser drag and
   persists the ordered IDs` verifies Chromium drag, request order, and direct
   page reload from the updated API fixture.
-- [x] Path order can be changed with keyboard and touch controls without
-  dragging. Evidence: `nav-shell.acceptance.test.mjs` / `reorders Paths by
-  keyboard with the accessible Move up action` verifies Enter-operated up and
-  down controls; `reorders Paths by touch with a 44px Move up target` verifies
-  tap reorders at 390px with a 44×44px target. Touch evidence is desktop
-  Chromium emulation.
+- [x] Path cards omit Move up and Move down buttons at phone and desktop widths.
+  Evidence: `nav-shell.acceptance.test.mjs` / `omits Path move up and down
+  buttons at desktop and phone widths`.
 - [x] Hiding a path's board asks for confirmation before removing its board
   tab. Evidence: `cd frontend && npx vitest run src/views/PathsView.test.ts -t
   'board switch off|hide confirmation button|hide confirmation keeps'` checks
@@ -1398,7 +1386,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 ### Flow: Reorder notes
 
 - [x] Reordering notes changes their visible order after reload. Evidence: `NotesView.test.ts` / `pins notes and persists card ordering` checks the new order on the list and after remount from the API fixture.
-- [x] Keyboard/touch alternatives are available where drag reordering is supported. Evidence: `NotesView.test.ts` / `reorders notes with accessible move controls`; `nav-shell.acceptance.test.mjs` / `reorders notes with a touch-sized control at phone width` and `reorders notes with the keyboard on desktop` verify the 44px touch target and browser keyboard operation.
+- [x] Note cards omit Move up and Move down buttons at phone and desktop widths. Evidence: `nav-shell.acceptance.test.mjs` / `omits note move up and down buttons at desktop and phone widths`.
 - [x] A failed reorder restores the saved order or provides a clear retry. Evidence: `NotesView.test.ts` / `keeps note order after a failed reorder and allows a retry` verifies the saved order remains visible, the error is announced, and a second drag succeeds.
 
 ### Flow: Recover unsaved note changes

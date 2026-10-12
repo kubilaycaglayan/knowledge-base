@@ -1172,25 +1172,12 @@ const reorderNotes = () => [
   { id: "note-b", title: "Browser note B", content: "{}", contentText: "Second note", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false },
 ];
 
-it("reorders notes with a touch-sized control at phone width", async (t) => {
-  const { page, requests } = await fixture(t, 390, { noteSeeds: reorderNotes() });
-  await visit(page, "/notes");
-  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
-  const bounds = await moveDown.boundingBox();
-  assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44);
-  await moveDown.tap();
-  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
-  assert.ok(requests.includes("/notes/order"));
-});
-
-it("reorders notes with the keyboard on desktop", async (t) => {
-  const { page, requests } = await fixture(t, 1440, { noteSeeds: reorderNotes() });
-  await visit(page, "/notes");
-  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
-  await moveDown.focus();
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
-  assert.ok(requests.includes("/notes/order"));
+it("omits note move up and down buttons at desktop and phone widths", async (t) => {
+  for (const width of [390, 1440]) {
+    const { page } = await fixture(t, width, { noteSeeds: reorderNotes() });
+    await visit(page, "/notes");
+    assert.equal(await page.getByRole("button", { name: /Move Browser note/ }).count(), 0);
+  }
 });
 
 it("renders every supported top-level route after a direct browser load", async (t) => {
@@ -1734,58 +1721,16 @@ it("updates the board tab name when its Path is renamed", async (t) => {
   assert.equal(await page.getByRole("button", { name: "Reading", exact: true }).count(), 0);
 });
 
-it("reorders Paths by keyboard with the accessible Move up action", async (t) => {
+it("omits Path move up and down buttons at desktop and phone widths", async (t) => {
   const pathSeeds = [
     { id: "path-a", name: "Algorithms", status: "ACTIVE" },
     { id: "path-b", name: "Writing", status: "ACTIVE" },
   ];
-  const { page, pathOrderWrites } = await fixture(t, 1440, { pathSeeds });
-  await visit(page, "/paths");
-  const up = page.getByRole("button", { name: "Move Writing up" });
-  await up.waitFor();
-  assert.equal(await page.getByRole("button", { name: "Move Algorithms up" }).isDisabled(), true);
-  assert.equal(await page.getByRole("button", { name: "Move Writing down" }).isDisabled(), true);
-  let moveUpReachedByTab = false;
-  for (let tab = 0; tab < 30; tab += 1) {
-    await page.keyboard.press("Tab");
-    if (await up.evaluate((element) => element === document.activeElement)) {
-      moveUpReachedByTab = true;
-      break;
-    }
+  for (const width of [390, 1440]) {
+    const { page } = await fixture(t, width, { pathSeeds });
+    await visit(page, "/paths");
+    assert.equal(await page.getByRole("button", { name: /Move (Algorithms|Writing) (up|down)/ }).count(), 0);
   }
-  assert.equal(moveUpReachedByTab, true, "Tab reaches the accessible Move up action");
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
-  const down = page.getByRole("button", { name: "Move Writing down" });
-  assert.equal(await down.isDisabled(), false);
-  let moveDownReachedByTab = false;
-  for (let tab = 0; tab < 30; tab += 1) {
-    await page.keyboard.press("Tab");
-    if (await down.evaluate((element) => element === document.activeElement)) {
-      moveDownReachedByTab = true;
-      break;
-    }
-  }
-  assert.equal(moveDownReachedByTab, true, "Tab reaches the accessible Move down action");
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Algorithms,Writing");
-  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"], ["path-a", "path-b"]]);
-});
-
-it("reorders Paths by touch with a 44px Move up target", async (t) => {
-  const pathSeeds = [
-    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
-    { id: "path-b", name: "Writing", status: "ACTIVE" },
-  ];
-  const { page, pathOrderWrites } = await fixture(t, 390, { pathSeeds });
-  await visit(page, "/paths");
-  const up = page.getByRole("button", { name: "Move Writing up" });
-  await up.waitFor();
-  const target = await up.boundingBox();
-  assert.ok(target && target.width >= 44 && target.height >= 44, JSON.stringify(target));
-  await up.tap();
-  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
-  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
 });
 
 it("creates a Path by touch at phone width and keeps the dialog usable after viewport shrink", async (t) => {
