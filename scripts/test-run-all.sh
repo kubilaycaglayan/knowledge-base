@@ -122,7 +122,7 @@ main() {
   }
   web_tests() {
     npm_install frontend &&
-      (cd frontend && npm test && npm run build) &&
+      (cd frontend && npm test && npm run build && UI_CONCURRENCY=10 npm run test:ui) &&
       parallel_web_acceptance
   }
   parallel_web_acceptance() {
@@ -148,7 +148,7 @@ main() {
     node --check chrome-extension/popup.js &&
       node --check chrome-extension/options.js &&
       npm_install chrome-extension &&
-      (cd chrome-extension && npm test)
+      (cd chrome-extension && npm test && npm run build)
   }
 
   # Gradle's dependency and project caches live in a volume used only by this
@@ -165,7 +165,7 @@ main() {
   run_step "Chrome extension tests" extension_tests
 
   run_step "Contract checks" \
-    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && ./scripts/check-image-prune.sh'
+    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && node scripts/check-test-timing.mjs && node --test scripts/test-test-timing.test.mjs && ./scripts/check-image-prune.sh'
 
   run_step "Shell script syntax" \
     bash -c 'bash -n scripts/*.sh deployment/backup.sh deployment/preflight.sh && sh -n deployment/backup-loop.sh deployment/backup-db-refresh.sh'
@@ -200,16 +200,18 @@ main() {
     COMPOSE_PROJECT_NAME="$stack_project" "${test_compose[@]}" "$@"
   }
   stack_ready() {
-    local attempt api_status
-    for attempt in {1..90}; do
+    local attempt api_status readiness_started_ms
+    readiness_started_ms="$(date +%s%3N)"
+    for attempt in {1..720}; do
       api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
         "http://localhost:${stack_proxy_port}/api/v1/auth/me" || true)"
       if [[ "$api_status" == 401 ]] &&
         curl -fsS --max-time 5 "http://localhost:${stack_proxy_port}/" | grep -q 'id="app"' &&
         curl -fsS --max-time 5 "http://localhost:${stack_cloudflare_port}/" | grep -q 'id="app"'; then
+        printf 'Full-stack readiness (ms): %s\n' "$(( $(date +%s%3N) - readiness_started_ms ))"
         return 0
       fi
-      sleep 2
+      sleep 0.25
     done
     echo "The test stack is not serving (last API status: ${api_status:-none})" >&2
     return 1
@@ -235,13 +237,45 @@ main() {
   # Timer sync through the production proxy config (as
   # scripts/run-timer-websocket-e2e.sh).
   timer_browser_tests() {
-    node scripts/check-timer-websocket.mjs "http://localhost:${stack_cloudflare_port}" --round-trip &&
+    local base_url="http://localhost:${stack_cloudflare_port}"
+    AUTH_RATE_LIMIT_JWT_SECRET="$JWT_SECRET" \
+      AUTH_RATE_LIMIT_CORS_ORIGIN="${CORS_ORIGINS:-http://localhost:5177}" \
+      node scripts/check-auth-rate-limit-proxy.mjs "$base_url" &&
+      AUTH_RATE_LIMIT_E2E_BASE_URL="$base_url" BROWSER_ENGINE=chromium \
+        BROWSER_PROFILE=desktop npm run test:auth:rate-limit:e2e --prefix frontend &&
+      AUTH_RATE_LIMIT_E2E_BASE_URL="$base_url" BROWSER_ENGINE=chromium \
+        BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend &&
+      node scripts/check-timer-websocket.mjs "$base_url" --round-trip &&
       TIMER_E2E_BASE_URL="http://localhost:${stack_cloudflare_port}" npm run test:timer:e2e --prefix frontend
   }
   search_browser_tests() {
     SEARCH_E2E_BASE_URL="http://localhost:${stack_proxy_port}" \
       SEARCH_E2E_EMAIL="search-e2e-$(date +%s%N)@example.com" \
       SEARCH_E2E_PASSWORD="Search-e2e-$(date +%s%N)" npm run test:search:e2e --prefix frontend
+  }
+  parallel_browser_tests() {
+    local prefix="/tmp/knowledge-base-test-run-all-e2e-${BASHPID}-$(date +%s%N)"
+    local failure=0 name
+    declare -A pids
+    for name in board timer lines search; do
+      case "$name" in
+        board) board_browser_tests > "${prefix}-${name}.log" 2>&1 & ;;
+        timer) timer_browser_tests > "${prefix}-${name}.log" 2>&1 & ;;
+        lines) line_history_browser_tests > "${prefix}-${name}.log" 2>&1 & ;;
+        search) search_browser_tests > "${prefix}-${name}.log" 2>&1 & ;;
+      esac
+      pids["$name"]=$!
+    done
+    for name in board timer lines search; do
+      if wait "${pids[$name]}"; then
+        printf '\n==> Real-stack %s acceptance passed\n' "$name"
+      else
+        printf '\n==> Real-stack %s acceptance FAILED\n' "$name" >&2
+        failure=1
+      fi
+      cat "${prefix}-${name}.log"
+    done
+    (( failure == 0 ))
   }
 
   if (( quick == 0 )); then
@@ -256,15 +290,13 @@ main() {
         PROXY_CLOUDFLARE_PORT="$stack_cloudflare_port" COMPOSE_PROJECT_NAME="$stack_project" \
         ./scripts/run-smoke-tests.sh
       if stack_ready; then
-        run_step "${browser_steps[0]}" board_browser_tests
-        run_step "${browser_steps[1]}" timer_browser_tests
-        run_step "${browser_steps[2]}" line_history_browser_tests
-        run_step "${browser_steps[3]}" search_browser_tests
+        run_step "Real-stack browser suites (4 concurrent)" parallel_browser_tests
       else
         for name in "${browser_steps[@]}"; do skip_step "$name" "the test stack is not serving"; done
         failures=$(( failures + 1 ))
       fi
       run_step "Remove test stack" stop_test_stack
+      run_step "Orca line-history real-stack check" ./scripts/run-line-history-orca.sh
     else
       for name in "$smoke_step" "${browser_steps[@]}"; do
         skip_step "$name" "the test images did not build"

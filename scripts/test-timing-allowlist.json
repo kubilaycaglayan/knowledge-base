@@ -1,0 +1,40 @@
+{
+  "frontend/src/lib/warmup.test.ts": [
+    {
+      "expression": "setTimeout(resolve, 100)",
+      "count": 2,
+      "reason": "The scheduler tests need a real in-flight task to prove work remains sequential and cancellation aborts running work while timers advance."
+    }
+  ],
+  "frontend/src/views/NotesView.test.ts": [
+    {
+      "expression": "setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50)",
+      "count": 6,
+      "reason": "These route-guard cases deliberately keep real router timeout scheduling while a debounced save or retry resolves across navigation."
+    }
+  ],
+  "frontend/scripts/board.acceptance.test.mjs": [
+    {
+      "expression": "waitForTimeout(150)",
+      "count": 11,
+      "reason": "Short settling windows follow wheel input and viewport changes whose rendered timeline geometry is the assertion target."
+    },
+    {
+      "expression": "waitForTimeout(300)",
+      "count": 3,
+      "reason": "These waits let the board transition finish before checking visible width and selection state."
+    }
+  ],
+  "frontend/scripts/nav-shell.acceptance.test.mjs": [
+    {
+      "expression": "waitForTimeout(150)",
+      "count": 4,
+      "reason": "These short waits exercise transient navigation feedback and focus behavior before asserting its final state."
+    },
+    {
+      "expression": "waitForTimeout(300)",
+      "count": 5,
+      "reason": "These short waits cover shell transition and deferred focus behavior; replacing them with state waits is tracked separately from debounce timing."
+    }
+  ]
+}

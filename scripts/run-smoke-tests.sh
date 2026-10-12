@@ -30,6 +30,7 @@ fi
 
 compose_files=(-f docker-compose.yml -f docker-compose.smoke.yml)
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  export SMOKE_BUILD_CACHE_SCOPE=smoke
   compose_files+=(-f docker-compose.smoke-gha-cache.yml)
 elif [[ -n "${SMOKE_BUILD_CACHE_DIR:-}" ]]; then
   SMOKE_BUILD_CACHE_DIR="$(realpath -m "$SMOKE_BUILD_CACHE_DIR")"
@@ -84,6 +85,8 @@ if [[ "${SMOKE_SKIP_BUILD:-0}" == "1" ]]; then
       exit 1
     fi
   done
+  smoke_started_ms="$(date +%s%3N)"
+  phase_started_ms="$smoke_started_ms"
   compose up -d "${services[@]}" --no-build >/dev/null
 else
   smoke_pid="${BASHPID:-$$}"
@@ -93,16 +96,22 @@ else
     exit 1
   fi
   export BUILDX_BUILDER="$buildx_builder"
+  smoke_started_ms="$(date +%s%3N)"
+  phase_started_ms="$smoke_started_ms"
   compose up -d "${services[@]}" --build >/dev/null
 fi
+image_startup_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+phase_started_ms="$(date +%s%3N)"
 # A fresh disposable database applies all Flyway migrations before the
 # actuator endpoint becomes healthy; allow that cold-start path to complete.
-for attempt in {1..180}; do
+for attempt in {1..1440}; do
   if compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
     break
   fi
-  sleep 2
+  sleep 0.25
 done
+readiness_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+phase_started_ms="$(date +%s%3N)"
 compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | node scripts/check-ototest-source-drift.mjs --openapi-stdin
 allowed_cors="$(
   compose exec -T api wget -S -O /dev/null \
@@ -199,15 +208,15 @@ legacy_activity_count="$(
 [[ "$(compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select to_regclass('public.activity');")" == "" ]]
 
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
-  for attempt in {1..30}; do
+  for attempt in {1..240}; do
     if curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -q 'id="app"'; then
       break
     fi
-    if [[ "$attempt" == 30 ]]; then
+    if [[ "$attempt" == 240 ]]; then
       echo "web proxy did not become ready" >&2
       exit 1
     fi
-    sleep 2
+    sleep 0.25
   done
   proxy_headers="$(curl -kfsSI --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}"/)"
   printf '%s' "$proxy_headers" | grep -qi '^x-content-type-options: nosniff'
@@ -239,15 +248,15 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   # the production (Cloudflare) proxy config: a proxy that serves the web app
   # for /ws/* instead leaves every client polling /timers/current.
   for proxy_port in "$PROXY_HTTP_PORT" "$PROXY_CLOUDFLARE_PORT"; do
-    for attempt in {1..30}; do
+    for attempt in {1..240}; do
       if curl -fsS --connect-timeout 2 --max-time 5 "http://localhost:${proxy_port}/" | grep -q 'id="app"'; then
         break
       fi
-      if [[ "$attempt" == 30 ]]; then
+      if [[ "$attempt" == 240 ]]; then
         echo "proxy on port ${proxy_port} did not become ready" >&2
         exit 1
       fi
-      sleep 2
+      sleep 0.25
     done
     node scripts/check-timer-websocket.mjs "http://localhost:${proxy_port}" --round-trip
   done
@@ -262,15 +271,15 @@ header=(--header="Authorization: Bearer $token")
 
 # A deployment must accept a token issued by the previous API container.
 compose up -d --no-deps --force-recreate api
-for attempt in {1..60}; do
+for attempt in {1..480}; do
   if api http://localhost:8080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
     break
   fi
-  if [[ "$attempt" == 60 ]]; then
+  if [[ "$attempt" == 480 ]]; then
     echo 'Recreated API did not become healthy' >&2
     exit 1
   fi
-  sleep 2
+  sleep 0.25
 done
 api "${header[@]}" http://localhost:8080/api/v1/auth/me | grep -Fq "$email"
 # Servlet error dispatches must not turn a valid session into a 401.
@@ -602,3 +611,6 @@ if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   [[ "$restored_count" == "1" ]]
 fi
 echo "Smoke test passed"
+checks_ms="$(( $(date +%s%3N) - phase_started_ms ))"
+printf 'Smoke timing (ms): image+startup=%s API readiness=%s checks=%s total=%s\n' \
+  "$image_startup_ms" "$readiness_ms" "$checks_ms" "$(( $(date +%s%3N) - smoke_started_ms ))"

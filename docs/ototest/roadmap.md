@@ -62,7 +62,7 @@ units, including leap-February and differing destination lengths.
 | OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | In progress |
 | OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Complete |
 | OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | In progress |
-| OTOTEST-06 | Measure and reduce test runtime across suites without losing coverage | Medium | — | Proposed |
+| OTOTEST-06 | Measure and reduce test runtime across suites without losing coverage | Medium | — | In progress |
 
 The latest OTOTEST-05 local gate evidence is recorded in
 [`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).

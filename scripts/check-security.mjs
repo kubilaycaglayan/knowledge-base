@@ -254,7 +254,7 @@ const checks = [
   ],
   [
     /smoke:[\s\S]*setup-node@v4[\s\S]*node-version: 22[\s\S]*run-smoke-tests\.sh/.test(verifyWorkflow) &&
-      verifyWorkflow.includes("deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro"),
+      verifyWorkflow.includes("deployment/Caddyfile.cloudflare:/configs/deployment.cloudflare.Caddyfile:ro"),
     "CI validates the Cloudflare proxy config and runs smoke with Node 22",
   ],
   [

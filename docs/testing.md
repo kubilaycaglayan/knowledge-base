@@ -11,6 +11,33 @@ source-backed outline for route, page-region, control, gesture, security, and
 edge-case inventories. `/development` is temporary tooling and excluded from
 supported product route coverage and navigation.
 
+## Test runtime and concurrency
+
+The measured runtime work is tracked in the [OTOTEST-06 checklist](ototest/06-acceptance-checklist.md).
+Vitest debounce and autosave tests use fake timers while still advancing the
+production timer path. Browser acceptance prefers state-based waits; use the
+Playwright clock for behavior whose purpose is to verify elapsed time. Keep
+cases serial when they share one page, account, mutable fixture, or ordered
+request sequence. The measured runtimes below preserve the existing test and
+audit counts:
+
+| Suite | Baseline | Current | Concurrency / coverage |
+| --- | ---: | ---: | --- |
+| Frontend Vitest | 23.54 s | 10.90 s | 70 files, 866 tests; threaded pool |
+| UI route/theme/state audit | 171.68 s | 43.55 s | 168 audits; ten isolated scenarios concurrently |
+| Tracker / board / nav acceptance | 221.64 s summed | 128 s group median | 341 tests, three isolated runners concurrently |
+| Backend H2 / PostgreSQL | 45.54 / 54.93 s | 37.75 / 55.48 s | H2 up to four forks; PostgreSQL serial |
+| Real-stack browser E2E group | 98 s serial sum | 44.85 s median | 59 tests; four suites concurrently |
+
+The local aggregate runs UI audits at `UI_CONCURRENCY=10`, then tracker, board,
+and nav acceptance together, then board, timer, line-history, and search
+real-stack suites four at a time with separate generated accounts. The
+four-way real-stack stage and UI audit each passed five consecutive runs.
+Backend PostgreSQL tests remain serial to protect the empty-database migration
+guard. Use `node scripts/check-test-timing.mjs` to prevent unreviewed timer
+sleeps in component tests and fixed waits above 100 ms in mocked board/nav
+acceptance; every current exception has a reason and an occurrence cap.
+
 ## Coverage change checklist and gates
 
 For a route, API contract, visible control, gesture, permission, or security
@@ -85,18 +112,20 @@ isolated API container without publishing its port to the host. Parser regressio
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |
-| Frontend unit and component | `verify / web-and-extension` (`npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build`) | `cd frontend && npm test && node --test scripts/vitest-scope.test.mjs && npm run build` | About 30 seconds with dependencies installed; Node 22 and `frontend/npm ci` |
-| Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | About 1–2 minutes; Docker and Gradle 8.13/JDK 21 container |
-| PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | About 2–3 minutes for empty-database full suite plus migrated startup; Docker and PostgreSQL 16 |
-| Browser route/control acceptance | `verify / web-and-extension` — **Run web route and control browser acceptance** (`npm run test:nav`) | `cd frontend && npm run test:nav` (mocked API, headless Chromium) | About 2 minutes; Node 22 and Playwright Chromium |
-| Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; domain acceptance scripts also run with their dedicated `scripts/run-*-e2e.sh` wrappers | Fixture-backed `npm run test:*` suites beyond `test:nav` and domain real-stack wrappers are opt-in; install Playwright Chromium and use only disposable stacks | Around 1–2 minutes for smoke, 10–30 seconds per domain wrapper after images are built, and about 20–40 seconds for line-history/Orca; cold Docker builds take longer. Wrappers share HTTPS port 26443 and run sequentially. |
+| Frontend unit and component | `verify / web-and-extension` (`npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build`) | `cd frontend && npm test` | 10.90 s median, 70 files / 866 tests; Node 22 |
+| UI route/theme/state audit | `verify / web-and-extension` (`UI_CONCURRENCY=10 npm run test:ui`) | `cd frontend && npm run test:ui` | 43.55 s median, 168 audits; ten isolated scenarios concurrently |
+| Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | H2 37.75 s median; Docker and Gradle 8.13/JDK 21 container |
+| PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | 55.48 s full suite median plus migrated startup; Docker and PostgreSQL 16 |
+| Browser route/control acceptance | `verify / web-browser-acceptance` — **Run web route and control browser acceptance** (`npm run test:nav`) | `cd frontend && npm run test:nav` (mocked API, headless Chromium) | 91.10 s median at concurrency 7; Node 22 and Playwright Chromium |
+| Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; local aggregate also runs board and search | Fixture-backed `npm run test:*` suites beyond the listed CI jobs are opt-in; use disposable stacks | Plain/full smoke 71–76 s; standalone browser runners 22–54 s after images are built. The local aggregate runs four independent real-stack suites concurrently in about 45 s; Orca takes about 31 s. |
 | Packaged extension browser | `verify / web-and-extension` — **Run packaged extension browser acceptance** | `(cd frontend && npx playwright install --with-deps chromium) && ./scripts/run-extension-browser-e2e.sh` (desktop Chromium under Xvfb; isolated temporary profile and loopback API fixture) | About 5 seconds after browser dependencies are installed; Chromium, Playwright, Xvfb, Node 22 |
-| Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | A few seconds; Node 22 |
+| Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | 0.98 s median for 278 checks; Node 22 |
 | iOS | Out of scope while the app is inactive; historical jobs remain disabled | Manual macOS workflow only if the supported-client decision changes | No current gate/runtime |
 
 Browser suites that need a local application or installed extension remain
 opt-in unless they are listed in the CI gates above. The route/control browser
-suite and packaged extension browser journey run in `verify / web-and-extension`; the timer WebSocket
+suite runs in `verify / web-browser-acceptance`; packaged extension browser
+acceptance runs in `verify / web-and-extension`; the timer WebSocket
 and line-history jobs upload artifacts only on failure. Artifact names include
 the workflow run ID and attempt, runner evidence records the source commit, and
 the workflow summary links the run. Uploads expire after 14 days. Browser traces

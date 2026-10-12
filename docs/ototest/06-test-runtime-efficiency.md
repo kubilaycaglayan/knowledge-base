@@ -36,6 +36,7 @@ frontend. Each one is measured in the baseline and has an owning task.
 | Real-stack browser E2E | `run-board-e2e.sh`, `run-search-e2e.sh`, `run-timer-websocket-e2e.sh`, `run-line-history-e2e.sh`, `run-line-history-orca.sh`; CI `timer-websocket-e2e`, `line-history-e2e`, `line-history-orca` | T6 |
 | Aggregate local run | `scripts/test-run-all.sh` (`--quick` and full) | T0, milestone comparison |
 | CI workflow as a whole | `.github/workflows/verify.yml` | T7 |
+| CI policy/meta tests | Vitest scope, OTOTEST contract and browser artifact checks | T0, T8 |
 
 iOS suites, including the `ios`, `ios-note-document`, and
 `hard06-notes-focused` workflows, are out of scope, consistent with the
@@ -262,20 +263,34 @@ their context within each fork.
 
 ### OTOTEST-06-T6 — Real-stack and smoke stages
 
-- [ ] Measure image build, stack readiness, and test time separately for each
+- [x] Measure image build, stack readiness, and test time separately for each
   runner and for the CI jobs.
-- [ ] Replace `sleep 2` readiness loops with Compose health checks and
+- [x] Replace `sleep 2` readiness loops with Compose health checks and
   `docker compose up --wait` where the services define health checks, or a
   shorter poll with the same total timeout.
-- [ ] In CI, build the test images once (Buildx with the GitHub Actions cache,
+- [x] In CI, build the test images once (Buildx with the GitHub Actions cache,
   `cache-from/cache-to: type=gha`) and reuse them for smoke and real-stack
   jobs, or run the real-stack suites against one shared stack as
   `test-run-all.sh` already does locally.
-- [ ] Cache Playwright browsers in CI (`~/.cache/ms-playwright`, keyed on the
+- [x] Cache Playwright browsers in CI (`~/.cache/ms-playwright`, keyed on the
   Playwright version) and install system dependencies only when needed.
-- [ ] Keep disposable Compose project names, generated credentials, and
+- [x] Keep disposable Compose project names, generated credentials, and
   project-scoped `down --volumes` cleanup; `node scripts/check-smoke-cleanup.mjs`
   must still pass.
+- [x] Run independent real-stack browser suites concurrently on the local
+  shared disposable stack while keeping each suite's account and logs separate.
+
+The smoke and each real-stack runner now report image/startup, readiness, and
+acceptance time separately. Readiness polling uses 250 ms intervals with the
+original timeout budgets. The measured full-stack smoke took 75.91 s
+(image/startup 53.58 s, API readiness 5.42 s, checks 14.65 s); the plain smoke
+took 71.36 s (50.28 s, 5.43 s, and 13.81 s). The standalone E2E phase splits
+and test counts are in the checklist. GitHub Actions uses BuildKit GHA cache
+imports from the shared smoke cache plus per-suite exports, and caches
+Playwright browser downloads by the frontend lockfile. The local aggregate
+shares one disposable stack and runs its independent browser suites four at a
+time; five runs passed all 61 tests each at about 45 s, versus about 98 s for
+the serial suite-time sum. CI timing still needs post-change runs.
 
 ### OTOTEST-06-T7 — CI workflow layout
 
@@ -289,30 +304,44 @@ their context within each fork.
 - [ ] Record before/after wall time for the whole workflow (first job start to
   last job end) over at least three runs each.
 
+The workflow change is staged locally: browser acceptance is separated from
+the existing web/extension/repository job, duplicate direct extension tests are removed, and
+superseded branch runs share a cancelable concurrency group. Baseline workflow
+runs have a 433 s median. Post-change GitHub runs are needed to establish the
+critical-path effect; this branch has not been pushed.
+
 ### OTOTEST-06-T8 — Chrome extension and repository checks
 
-- [ ] From the baseline, list the extension tests, extension build, and each
+- [x] From the baseline, list the extension tests, extension build, and each
   `scripts/check-*.mjs` / shell / Caddy check with its time. These are
   expected to be short; act only on items that take a noticeable share of
   the run.
-- [ ] The extension `npm test` and the CI step run overlapping `node --test`
+- [x] The extension `npm test` and the CI step run overlapping `node --test`
   file lists. Remove duplicated execution while keeping every file run at
   least once.
-- [ ] Run independent repository checks concurrently where their output stays
+- [x] Run independent repository checks concurrently where their output stays
   readable, and validate all Caddy configs in one container as
   `test-run-all.sh` already does, instead of one `docker run` per config in
   CI.
 
+Extension tests (9 files, 55 tests) and repository checks (278 checks) are
+short: 0.20 s and 0.98 s median respectively; the three Caddy validations
+together take 0.30 s in one container. Three parallel repository-check probes
+took 1.07, 0.98, and 0.84 s, matching the 0.98 s serial baseline median. The
+parallel wrapper was removed as it did not improve runtime. The CI duplicate
+invocation of four extension test files is removed because `npm test` already
+covers all nine. CI validates all three Caddy configs in one container.
+
 ### OTOTEST-06-T9 — Documentation and guardrails
 
-- [ ] Update `docs/testing.md` with the measured runtimes per suite and the
+- [x] Update `docs/testing.md` with the measured runtimes per suite and the
   timing conventions: fake timers for debounce/autosave in Vitest, Playwright
   clock instead of fixed waits, and when serial execution is required.
-- [ ] Add a lightweight check (for example to `scripts/check-*.mjs`) that
+- [x] Add a lightweight check (for example to `scripts/check-*.mjs`) that
   fails on new `setTimeout(resolve, <n>)` sleeps in `frontend/src/**/*.test.ts`
   and new `waitForTimeout(<n>)` above a small threshold in browser suites,
   with an allowlist that requires a reason.
-- [ ] Update the roadmap, milestone index, and this document's status
+- [x] Update the roadmap, milestone index, and this document's status
   together.
 
 ## Acceptance

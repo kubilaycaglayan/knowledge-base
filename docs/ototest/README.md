@@ -12,7 +12,7 @@ or run record.
 | [OTOTEST-03](03-web-routes-and-controls.md) | Web routes and interactive controls | High | In progress |
 | [OTOTEST-04](04-real-stack-and-extension.md) | Real-stack journeys and Chrome extension integration | High | Complete |
 | [OTOTEST-05](05-traceability-and-gates.md) | Ongoing traceability and CI gates | High | In progress |
-| [OTOTEST-06](06-test-runtime-efficiency.md) | Measure and reduce test runtime without losing coverage | Medium | Proposed |
+| [OTOTEST-06](06-test-runtime-efficiency.md) | Measure and reduce test runtime without losing coverage | Medium | In progress |
 
 The source-backed [product test tree](product-test-tree.md) is the navigation
 and feature outline for building the detailed route, control, and endpoint
