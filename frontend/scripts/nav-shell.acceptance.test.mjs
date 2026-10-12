@@ -630,18 +630,20 @@ it("keeps shell actions reachable without horizontal overflow at narrow, wide, a
 
 it("uses at least 16px text controls on phone-width routes", async (t) => {
   const { page } = await fixture(t, 390);
+  const editableControl = 'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]';
+  const visibleEditableControl = 'input:not([type="checkbox"]):not([type="radio"]):visible, select:visible, textarea:visible, [contenteditable="true"]:visible';
   for (const path of ["/", "/logs", "/notes/n1", "/calendar", "/settings"]) {
     await visit(page, path);
+    await page.locator(visibleEditableControl).first().waitFor();
     if (path === "/settings") {
       await page.getByRole("heading", { name: "Sign-in methods" }).waitFor();
       await page.getByRole("textbox", { name: "Current password" }).waitFor();
     }
-    const controls = await page.evaluate(() => [...document.querySelectorAll(
-      'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]',
-    )].filter((element) => element.getClientRects().length > 0).map((element) => ({
+    const controls = await page.evaluate((selector) => [...document.querySelectorAll(selector)]
+      .filter((element) => element.getClientRects().length > 0).map((element) => ({
       name: element.getAttribute("aria-label") || element.getAttribute("name") || element.tagName,
       fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
-    })));
+    })), editableControl);
     assert.ok(controls.length > 0, `${path} should expose a visible editable control`);
     assert.ok(controls.every(({ fontSize }) => fontSize >= 16), `${path}: ${JSON.stringify(controls)}`);
   }
