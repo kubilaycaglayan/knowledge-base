@@ -1,0 +1,12 @@
+groups:
+  - name: knowledge-base-user-journey
+    rules:
+      - alert: KnowledgeBaseUserJourneyFailing
+        expr: knowledge_base_journey_success == 0
+        for: 15s
+        labels:
+          severity: page
+          service: knowledge-base
+        annotations:
+          summary: Knowledge Base note journey is failing
+          description: Registration or note create/read/archive failed in the local synthetic journey.

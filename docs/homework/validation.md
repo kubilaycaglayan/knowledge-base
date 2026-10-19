@@ -30,8 +30,35 @@ Docker with the repository's Java 21 backend build and PostgreSQL 16 image.
 The added CI workflow selects Node 22; no hosted run is claimed before publication.
 
 The entire application suite, authenticated production flows, iOS tests, independent
-agent review, and human acceptance were not run during this artifact task. Existing
-backend/frontend code and application lockfiles are unchanged. No production or
-development volume was accessed by the exporter. Existing local skill files are
+agent review, and human acceptance were not run during the original artifact task.
+The observability demo's backend dependency and source changes are limited to
+optional tracing and request event export; frontend sources
+and lockfiles are unchanged. No production or development volume was accessed by
+the exporter. Existing local skill files are
 ignored and were not force-added. The homework guard does not replace a content
 secret scanner or server-side branch protection.
+
+## Observability demo verification — 2026-10-19
+
+The separate local demo was run with its fixed `knowledge-base-observability-demo`
+Compose project and smoke overlay. The API used a newly created project-scoped
+disposable PostgreSQL volume. Verification showed the synthetic registration and
+note create/read/archive journey succeeding; Prometheus reported the journey
+success metric and loaded the alert rule; Tempo returned API traces; Loki returned
+structured HTTP events containing trace and span IDs; Grafana health returned
+200. A controlled synthetic failure caused `KnowledgeBaseUserJourneyFailing` to
+reach the responder, which cleared the injected fault and logged confirmed
+end-to-end recovery. Alertmanager had no active alert after recovery.
+
+The demo stack was left running for owner inspection at `http://127.0.0.1:3300`
+(Grafana), `http://127.0.0.1:3301` (Alertmanager), and
+`http://127.0.0.1:3302` (Prometheus). Remove only this isolated stack using
+`./scripts/run-observability-demo.sh down`.
+
+At the owner's direction, the later standalone Gradle test command was interrupted
+before completion. The demo's Docker build had already compiled the backend and
+the end-to-end demo walkthrough above was completed before the final small
+configuration edits. No claim is made that the final diff passed the full test
+suite. Optional SMTP delivery using `ON_CALL_AGENT_EMAIL` was added afterward at
+the owner's request and was not run; no SMTP configuration was present in the
+current shell or repository.

@@ -7,7 +7,8 @@ Prepared: 2026-10-19
 
 This is a concise retrospective submission package for an existing application.
 The owner requested these changes remain on a homework branch, outside `main`.
-No PR, remote push, merge, or production deployment is included.
+The owner authorized publishing this branch and opening a review PR. No merge or
+production deployment is included.
 
 ## Review order
 
@@ -19,12 +20,15 @@ No PR, remote push, merge, or production deployment is included.
    read-only MCP server, and optional commit guard.
 5. [Security findings](../../security/scan-findings.md), [local pre-PR audit](../../security/pr-audit.md),
    and [operations diagnosis](../../ops/diagnosis.md).
-6. [Validation](validation.md), [tracker](task-tracker.md), and [rubric](rubric.md)
+6. [Local observability demo](../../observability/README.md) for correlated
+   telemetry, alerting, and bounded on-call triage.
+7. [Validation](validation.md), [tracker](task-tracker.md), and [rubric](rubric.md)
    for completed work and remaining course requirements.
 
-Existing local skills are preserved. No application source, database migration,
-deployment behavior, or existing CI job is changed by this package. Dependency
-installation for the homework tools is confined to `mcp-server/`.
+Existing local skills are preserved. The observability demo adds optional
+backend tracing and Loki request-event export plus an isolated Compose stack; it
+adds no database migration, production deployment, or CI job. Homework tool
+dependencies remain confined to `mcp-server/`.
 
 ```bash
 npm --prefix mcp-server ci --ignore-scripts

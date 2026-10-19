@@ -17,9 +17,9 @@ from that earlier review. This is evidence mapping, not an awarded score.
 | Containerization | Compose and Dockerfiles | Present; documented dev launcher requires an existing volume |
 | Deployment | Public URL in README; [deployment guide](../deployment.md) | Public reachability is limited evidence of behavior |
 | CI/CD | `verify.yml` and verified-main watcher | Automatic deployment exists; dev/manual-prod split is absent |
-| Observability | Request logger, Actuator health | Correlated metrics/traces/logs and collector UI absent |
-| User-impact alerting | Health probes | No alert rule/delivery demonstrated |
-| On-call agent | Human-invoked reviewer only | No alert-triggered repair agent |
+| Observability | [Local observability demo](../../observability/README.md): synthetic register/create/read/archive journey; Prometheus metrics, Spring OTLP traces, structured request logs pushed to Loki with trace and span IDs; Grafana UI | Implemented for an isolated local demo; production collection/retention is not claimed |
+| User-impact alerting | Prometheus `KnowledgeBaseUserJourneyFailing` rule; Alertmanager routes firing alerts to the local responder, with optional SMTP email via `ON_CALL_AGENT_EMAIL` | Local alert path implemented and verified; email delivery requires an owner-provided SMTP relay |
+| On-call agent | Webhook responder checks API health, clears the demo's injected fault, retries the journey, and records recovery/escalation result | Bounded local response implemented; arbitrary repair and production access are outside this demo |
 
 The current course requires three peer reviews. They are an external submission
 step, not a repository artifact. Dates and submission workflow belong to the

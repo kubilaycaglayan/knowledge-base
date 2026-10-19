@@ -15,8 +15,17 @@ app:
   jwt-secret: ${JWT_SECRET:}
   cors-origins: ${CORS_ORIGINS:http://localhost:5177}
   google-client-id: ${GOOGLE_CLIENT_ID:}
+  observability:
+    loki-push-url: ${LOKI_PUSH_URL:}
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:0.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+      transport: http
