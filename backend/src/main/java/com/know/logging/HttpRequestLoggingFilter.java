@@ -53,7 +53,13 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
           "trace_id", traceId == null ? "" : traceId,
           "span_id", spanId == null ? "" : spanId);
       try {
-        log.info("{}", JSON.writeValueAsString(event));
+        log.info(
+            "{} {} {} ({} ms) {}",
+            request.getMethod(),
+            request.getRequestURI(),
+            response.getStatus(),
+            durationMillis,
+            JSON.writeValueAsString(event));
         pushToLoki(event);
       } catch (Exception e) {
         log.warn("Could not serialize HTTP access event");
