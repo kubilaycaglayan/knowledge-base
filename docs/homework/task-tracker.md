@@ -18,7 +18,7 @@ This is a repository-backed tracker, not a claim that GitHub Issues was used.
 | HW-04 Extension pack | Two useful skills, workflow, specialist, runnable read-only MCP, guardrail, permissions | [extension guide](../agent-extension-pack.md), protocol and guard tests |
 | HW-05 Security evidence | Retain actual scan output, report findings and limitations, document AI/data policy | [findings](../../security/scan-findings.md), [audit](../../security/pr-audit.md) |
 | HW-06 Operations evidence | Record bounded diagnosis and existing deployment/test capabilities | [diagnosis](../../ops/diagnosis.md), [runbook](../../ops/runbook.md) |
-| HW-07 Owner review/publication | Owner reviews diff; publish the branch only on instruction; public tracker link works | Owner authorized push and PR; review pending |
+| HW-07 Owner review/publication | Owner reviews diff; publish the branch only on instruction; public tracker link works | [PR #162](https://github.com/kubilaycaglayan/knowledge-base/pull/162) open; review pending |
 | HW-08 Fresh-clone setup | One command starts an isolated persistent reviewer app without a pre-existing dev volume | Open; smoke verification exists, persistent launcher not added |
 | HW-09 Observability | One user journey has correlated signals in a collector UI with sensitive-data exclusions | Implemented and runtime verified in [the isolated demo](../../observability/README.md): metrics, traces, Loki request events, and trace IDs |
 | HW-10 Alert and responder | Demonstrate a user-impact alert waking an agent, bounded recovery, and verification | Implemented and runtime verified: injected synthetic failure triggered Alertmanager, responder cleared it, and end-to-end journey recovery passed |
