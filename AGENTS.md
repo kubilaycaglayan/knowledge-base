@@ -1,5 +1,28 @@
 # Knowledge Base repository guidance
 
+## DataTalksClub homework context
+
+This checkout's homework work belongs on `homework/datatalksclub-submission`.
+Keep these submission artifacts separate from `main`; do not merge, deploy, or
+publish them without the owner's instruction. Existing `.agents/skills/` are local
+ignored skills and must be preserved. Additional homework skills live under
+`agent-capabilities/skills/`; load their `SKILL.md` explicitly when relevant.
+
+Read modular context according to the task:
+
+- [Concise product specification](product-spec.md): implemented workflows and acceptance criteria.
+- [Homework tracker](docs/homework/task-tracker.md): task scope, results, and open work.
+- [Agent team](docs/agent-team.md) and [AI workflow](docs/ai-workflow.md): responsibilities and handoffs.
+- [API contract](docs/api-contract.md): exported schemas and matrix reconciliation.
+- [Extension pack](docs/agent-extension-pack.md) and [permissions](docs/permissions.md): skills, MCP, and guardrail setup.
+- [Rubric mapping](docs/homework/rubric.md) and [validation](docs/homework/validation.md): evidence and limitations.
+- [AI/data policy](security/ai-data-policy.md): acceptable context and retained artifacts.
+
+Document actual tool use and verification. Retrospective specifications and role
+definitions must not be presented as historical execution evidence. For artifact
+changes, run `npm --prefix mcp-server ci --ignore-scripts` followed by
+`npm --prefix mcp-server run verify`, plus relevant existing checks below.
+
 The application name is **Knowledge Base**. Use `Knowledge Base` as the product name and `knowledge-base` / `KnowledgeBase` as code, Compose, deployment, and documentation identifiers. Existing legacy Java packages, iOS target paths, database names, Docker volume names, and historical data identifiers must be treated as compatibility-sensitive and changed only through an explicit migration.
 
 Knowledge Base is a production-shaped monorepo for a personal knowledge and activity tracker. Keep PostgreSQL as the system of record and keep domain rules in the Spring service/domain layer so Vue, SwiftUI, and the Manifest V3 extension remain thin API clients.

@@ -1,0 +1,3966 @@
+openapi: 3.1.0
+info:
+  title: Knowledge Base API
+  description: Retrospective contract exported from the implemented Spring API. See
+    docs/api-contract.md for provenance and limitations.
+  version: v1
+servers:
+  - url: /
+    description: Same origin; paths include /api/v1
+paths:
+  /api/v1/timers/{id}:
+    put:
+      tags:
+        - timer-controller
+      operationId: configure
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunningUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/draft:
+    get:
+      tags:
+        - timer-controller
+      operationId: draft
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/DraftView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - timer-controller
+      operationId: saveDraft
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/DraftView"
+      security:
+        - bearerAuth: []
+  /api/v1/time-entries/{id}:
+    get:
+      tags:
+        - timer-controller
+      operationId: get
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - timer-controller
+      operationId: edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - timer-controller
+      operationId: remove
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/preferences:
+    get:
+      tags:
+        - preferences-controller
+      operationId: get_1
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/View"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - preferences-controller
+      operationId: update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/View"
+      security:
+        - bearerAuth: []
+  /api/v1/paths/{id}:
+    get:
+      tags:
+        - path-controller
+      operationId: get_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - path-controller
+      operationId: update_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PathRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - path-controller
+      operationId: delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/paths/order:
+    put:
+      tags:
+        - path-controller
+      operationId: order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/notes/{id}:
+    get:
+      tags:
+        - note-controller
+      operationId: get_3
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/NoteView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - note-controller
+      operationId: update_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditNoteRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/NoteView"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - note-controller
+      operationId: archive
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/notes/order:
+    put:
+      tags:
+        - note-controller
+      operationId: order_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/logs/{id}:
+    get:
+      tags:
+        - log-controller
+      operationId: get_4
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LogView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - log-controller
+      operationId: update_3
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LogView"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - log-controller
+      operationId: delete_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/logs/{id}/labels:
+    put:
+      tags:
+        - log-controller
+      operationId: setLabels
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabelsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LogView"
+      security:
+        - bearerAuth: []
+  /api/v1/labels/{id}:
+    put:
+      tags:
+        - label-controller
+      operationId: update_4
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/View"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - label-controller
+      operationId: delete_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: removeAssignments
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/calendar/labels/{id}:
+    put:
+      tags:
+        - calendar-controller
+      operationId: updateLabel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabelRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LabelView"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - calendar-controller
+      operationId: deleteLabel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/calendar/days/{date}:
+    put:
+      tags:
+        - calendar-controller
+      operationId: replaceDay
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DayRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/DayView"
+      security:
+        - bearerAuth: []
+    delete:
+      tags:
+        - calendar-controller
+      operationId: deleteDay
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/calendar/days/range:
+    put:
+      tags:
+        - calendar-controller
+      operationId: replaceRange
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DayView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}:
+    get:
+      tags:
+        - board-controller
+      operationId: get_5
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - board-controller
+      operationId: update_5
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses/{statusId}:
+    put:
+      tags:
+        - board-controller
+      operationId: updateStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses/{statusId}/sort:
+    put:
+      tags:
+        - board-controller
+      operationId: sortStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusSortRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses/order:
+    put:
+      tags:
+        - board-controller
+      operationId: reorderStatuses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}:
+    get:
+      tags:
+        - board-controller
+      operationId: getCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - board-controller
+      operationId: updateCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/order:
+    put:
+      tags:
+        - board-controller
+      operationId: order_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/boards/all/columns/sort:
+    put:
+      tags:
+        - all-boards-controller
+      operationId: sortColumn
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnSortRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/ColumnSortView"
+      security:
+        - bearerAuth: []
+  /api/v1/auth/password:
+    put:
+      tags:
+        - auth-controller
+      operationId: setPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/AccountView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers:
+    post:
+      tags:
+        - timer-controller
+      operationId: start
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/stop:
+    post:
+      tags:
+        - timer-controller
+      operationId: stop
+      parameters: []
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/{id}/stop:
+    post:
+      tags:
+        - timer-controller
+      operationId: stop_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/resume:
+    post:
+      tags:
+        - timer-controller
+      operationId: resume
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResumeRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/pause:
+    post:
+      tags:
+        - timer-controller
+      operationId: pause
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/DraftView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/finish:
+    post:
+      tags:
+        - timer-controller
+      operationId: finish
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/DraftView"
+      security:
+        - bearerAuth: []
+  /api/v1/timers/{id}/cancel:
+    post:
+      tags:
+        - timer-controller
+      operationId: cancel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/timers/cancel:
+    post:
+      tags:
+        - timer-controller
+      operationId: cancel_1
+      parameters: []
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/time-entries:
+    get:
+      tags:
+        - timer-controller
+      operationId: history
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: object
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - timer-controller
+      operationId: manual
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/paths:
+    get:
+      tags:
+        - path-controller
+      operationId: list
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PathResponse"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - path-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PathRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+      security:
+        - bearerAuth: []
+  /api/v1/paths/{id}/restore:
+    post:
+      tags:
+        - path-controller
+      operationId: restore
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+      security:
+        - bearerAuth: []
+  /api/v1/paths/{id}/pin:
+    post:
+      tags:
+        - path-controller
+      operationId: pin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+      security:
+        - bearerAuth: []
+  /api/v1/paths/{id}/merge:
+    post:
+      tags:
+        - path-controller
+      operationId: merge
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergePathRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/notes:
+    get:
+      tags:
+        - note-controller
+      operationId: list_1
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: object
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - note-controller
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/NoteView"
+      security:
+        - bearerAuth: []
+  /api/v1/notes/{id}/restore:
+    post:
+      tags:
+        - note-controller
+      operationId: restore_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+      security:
+        - bearerAuth: []
+  /api/v1/notes/{id}/pin:
+    post:
+      tags:
+        - note-controller
+      operationId: pin_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/NoteView"
+      security:
+        - bearerAuth: []
+  /api/v1/logs:
+    get:
+      tags:
+        - log-controller
+      operationId: list_2
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogView"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - log-controller
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LogView"
+      security:
+        - bearerAuth: []
+  /api/v1/labels:
+    get:
+      tags:
+        - label-controller
+      operationId: list_3
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - NOTE
+              - CALENDAR
+              - TIME_ENTRY
+              - LOG
+              - BOARD
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/View"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - label-controller
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/View"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/knowledge-base:
+    post:
+      tags:
+        - knowledge-base-transfer-controller
+      operationId: importCsv
+      requestBody:
+        content:
+          text/csv:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSummary"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/clockify:
+    post:
+      tags:
+        - import-controller
+      operationId: clockify
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/ImportSummary"
+      security:
+        - bearerAuth: []
+  /api/v1/calendar/labels:
+    get:
+      tags:
+        - calendar-controller
+      operationId: labels
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LabelView"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - calendar-controller
+      operationId: createLabel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabelRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/LabelView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards:
+    get:
+      tags:
+        - board-controller
+      operationId: list_4
+      parameters:
+        - name: archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: includeHidden
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - board-controller
+      operationId: create_4
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/visibility:
+    post:
+      tags:
+        - board-controller
+      operationId: visibility
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisibilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses:
+    get:
+      tags:
+        - board-controller
+      operationId: statusList
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - board-controller
+      operationId: createStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses/{statusId}/restore:
+    post:
+      tags:
+        - board-controller
+      operationId: restoreStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/StatusView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/statuses/{statusId}/archive:
+    post:
+      tags:
+        - board-controller
+      operationId: archiveStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/restore:
+    post:
+      tags:
+        - board-controller
+      operationId: restore_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/pin:
+    post:
+      tags:
+        - board-controller
+      operationId: pin_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards:
+    get:
+      tags:
+        - board-controller
+      operationId: cardList
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - board-controller
+      operationId: createCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}/transfer:
+    post:
+      tags:
+        - board-controller
+      operationId: transferCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PlacedCardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}/restore:
+    post:
+      tags:
+        - board-controller
+      operationId: restoreCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}/move:
+    post:
+      tags:
+        - board-controller
+      operationId: moveCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}/move-to-column:
+    post:
+      tags:
+        - board-controller
+      operationId: moveCardToColumn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnMoveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PlacedCardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/{cardId}/archive:
+    post:
+      tags:
+        - board-controller
+      operationId: archiveCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/in-column:
+    post:
+      tags:
+        - board-controller
+      operationId: createCardInColumn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnCardRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PlacedCardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/archive:
+    post:
+      tags:
+        - board-controller
+      operationId: archive_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/BoardView"
+      security:
+        - bearerAuth: []
+  /api/v1/auth/register:
+    post:
+      tags:
+        - auth-controller
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      security: []
+  /api/v1/auth/login:
+    post:
+      tags:
+        - auth-controller
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      security: []
+  /api/v1/auth/google:
+    post:
+      tags:
+        - auth-controller
+      operationId: google
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      security: []
+  /api/v1/timers/current:
+    get:
+      tags:
+        - timer-controller
+      operationId: current
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/TimeView"
+      security:
+        - bearerAuth: []
+  /api/v1/statistics:
+    get:
+      tags:
+        - timer-controller
+      operationId: statistics
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Statistics"
+      security:
+        - bearerAuth: []
+  /api/v1/search:
+    get:
+      tags:
+        - search-controller
+      operationId: search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: types
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 5
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: fuzzy
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Response"
+      security:
+        - bearerAuth: []
+  /api/v1/reports:
+    get:
+      tags:
+        - report-controller
+      operationId: report
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            default: WEEK
+        - name: aggregation
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: anchor
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: pathId
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: labelId
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Report"
+      security:
+        - bearerAuth: []
+  /api/v1/paths/{id}/summary:
+    get:
+      tags:
+        - path-controller
+      operationId: summary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/PathSummary"
+      security:
+        - bearerAuth: []
+  /api/v1/notes/labels:
+    get:
+      tags:
+        - note-controller
+      operationId: labels_1
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TagView"
+      security:
+        - bearerAuth: []
+  /api/v1/labels/{id}/history:
+    get:
+      tags:
+        - label-controller
+      operationId: history_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: zone
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/History"
+      security:
+        - bearerAuth: []
+  /api/v1/labels/{id}/history/records:
+    get:
+      tags:
+        - label-controller
+      operationId: records
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - sessions
+              - dates
+              - notes
+              - logs
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Records"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/knowledge-base/export:
+    get:
+      tags:
+        - knowledge-base-transfer-controller
+      operationId: export
+      responses:
+        "200":
+          description: OK
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: byte
+      security:
+        - bearerAuth: []
+  /api/v1/imports/knowledge-base/batches:
+    get:
+      tags:
+        - knowledge-base-transfer-controller
+      operationId: batches
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BatchView"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/clockify/batches:
+    get:
+      tags:
+        - import-controller
+      operationId: batches_1
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportBatchView"
+      security:
+        - bearerAuth: []
+  /api/v1/calendar/days:
+    get:
+      tags:
+        - calendar-controller
+      operationId: days
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DayView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/gantt:
+    get:
+      tags:
+        - board-controller
+      operationId: gantt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/{id}/cards/page:
+    get:
+      tags:
+        - board-controller
+      operationId: cardPage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statusId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: -1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardPage"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/all/gantt:
+    get:
+      tags:
+        - all-boards-controller
+      operationId: gantt_1
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/all/columns:
+    get:
+      tags:
+        - all-boards-controller
+      operationId: columns
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ColumnView"
+      security:
+        - bearerAuth: []
+  /api/v1/boards/all/columns/cards/page:
+    get:
+      tags:
+        - all-boards-controller
+      operationId: columnPage
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: -1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/CardPage"
+      security:
+        - bearerAuth: []
+  /api/v1/auth/me:
+    get:
+      tags:
+        - auth-controller
+      operationId: account
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/AccountView"
+      security:
+        - bearerAuth: []
+  /api/v1/auth/google/config:
+    get:
+      tags:
+        - auth-controller
+      operationId: googleConfig
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/GoogleConfig"
+      security: []
+  /api/v1/activities:
+    get:
+      tags:
+        - activity-controller
+      operationId: list_5
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: pathId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - NOTE_CREATED
+              - TIME_TRACKED
+              - TIMER_STARTED
+              - TIMER_STOPPED
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/knowledge-base/batches/{id}:
+    delete:
+      tags:
+        - knowledge-base-transfer-controller
+      operationId: undo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/UndoSummary"
+      security:
+        - bearerAuth: []
+  /api/v1/imports/clockify/batches/{id}:
+    delete:
+      tags:
+        - import-controller
+      operationId: undo_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/UndoSummary"
+      security:
+        - bearerAuth: []
+components:
+  schemas:
+    RunningUpdateRequest:
+      type: object
+      properties:
+        pathId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 0
+      required:
+        - labelIds
+        - startedAt
+    TimeView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pathId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        durationSeconds:
+          type: integer
+          format: int64
+        description:
+          type: string
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+        running:
+          type: boolean
+        carriedSeconds:
+          type: integer
+          format: int64
+    StartRequest:
+      type: object
+      properties:
+        pathId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+      required:
+        - labelIds
+    DraftView:
+      type: object
+      properties:
+        pathId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description:
+          type: string
+        pausedSeconds:
+          type: integer
+          format: int64
+    ManualRequest:
+      type: object
+      properties:
+        pathId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+      required:
+        - endedAt
+        - labelIds
+        - startedAt
+    BoardState:
+      type: object
+      properties:
+        boardId:
+          type: string
+          format: uuid
+        view:
+          type: string
+          pattern: kanban|gantt
+        ganttFrom:
+          type: string
+          format: date
+        ganttTo:
+          type: string
+          format: date
+        search:
+          type: string
+          maxLength: 200
+          minLength: 0
+        ganttSorts:
+          type: array
+          items:
+            type: string
+            pattern: PRIORITY|DATE|PRIORITY_ASC|PRIORITY_DESC|DATE_ASC|DATE_DESC
+        ganttShowPriority:
+          type: boolean
+        ganttShowStatus:
+          type: boolean
+        ganttShowPath:
+          type: boolean
+    Request:
+      type: object
+      properties:
+        theme:
+          type: string
+          pattern: auto|light|dark|solarized|banana|melon|fruity|neon|tokyo-neon|beach
+        kanbanWide:
+          type: boolean
+        ganttWide:
+          type: boolean
+        lastCardBoardId:
+          type: string
+          format: uuid
+        board:
+          $ref: "#/components/schemas/BoardState"
+    View:
+      type: object
+      properties:
+        theme:
+          type: string
+        kanbanWide:
+          type: boolean
+        ganttWide:
+          type: boolean
+        recentPathIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lastCardBoardId:
+          type: string
+          format: uuid
+        board:
+          $ref: "#/components/schemas/BoardState"
+    PathRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+          minLength: 0
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+        textColor:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+      required:
+        - name
+    PathResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        textColor:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - ARCHIVED
+        pinned:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int64
+        activityLabel:
+          type: string
+        boardId:
+          type: string
+          format: uuid
+        boardHidden:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OrderRequest:
+      type: object
+      properties:
+        pathIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - pathIds
+    EditNoteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 240
+          minLength: 0
+        content:
+          type: string
+          maxLength: 200000
+          minLength: 0
+        contentText:
+          type: string
+          maxLength: 200000
+          minLength: 0
+        tags:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+          format: int64
+      required:
+        - content
+    NoteView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pathId:
+          type: string
+          format: uuid
+        activityId:
+          type: string
+          format: uuid
+        timeEntryId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+        contentText:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        pinned:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int64
+        lineEdits:
+          type: array
+          items:
+            type: string
+            format: date-time
+    LogRequest:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        occurredAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+        - body
+        - occurredAt
+    LogView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    LabelsRequest:
+      type: object
+      properties:
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+          minItems: 0
+      required:
+        - labelIds
+    LabelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 0
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+      required:
+        - name
+    LabelView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+    AssignmentRequest:
+      type: object
+      properties:
+        labelId:
+          type: string
+          format: uuid
+        portion:
+          type: number
+      required:
+        - labelId
+    DayRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignmentRequest"
+      required:
+        - labels
+    DayView:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        note:
+          type: string
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelAssignmentView"
+    LabelAssignmentView:
+      type: object
+      properties:
+        labelId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        portion:
+          type: number
+    RangeRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        note:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignmentRequest"
+      required:
+        - endDate
+        - labels
+        - startDate
+    BoardRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 0
+      required:
+        - name
+    BoardView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        archived:
+          type: boolean
+        pathId:
+          type: string
+          format: uuid
+        hidden:
+          type: boolean
+        pinned:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    StatusRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 0
+      required:
+        - name
+    StatusView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        position:
+          type: integer
+          format: int32
+        archived:
+          type: boolean
+        cardSort:
+          type: string
+          enum:
+            - MANUAL
+            - PRIORITY
+            - PRIORITY_LAST
+    StatusSortRequest:
+      type: object
+      properties:
+        cardSort:
+          type: string
+          enum:
+            - MANUAL
+            - PRIORITY
+            - PRIORITY_LAST
+      required:
+        - cardSort
+    CardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 240
+          minLength: 0
+        body:
+          type: string
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - URGENT
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        pathIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+        statusId:
+          type: string
+          format: uuid
+    CardView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        statusId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        body:
+          type: string
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - URGENT
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        position:
+          type: integer
+          format: int32
+        archived:
+          type: boolean
+        pathIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lineEdits:
+          type: array
+          items:
+            type: string
+            format: date-time
+    ColumnSortRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 0
+        cardSort:
+          type: string
+          enum:
+            - MANUAL
+            - PRIORITY
+            - PRIORITY_LAST
+      required:
+        - cardSort
+        - name
+    ColumnSortView:
+      type: object
+      properties:
+        name:
+          type: string
+        cardSort:
+          type: string
+          enum:
+            - MANUAL
+            - PRIORITY
+            - PRIORITY_LAST
+    SetPasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 200
+          minLength: 0
+        newPassword:
+          type: string
+          maxLength: 200
+          minLength: 9
+      required:
+        - newPassword
+    AccountView:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        hasPassword:
+          type: boolean
+        hasGoogle:
+          type: boolean
+    ResumeRequest:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+    PinRequest:
+      type: object
+      properties:
+        pinned:
+          type: boolean
+    MergePathRequest:
+      type: object
+      properties:
+        targetPathId:
+          type: string
+          format: uuid
+      required:
+        - targetPathId
+    NoteRequest:
+      type: object
+      properties:
+        pathId:
+          type: string
+          format: uuid
+        activityId:
+          type: string
+          format: uuid
+        timeEntryId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 240
+          minLength: 0
+        content:
+          type: string
+          maxLength: 200000
+          minLength: 0
+        contentText:
+          type: string
+          maxLength: 200000
+          minLength: 0
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - content
+    ImportSummary:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        imported:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
+        createdPaths:
+          type: integer
+          format: int32
+    ClockifyEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+        description:
+          type: string
+        timeInterval:
+          $ref: "#/components/schemas/ClockifyInterval"
+        projectName:
+          type: string
+    ClockifyInterval:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int64
+    ImportRequest:
+      type: object
+      properties:
+        timeentries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClockifyEntry"
+          minItems: 1
+      required:
+        - timeentries
+    VisibilityRequest:
+      type: object
+      properties:
+        hidden:
+          type: boolean
+    TransferRequest:
+      type: object
+      properties:
+        boardId:
+          type: string
+          format: uuid
+      required:
+        - boardId
+    PlacedCardView:
+      type: object
+      properties:
+        card:
+          $ref: "#/components/schemas/CardView"
+        status:
+          $ref: "#/components/schemas/StatusView"
+        statusCreated:
+          type: boolean
+    MoveRequest:
+      type: object
+      properties:
+        statusId:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - statusId
+    ColumnMoveRequest:
+      type: object
+      properties:
+        columnName:
+          type: string
+          maxLength: 80
+          minLength: 0
+        position:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - columnName
+    ColumnCardRequest:
+      type: object
+      properties:
+        columnName:
+          type: string
+          maxLength: 80
+          minLength: 0
+        title:
+          type: string
+          maxLength: 240
+          minLength: 0
+        body:
+          type: string
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - URGENT
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        pathIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - columnName
+    Credentials:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          maxLength: 200
+          minLength: 9
+      required:
+        - email
+        - password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+    GoogleRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+          maxLength: 10000
+          minLength: 0
+      required:
+        - idToken
+    Statistics:
+      type: object
+      properties:
+        todaySeconds:
+          type: integer
+          format: int64
+        weekSeconds:
+          type: integer
+          format: int64
+        monthSeconds:
+          type: integer
+          format: int64
+        todayByPath:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        todayByLabel:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        weekByPath:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        weekByLabel:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+    Group:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - PATH
+            - BOARD
+            - LABEL
+            - NOTE
+            - CARD
+            - LOG
+            - SESSION
+            - CALENDAR_DAY
+        total:
+          type: integer
+          format: int64
+        capped:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/Result"
+    Response:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+        fuzzy:
+          type: boolean
+        incomplete:
+          type: boolean
+    Result:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - PATH
+            - BOARD
+            - LABEL
+            - NOTE
+            - CARD
+            - LOG
+            - SESSION
+            - CALENDAR_DAY
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        snippet:
+          type: string
+        at:
+          type: string
+          format: date-time
+        date:
+          type: string
+          format: date
+        archived:
+          type: boolean
+        via:
+          type: string
+          enum:
+            - PATH
+            - LABEL
+        viaName:
+          type: string
+        color:
+          type: string
+        pathId:
+          type: string
+          format: uuid
+        pathName:
+          type: string
+        pathColor:
+          type: string
+        boardId:
+          type: string
+          format: uuid
+        boardName:
+          type: string
+        statusName:
+          type: string
+        endedAt:
+          type: string
+          format: date-time
+        durationSeconds:
+          type: integer
+          format: int64
+    CalendarLabel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        color:
+          type: string
+        portion:
+          type: number
+    CalendarLabelTotal:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        color:
+          type: string
+        days:
+          type: number
+        markers:
+          type: integer
+          format: int64
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        seconds:
+          type: integer
+          format: int64
+        color:
+          type: string
+    Day:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        totalSeconds:
+          type: integer
+          format: int64
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        sessionLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        calendarNote:
+          type: string
+        calendarLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarLabel"
+    Report:
+      type: object
+      properties:
+        period:
+          type: string
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        totalSeconds:
+          type: integer
+          format: int64
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/Day"
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        sessionLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        calendarLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarLabelTotal"
+        sankey:
+          $ref: "#/components/schemas/Sankey"
+    Sankey:
+      type: object
+      properties:
+        granularity:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SankeyNode"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/SankeyLink"
+    SankeyLink:
+      type: object
+      properties:
+        source:
+          type: string
+        target:
+          type: string
+        sourceLabel:
+          type: string
+        targetLabel:
+          type: string
+        value:
+          type: integer
+          format: int64
+    SankeyNode:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        color:
+          type: string
+        depth:
+          type: integer
+          format: int32
+        value:
+          type: integer
+          format: int64
+        pathLabel:
+          type: string
+        bucketLabel:
+          type: string
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pathId:
+          type: string
+          format: uuid
+        timeEntryId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - NOTE_CREATED
+            - TIME_TRACKED
+            - TIMER_STARTED
+            - TIMER_STOPPED
+        title:
+          type: string
+        detail:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        importBatchId:
+          type: string
+          format: uuid
+        labelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    PathSummary:
+      type: object
+      properties:
+        path:
+          $ref: "#/components/schemas/PathResponse"
+        trackedSeconds:
+          type: integer
+          format: int64
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+    TagView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    History:
+      type: object
+      properties:
+        labelId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        firstUsedAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        totalUses:
+          type: integer
+          format: int64
+        trackedSeconds:
+          type: integer
+          format: int64
+        uses:
+          $ref: "#/components/schemas/Uses"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/Month"
+        hours:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hour"
+        related:
+          type: array
+          items:
+            $ref: "#/components/schemas/Related"
+    Hour:
+      type: object
+      properties:
+        hour:
+          type: integer
+          format: int32
+        uses:
+          type: integer
+          format: int64
+        trackedSeconds:
+          type: integer
+          format: int64
+    Month:
+      type: object
+      properties:
+        month:
+          type: string
+        uses:
+          type: integer
+          format: int64
+        trackedSeconds:
+          type: integer
+          format: int64
+    Related:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        together:
+          type: integer
+          format: int64
+        trackedSeconds:
+          type: integer
+          format: int64
+    Uses:
+      type: object
+      properties:
+        sessions:
+          type: integer
+          format: int64
+        logs:
+          type: integer
+          format: int64
+        notes:
+          type: integer
+          format: int64
+        calendarDays:
+          type: integer
+          format: int64
+        cards:
+          type: integer
+          format: int64
+    RecordView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+        title:
+          type: string
+        preview:
+          type: string
+    Records:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecordView"
+        hasMore:
+          type: boolean
+    BatchView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+        imported:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
+        createdPaths:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        undoneAt:
+          type: string
+          format: date-time
+    ImportBatchView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+          enum:
+            - WEB
+            - IOS
+            - CHROME_EXTENSION
+            - MANUAL
+            - IMPORT
+            - KNOWLEDGE_BASE
+        imported:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
+        createdPaths:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        undoneAt:
+          type: string
+          format: date-time
+    CardPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardView"
+        nextCursor:
+          type: integer
+          format: int32
+    ColumnView:
+      type: object
+      properties:
+        name:
+          type: string
+        cardSort:
+          type: string
+          enum:
+            - MANUAL
+            - PRIORITY
+            - PRIORITY_LAST
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusView"
+    GoogleConfig:
+      type: object
+      properties:
+        clientId:
+          type: string
+    UndoSummary:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        deletedEntries:
+          type: integer
+          format: int64
+        deletedActivities:
+          type: integer
+          format: int64
+        deletedPaths:
+          type: integer
+          format: int64
+        deletedLogs:
+          type: integer
+          format: int64
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+x-homework-source-revision: 0d4c08c6aa6dc324a2ff927109705b32deddda47
