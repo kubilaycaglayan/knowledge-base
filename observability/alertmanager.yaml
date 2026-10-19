@@ -1,0 +1,11 @@
+route:
+  receiver: knowledge-base-oncall
+  group_by: [alertname, service]
+  group_wait: 2s
+  group_interval: 15s
+  repeat_interval: 1m
+receivers:
+  - name: knowledge-base-oncall
+    webhook_configs:
+      - url: http://oncall-agent:8081/alert
+        send_resolved: true

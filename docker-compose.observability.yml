@@ -1,0 +1,69 @@
+# Local homework demo overlay. Always pair with docker-compose.smoke.yml so
+# the application uses a disposable database and test-only image tags.
+services:
+  api:
+    environment:
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      SPRING_APPLICATION_NAME: knowledge-base-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://telemetry:4318/v1/traces
+      OTEL_SERVICE_NAME: knowledge-base-api
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=homework-demo
+      LOKI_PUSH_URL: http://telemetry:3100/loki/api/v1/push
+    depends_on:
+      db: { condition: service_healthy }
+      telemetry: { condition: service_healthy }
+  api-journey:
+    build: ./observability
+    environment:
+      API_URL: http://api:8080
+      METRICS_PORT: "9464"
+      CHECK_INTERVAL_SECONDS: "15"
+    ports:
+      - "127.0.0.1:${OBSERVABILITY_PROBE_PORT:-3303}:9464"
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+  telemetry:
+    image: grafana/otel-lgtm:0.30.0
+    ports:
+      - "127.0.0.1:${OBSERVABILITY_GRAFANA_PORT:-3300}:3000"
+      - "127.0.0.1:${OBSERVABILITY_PROMETHEUS_PORT:-3302}:9090"
+    volumes:
+      - ./observability/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
+      - ./observability/alert-rules.yaml:/otel-lgtm/alert-rules.yaml:ro
+    healthcheck:
+      test: [CMD-SHELL, "test -f /tmp/ready"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+      start_period: 25s
+    restart: unless-stopped
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command: [--config.file=/etc/alertmanager/alertmanager.yml, --web.listen-address=:9093]
+    ports:
+      - "127.0.0.1:${OBSERVABILITY_ALERTS_PORT:-3301}:9093"
+    volumes:
+      - ./observability/alertmanager.yaml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on: [oncall-agent]
+    restart: unless-stopped
+  oncall-agent:
+    build: ./observability
+    command: [python, /app/oncall_agent.py]
+    environment:
+      API_URL: http://api:8080
+      PROBE_URL: http://api-journey:9464
+      ALERT_PORT: "8081"
+      ON_CALL_AGENT_EMAIL: ${ON_CALL_AGENT_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    ports: []
+    depends_on:
+      api: { condition: service_started }
+      api-journey: { condition: service_started }
+    restart: unless-stopped

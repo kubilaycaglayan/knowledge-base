@@ -2,6 +2,28 @@
 
 Knowledge Base is a personal knowledge, learning-history, and activity tracker. The repository contains one canonical Spring Boot API, a Vue web client, a native SwiftUI client, and a focused Manifest V3 timer extension.
 
+## DataTalksClub homework branch
+
+People learning and working across several topics need to connect their notes,
+plans, and time history. Knowledge Base lets a signed-in user organize paths and
+labels, capture searchable notes, track sessions, plan board cards, and review
+reports. Records remain private to their owner, persist in PostgreSQL, and survive
+page reloads. Timer state is owned by the server across clients.
+
+This branch packages the existing application for coursework. Start with the
+[submission review guide](docs/homework/README.md), [concise specification](product-spec.md),
+[task tracker](docs/homework/task-tracker.md), and [rubric mapping](docs/homework/rubric.md).
+The [AI workflow](docs/ai-workflow.md), [agent team](docs/agent-team.md),
+[API contract](openapi.yaml), and [extension pack](docs/agent-extension-pack.md)
+explain the added artifacts. Homework changes remain separate from `main`.
+
+The Vue client calls the Spring service, which enforces domain rules and persists
+data in PostgreSQL. Docker Compose packages the services. GitHub Actions runs
+verification; a host-side watcher deploys a verified `main` commit. The documented
+public deployment is [Knowledge Base](https://knowledgebase.blaqc.space/).
+The iOS client is historical and its CI jobs are disabled; the current source and
+test inventories describe the desktop extension's additional Notes/Clockify support.
+
 ## Local development
 
 1. Copy `.env.example` to `.env.development` and set local values. Set `GOOGLE_CLIENT_ID` to the Google OAuth client ID used by the web app and extension when Google sign-in is required.
