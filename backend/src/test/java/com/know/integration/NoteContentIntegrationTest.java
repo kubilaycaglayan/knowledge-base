@@ -40,4 +40,50 @@ class NoteContentIntegrationTest extends IntegrationTestSupport {
     assertEquals(content, persisted.get("content").asText());
     assertEquals("First paragraph\nSecond paragraph", persisted.get("contentText").asText());
   }
+
+  @Test
+  void noteBodyOfTwentyThousandCharactersPersistsAndUpdates() throws Exception {
+    String token = api.register();
+    String text = "n".repeat(20_000);
+    String content =
+        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":"
+            + ApiClient.MAPPER.writeValueAsString(text)
+            + "}]}]}";
+    String body =
+        "{\"title\":\"Long note\",\"content\":"
+            + ApiClient.MAPPER.writeValueAsString(content)
+            + ",\"contentText\":"
+            + ApiClient.MAPPER.writeValueAsString(text)
+            + "}";
+
+    JsonNode created = api.created("POST", "/api/v1/notes", token, body);
+    String id = created.get("id").asText();
+    assertEquals(content, created.get("content").asText());
+    assertEquals(text, created.get("contentText").asText());
+
+    JsonNode persisted = api.get("/api/v1/notes/" + id, token).json();
+    assertEquals(content, persisted.get("content").asText());
+    assertEquals(text, persisted.get("contentText").asText());
+
+    String updatedText = "u".repeat(20_000);
+    String updatedContent =
+        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":"
+            + ApiClient.MAPPER.writeValueAsString(updatedText)
+            + "}]}]}";
+    String update =
+        "{\"title\":\"Long note\",\"content\":"
+            + ApiClient.MAPPER.writeValueAsString(updatedContent)
+            + ",\"contentText\":"
+            + ApiClient.MAPPER.writeValueAsString(updatedText)
+            + ",\"version\":"
+            + persisted.get("version").asLong()
+            + "}";
+
+    JsonNode saved = api.put("/api/v1/notes/" + id, token, update).json();
+    assertEquals(updatedContent, saved.get("content").asText());
+    assertEquals(updatedText, saved.get("contentText").asText());
+    JsonNode reloaded = api.get("/api/v1/notes/" + id, token).json();
+    assertEquals(updatedContent, reloaded.get("content").asText());
+    assertEquals(updatedText, reloaded.get("contentText").asText());
+  }
 }
