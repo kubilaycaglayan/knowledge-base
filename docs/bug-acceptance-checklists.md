@@ -19,7 +19,7 @@ Release acceptance criteria for the September 2026 QA report.
 ## Sessions
 
 - [x] A completed session has a Start again action.
-- [x] Start again sends the original path, labels, and description to the server.
+- [x] Start again sends the original path and labels, with an empty description.
 - [x] Starting again reports a clear error when another timer is already running.
 - [x] Automated coverage: `frontend/src/views/SessionsView.test.ts`.
 

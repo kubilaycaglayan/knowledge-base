@@ -208,7 +208,7 @@ async function startFromSession(session: Session) {
       body: JSON.stringify({
         pathId: session.pathId || null,
         labelIds: session.labelIds || [],
-        description: session.description || null,
+        description: null,
       }),
     });
     useTimerStore().setCurrent(started);

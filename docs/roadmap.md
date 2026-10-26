@@ -92,6 +92,9 @@
 - [x] Expand timer and session descriptions to a 5,000-character limit with
   actionable validation errors.
 
+- [x] Starting a new timer with a completed session's Start again button keeps
+  its Path and labels while leaving the new description empty.
+
 - [x] Preserve unfinished timer drafts across live snapshots and queue edits made during active saves.
 
 - [x] ⌘/Ctrl+Enter in the web tracker's description starts the session with the

@@ -497,7 +497,7 @@ describe("SessionsView", () => {
     expect(styles).toContain("overflow-y: auto");
   });
 
-  it("starts a new server timer from a completed session", async () => {
+  it("starts a new server timer from a completed session without copying its description", async () => {
     vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
       path === "/timers" && init?.method === "POST"
         ? { id: "timer-from-session", startedAt: "2026-10-10T10:00:00Z", running: true }
@@ -540,7 +540,7 @@ describe("SessionsView", () => {
         body: JSON.stringify({
           pathId: "path-1",
           labelIds: ["label-1"],
-          description: "Most recent",
+          description: null,
         }),
       }),
     );
