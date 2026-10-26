@@ -18,6 +18,7 @@ import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
+import { NOTE_BODY_MAX_CHARACTERS, NoteBodyLimit } from "../lib/note-body-limit";
 import { NOTE_SAVE_DEBOUNCE_MS, NOTE_SEARCH_DEBOUNCE_MS } from "./notes-timings";
 import { plainText, setLineHistory } from "../lib/line-history";
 import { Editor } from "@tiptap/core";
@@ -66,6 +67,7 @@ const error = ref("");
 const title = ref("");
 const editorLoading = ref(false);
 const tags = ref<string[]>([]);
+const bodyCharacterCount = ref(0);
 const status = ref<"saved" | "saving" | "error">("saved");
 const conflictLatest = shallowRef<Note | null>(null);
 const savedDraft = shallowRef<NoteDraftSnapshot | null>(null);
@@ -483,7 +485,7 @@ async function loadEditor() {
     if (route.params.id !== id) return;
     editor.value?.destroy();
     editor.value = new Editor({
-      extensions: richTextExtensions(),
+      extensions: [...richTextExtensions(), NoteBodyLimit],
       content: parseContent(fromList.content),
       editorProps: {
         attributes: {
@@ -493,9 +495,25 @@ async function loadEditor() {
         },
         ...richTextEditorProps,
       },
-      onUpdate: scheduleSave,
+      onTransaction: ({ editor: updatedEditor }) => {
+        bodyCharacterCount.value = updatedEditor.state.doc.textBetween(
+          0,
+          updatedEditor.state.doc.content.size,
+          "\n",
+          "\n",
+        ).length;
+      },
+      onUpdate: () => {
+        scheduleSave();
+      },
       onFocus: keepEditorVisible,
     });
+    bodyCharacterCount.value = editor.value.state.doc.textBetween(
+      0,
+      editor.value.state.doc.content.size,
+      "\n",
+      "\n",
+    ).length;
     savedDraft.value = currentDraftSnapshot();
   } catch {
     if (route.params.id === id) error.value = "Unable to open this note.";
@@ -821,6 +839,9 @@ onBeforeUnmount(() => {
         <EditorContent v-if="editor" :editor="editor" />
         <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" :line-history="selected?.lineEdits ? lineHistory : undefined" @update:line-history="toggleLineHistory" />
       </div>
+      <p class="note-body-count" aria-label="Note body character count">
+        {{ bodyCharacterCount.toLocaleString() }} / {{ NOTE_BODY_MAX_CHARACTERS.toLocaleString() }} characters
+      </p>
       <p v-if="selected" class="note-dates">
         Created {{ formatDate(selected.createdAt) }} · Updated
         {{ formatDate(selected.updatedAt) }}
@@ -834,6 +855,13 @@ onBeforeUnmount(() => {
   max-width: 1200px;
   margin: 0 auto;
   color: var(--workspace-text);
+}
+.note-body-count {
+  margin: 6px 0 0;
+  color: var(--workspace-muted);
+  font-size: 0.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .notes-toolbar,
 .editor-toolbar,

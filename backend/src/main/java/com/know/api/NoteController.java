@@ -22,16 +22,26 @@ public class NoteController {
       UUID activityId,
       UUID timeEntryId,
       @Size(max = 240) String title,
-      @NotBlank @Size(max = 200000) String content,
-      @Size(max = 200000) String contentText,
-      List<String> tags) {}
+      @NotBlank @Size(max = NoteBodyLimit.MAX_DOCUMENT_CHARACTERS) String content,
+      @Size(max = NoteBodyLimit.MAX_CHARACTERS) String contentText,
+      List<String> tags) {
+    @AssertTrue(message = "note body must not exceed 20000 characters")
+    public boolean isBodyWithinCharacterLimit() {
+      return NoteBodyLimit.withinLimit(content);
+    }
+  }
 
   record EditNoteRequest(
       @Size(max = 240) String title,
-      @NotBlank @Size(max = 200000) String content,
-      @Size(max = 200000) String contentText,
+      @NotBlank @Size(max = NoteBodyLimit.MAX_DOCUMENT_CHARACTERS) String content,
+      @Size(max = NoteBodyLimit.MAX_CHARACTERS) String contentText,
       List<String> tags,
-      Long version) {}
+      Long version) {
+    @AssertTrue(message = "note body must not exceed 20000 characters")
+    public boolean isBodyWithinCharacterLimit() {
+      return NoteBodyLimit.withinLimit(content);
+    }
+  }
 
   record PinRequest(boolean pinned) {}
 

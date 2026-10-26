@@ -730,6 +730,39 @@ describe("NotesView", () => {
     reopened.unmount();
   });
 
+  it("accepts a 20,000-character body and blocks input beyond the limit", async () => {
+    let savedText = "";
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        const payload = JSON.parse(String(options.body));
+        savedText = payload.contentText;
+        return { ...note, ...payload, version: 1 };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const editor = wrapper.findComponent(EditorContent).props("editor")!;
+
+    editor.commands.setTextSelection(editor.state.doc.content.size);
+    editor.commands.insertContent("n".repeat(19_988));
+    expect(editor.state.doc.textContent).toHaveLength(20_000);
+    await flushPromises();
+    expect(wrapper.get(".note-body-count").text()).toContain("20,000 / 20,000");
+    editor.commands.insertContent("x");
+    expect(editor.state.doc.textContent).toHaveLength(20_000);
+
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
+    await flushPromises();
+    expect(savedText).toHaveLength(20_000);
+    wrapper.unmount();
+  });
+
   it("pastes rich note content without retaining unsafe markup", async () => {
     let savedContent = "";
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {

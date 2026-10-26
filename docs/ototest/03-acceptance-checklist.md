@@ -1350,6 +1350,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Checklist/list/quote/code formatting remains intact after save and reopen. Evidence: `NotesView.test.ts` / `preserves list, checklist, quote, and code blocks after save and reopen` verifies saved content renders with each structure after remount.
 - [x] Pasting formatted content does not create unsafe or visibly corrupted content. Evidence: `NotesView.test.ts` / `pastes rich note content without retaining unsafe markup` verifies rich formatting is retained, script markup is discarded, and sanitized content autosaves.
 - [x] Long content remains readable and editable without breaking the page layout. Evidence: `nav-shell.acceptance.test.mjs` / `keeps long note titles and paragraphs within a phone-width editor` verifies long title/body content and checks document, editor, and ProseMirror widths at 390px.
+- [x] Note bodies accept 20,000 characters and stop at that limit in the editor. Evidence: `NotesView.test.ts` / `accepts a 20,000-character body and blocks input beyond the limit`; `NoteApiTest` validates exact 20,000 and rejects 20,001.
 
 ### Flow: Inspect note line history
 

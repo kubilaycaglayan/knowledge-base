@@ -111,7 +111,7 @@ class LineEditsIntegrationTest extends IntegrationTestSupport {
   @Test
   void noteWithMoreThanTenThousandLinesDoesNotReturnLineTimes() throws Exception {
     String token = api.register();
-    String text = String.join("\n", Collections.nCopies(10_001, "Line"));
+    String text = String.join("\n", Collections.nCopies(10_001, ""));
     String document =
         "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":"
             + ApiClient.MAPPER.writeValueAsString(text)

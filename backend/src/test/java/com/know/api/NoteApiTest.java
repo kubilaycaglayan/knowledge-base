@@ -98,10 +98,8 @@ class NoteApiTest {
             "{\"title\":\"Missing content\"}",
             "{\"title\":\"Empty content\",\"content\":\" \"}",
             "{\"title\":\"" + "t".repeat(241) + "\",\"content\":\"Useful\"}",
-            "{\"title\":\"Useful\",\"content\":\"" + "c".repeat(200001) + "\"}",
-            "{\"title\":\"Useful\",\"content\":\"Body\",\"contentText\":\""
-                + "c".repeat(200001)
-                + "\"}")) {
+            noteRequest(richText("c".repeat(20_001)), "c".repeat(20_000)),
+            noteRequest("Body", "c".repeat(20_001)))) {
       mvc.perform(
               post("/api/v1/notes")
                   .with(authentication(auth))
@@ -115,14 +113,7 @@ class NoteApiTest {
             post("/api/v1/notes")
                 .with(authentication(auth))
                 .contentType("application/json")
-                .content(
-                    "{\"title\":\""
-                        + "t".repeat(240)
-                        + "\",\"content\":\""
-                        + "c".repeat(200000)
-                        + "\",\"contentText\":\""
-                        + "p".repeat(200000)
-                        + "\"}"))
+                .content(noteRequest(richText("c".repeat(20_000)), "c".repeat(20_000))))
         .andExpect(status().isOk());
   }
 
@@ -137,9 +128,8 @@ class NoteApiTest {
             "{\"title\":\"Missing content\"}",
             "{\"title\":\"Empty content\",\"content\":\" \"}",
             "{\"title\":\"" + "t".repeat(241) + "\",\"content\":\"Useful\"}",
-            "{\"title\":\"Useful\",\"content\":\"Body\",\"contentText\":\""
-                + "c".repeat(200001)
-                + "\"}")) {
+            noteRequest(richText("c".repeat(20_001)), "c".repeat(20_000)),
+            noteRequest("Body", "c".repeat(20_001)))) {
       mvc.perform(
               put(endpoint)
                   .with(authentication(auth))
@@ -153,15 +143,22 @@ class NoteApiTest {
             put(endpoint)
                 .with(authentication(auth))
                 .contentType("application/json")
-                .content(
-                    "{\"title\":\""
-                        + "t".repeat(240)
-                        + "\",\"content\":\""
-                        + "c".repeat(200000)
-                        + "\",\"contentText\":\""
-                        + "p".repeat(200000)
-                        + "\"}"))
+                .content(noteRequest(richText("c".repeat(20_000)), "c".repeat(20_000))))
         .andExpect(status().isOk());
+  }
+
+  private static String richText(String text) {
+    return "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\""
+        + text
+        + "\"}]}]}";
+  }
+
+  private static String noteRequest(String content, String contentText) {
+    return "{\"title\":\"" + "t".repeat(240) + "\",\"content\":\""
+        + content.replace("\\", "\\\\").replace("\"", "\\\"")
+        + "\",\"contentText\":\""
+        + contentText
+        + "\"}";
   }
 
   @Test

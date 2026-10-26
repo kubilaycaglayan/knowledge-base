@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Set a clear 20,000-character limit for note bodies in the web editor and
+  API; rich-text document metadata remains separate from the body-text limit.
+
 - [x] Remove the floating timer's Discard session action and the Path and Note
   card Move up/Move down buttons; keep drag reordering for Paths and Notes.
 
