@@ -1,0 +1,23 @@
+{
+  "name": "knowledge-base-homework-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs ../agent-hooks/guard.test.mjs",
+    "check:contract": "node check-contract.mjs",
+    "verify": "npm test && npm run check:contract && node ../agent-hooks/guard.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0"
+  }
+}

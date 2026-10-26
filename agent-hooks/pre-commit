@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+root=$(git rev-parse --show-toplevel)
+exec node "$root/agent-hooks/guard.mjs"
