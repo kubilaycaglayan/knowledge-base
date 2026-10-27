@@ -3,8 +3,11 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
+import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 /** Document notes store Tiptap JSON and derive their searchable plain-text copy on the server. */
@@ -85,5 +88,31 @@ class NoteContentIntegrationTest extends IntegrationTestSupport {
     JsonNode reloaded = api.get("/api/v1/notes/" + id, token).json();
     assertEquals(updatedContent, reloaded.get("content").asText());
     assertEquals(updatedText, reloaded.get("contentText").asText());
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "KB_TEST_POSTGRES_URL", matches = ".+")
+  void postgresPersistsAnIncompressibleTwentyThousandCharacterNoteUpdate() throws Exception {
+    String token = api.register();
+    JsonNode created = api.created("POST", "/api/v1/notes", token,
+        "{\"title\":\"Long note\",\"content\":\"Initial body\"}");
+    String id = created.get("id").asText();
+    String alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    Random random = new Random(42);
+    StringBuilder text = new StringBuilder(20_000);
+    while (text.length() < 20_000) text.append(alphabet.charAt(random.nextInt(alphabet.length())));
+    String body = text.toString();
+    String document = ApiClient.MAPPER.writeValueAsString(Map.of(
+        "type", "doc",
+        "content", java.util.List.of(Map.of("type", "paragraph", "content",
+            java.util.List.of(Map.of("type", "text", "text", body))))));
+    String request = ApiClient.MAPPER.writeValueAsString(Map.of(
+        "title", "Long note", "content", document, "contentText", body,
+        "version", created.get("version").asLong()));
+
+    ApiClient.Reply saved = api.put("/api/v1/notes/" + id, token, request);
+    assertEquals(200, saved.status(), "PostgreSQL must accept a 20,000-character note update");
+    assertEquals(body, saved.json().get("contentText").asText());
+    assertEquals(body, api.get("/api/v1/notes/" + id, token).json().get("contentText").asText());
   }
 }
