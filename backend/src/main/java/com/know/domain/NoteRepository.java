@@ -47,7 +47,7 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
 
   @Query(
       "select n from Note n where n.userId = :userId and n.deletedAt is null and (lower(n.title)"
-          + " like lower(concat('%', :query, '%')) or lower(n.contentText) like lower(concat('%',"
+          + " like lower(concat('%', :query, '%')) or lower(coalesce(n.contentText, '')) like lower(concat('%',"
           + " :query, '%')) or exists (select 1 from NoteTag nt join Label t on t.id ="
           + " nt.id.labelId where nt.id.noteId = n.id and lower(t.name) like lower(concat('%',"
           + " :query, '%')))) order by n.pinned desc,"
@@ -65,7 +65,7 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
 
   @Query(
       "select n from Note n where n.userId = :userId and n.deletedAt is not null and"
-          + " (lower(n.title) like lower(concat('%', :query, '%')) or lower(n.contentText) like"
+          + " (lower(n.title) like lower(concat('%', :query, '%')) or lower(coalesce(n.contentText, '')) like"
           + " lower(concat('%', :query, '%')) or exists (select 1 from NoteTag nt join Label t on"
           + " t.id = nt.id.labelId where nt.id.noteId = n.id and lower(t.name) like"
           + " lower(concat('%', :query, '%')))) order by n.deletedAt desc, n.id desc")

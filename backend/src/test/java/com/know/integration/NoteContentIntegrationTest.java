@@ -3,16 +3,21 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Document notes store Tiptap JSON and derive their searchable plain-text copy on the server. */
 class NoteContentIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
+  @Autowired JdbcTemplate jdbc;
   ApiClient api;
 
   @BeforeEach
@@ -114,5 +119,64 @@ class NoteContentIntegrationTest extends IntegrationTestSupport {
     assertEquals(200, saved.status(), "PostgreSQL must accept a 20,000-character note update");
     assertEquals(body, saved.json().get("contentText").asText());
     assertEquals(body, api.get("/api/v1/notes/" + id, token).json().get("contentText").asText());
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "KB_TEST_POSTGRES_URL", matches = ".+")
+  void postgresLongUnicodeNotesRemainSearchableAndPrivate() throws Exception {
+    String token = api.register();
+    String otherToken = api.register();
+    String marker = "quokkanotemark";
+    Random random = new Random(184);
+    StringBuilder text = new StringBuilder(marker);
+    while (text.length() < 20_000) text.append((char) (0x4e00 + random.nextInt(20_000)));
+    String body = text.toString();
+    String document = ApiClient.MAPPER.writeValueAsString(Map.of(
+        "type", "doc", "content", List.of(Map.of("type", "paragraph", "content",
+            List.of(Map.of("type", "text", "text", body))))));
+    String request = ApiClient.MAPPER.writeValueAsString(Map.of(
+        "title", "Unicode note", "content", document, "contentText", body));
+
+    JsonNode created = api.created("POST", "/api/v1/notes", token, request);
+    String id = created.get("id").asText();
+    assertEquals(body, api.get("/api/v1/notes/" + id, token).json().get("contentText").asText());
+    assertEquals(404, api.get("/api/v1/notes/" + id, otherToken).status());
+
+    String query = "/api/v1/notes?page=0&size=20&q=" + marker;
+    ApiClient.Reply ownerNotes = api.get(query, token);
+    assertEquals(200, ownerNotes.status());
+    assertEquals(id, ownerNotes.json().get("items").get(0).get("id").asText());
+    assertEquals(0, api.get(query, otherToken).json().get("items").size());
+    String globalQuery = "/api/v1/search?q=" + marker + "&types=NOTE&fuzzy=false";
+    JsonNode groups = api.get(globalQuery, token).json().get("groups");
+    assertEquals(id, groups.get(0).get("results").get(0).get("id").asText());
+    assertEquals(0, api.get(globalQuery, otherToken).json().get("groups").size());
+
+    assertEquals(204, api.delete("/api/v1/notes/" + id, token).status());
+    assertEquals(0, api.get(query, token).json().get("items").size());
+    assertEquals(id, api.get(query + "&archived=true", token).json()
+        .get("items").get(0).get("id").asText());
+    assertEquals(0, api.get(query + "&archived=true", otherToken).json().get("items").size());
+    assertEquals(204, api.post("/api/v1/notes/" + id + "/restore", token, null).status());
+
+    assertEquals(0, jdbc.queryForObject(
+        "select count(*) from pg_indexes where schemaname = current_schema() "
+            + "and indexname = 'note_user_content_text_idx'", Integer.class));
+    Boolean usesTrigramIndex = jdbc.execute((ConnectionCallback<Boolean>) connection -> {
+      try (var statement = connection.createStatement()) {
+        statement.execute("set enable_seqscan = off");
+        try (var plan = statement.executeQuery(
+            "explain select id from note where lower(coalesce(content_text, '')) "
+                + "like '%quokkanotemark%'")) {
+          while (plan.next()) {
+            if (plan.getString(1).contains("note_content_text_search_trgm_idx")) return true;
+          }
+          return false;
+        } finally {
+          statement.execute("reset enable_seqscan");
+        }
+      }
+    });
+    assertEquals(Boolean.TRUE, usesTrigramIndex);
   }
 }

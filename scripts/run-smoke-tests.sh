@@ -387,6 +387,16 @@ api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated knowledge\"}]}]}","contentText":"Updated knowledge","tags":["Smoke"]}' \
   "http://localhost:8080/api/v1/notes/$note_id" \
   | grep -q 'Updated knowledge'
+# Exercise PostgreSQL indexes with a full-length, hard-to-compress body.
+long_note_text="$(node -e 'const {createHash}=require("node:crypto"); let text="Updated knowledge "; for (let i=0; text.length<20000; i++) text+=createHash("sha256").update(String(i)).digest("hex"); process.stdout.write(text.slice(0,20000));')"
+long_note_payload="$(KB_SMOKE_NOTE_BODY="$long_note_text" node -e 'const text=process.env.KB_SMOKE_NOTE_BODY; const content=JSON.stringify({type:"doc",content:[{type:"paragraph",content:[{type:"text",text}]}]}); process.stdout.write(JSON.stringify({title:"Edited smoke note",content,contentText:text,tags:["Smoke"]}));')"
+check_long_note() {
+  KB_SMOKE_NOTE_BODY="$long_note_text" node -e 'let input=""; process.stdin.setEncoding("utf8"); process.stdin.on("data", chunk => input+=chunk); process.stdin.on("end", () => { if (JSON.parse(input).contentText !== process.env.KB_SMOKE_NOTE_BODY) process.exitCode=1; });'
+}
+api "${header[@]}" "${content_json[@]}" --method=PUT --body-data="$long_note_payload" \
+  "http://localhost:8080/api/v1/notes/$note_id" | check_long_note
+api "${header[@]}" "http://localhost:8080/api/v1/notes/$note_id" | check_long_note
+unset long_note_text long_note_payload
 api "${header[@]}" --method=DELETE "http://localhost:8080/api/v1/notes/$note_id" >/dev/null
 api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/notes/$note_id/restore" >/dev/null
 if api "${other_header[@]}" "http://localhost:8080/api/v1/notes/$note_id" >/dev/null; then

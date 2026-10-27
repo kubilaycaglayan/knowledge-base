@@ -2,6 +2,8 @@
 
 - [x] Set a clear 20,000-character limit for note bodies in the web editor and
   API; rich-text document metadata remains separate from the body-text limit.
+  PostgreSQL no longer indexes the entire body in a B-tree, so full-length
+  notes save successfully while remaining searchable through the trigram index.
 
 - [x] Remove the floating timer's Discard session action and the Path and Note
   card Move up/Move down buttons; keep drag reordering for Paths and Notes.
