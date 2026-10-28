@@ -184,7 +184,7 @@ describe("PathTimingSankey", () => {
     expect(series.data[2].label).toEqual({ show: false });
   });
 
-  it("hides repeated intermediate labels while preserving full tooltip labels", () => {
+  it("keeps node labels available at every bucket and lets layout hide collisions", () => {
     const nodes = Array.from({ length: 4 }, (_value, depth) => ({
       ...sankey.nodes[0],
       id: `bucket:${depth}:path:walk`,
@@ -204,22 +204,44 @@ describe("PathTimingSankey", () => {
     const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
       series: Array<{
         data: Array<{ label?: { show: boolean } }>;
+        labelLayout?: { hideOverlap?: boolean };
       }>;
       tooltip: { formatter: (params: unknown) => string };
     };
 
     expect(option.series[0].data.map((node) => node.label?.show)).toEqual([
       true,
-      false,
-      false,
+      true,
+      true,
       true,
     ]);
+    expect(option.series[0].labelLayout).toMatchObject({ hideOverlap: true });
     expect(
       option.tooltip.formatter({
         dataType: "edge",
         data: { ...links[1], sourceLabel: "Full source label", targetLabel: "Full target label" },
       }),
     ).toContain("Full target label");
+  });
+
+  it("thins bucket total labels while keeping the first and last populated buckets", () => {
+    const nodes = Array.from({ length: 14 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes, links: [] },
+        bucketCount: 14,
+      },
+    });
+
+    expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeLessThanOrEqual(8);
+    expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeGreaterThan(2);
+    expect(wrapper.findAll(".sankey-aggregate-total b")[0].text()).toBe("10m");
+    expect(wrapper.findAll(".sankey-aggregate-total b").at(-1)?.text()).toBe("10m");
   });
 
   it("removes trailing buckets when the right edge of the range moves left", () => {
