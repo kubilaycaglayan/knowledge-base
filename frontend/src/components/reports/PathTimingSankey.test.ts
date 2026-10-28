@@ -163,7 +163,7 @@ describe("PathTimingSankey", () => {
     expect(series).toMatchObject({ left: 150, right: 150, nodeAlign: "left" });
     expect(series.label).toMatchObject({
       overflow: "break",
-      width: 140,
+      width: 110,
       lineHeight: 16,
     });
     expect(series.data.map((node) => node.depth)).toEqual([0, 1, 2, 3]);
@@ -224,6 +224,52 @@ describe("PathTimingSankey", () => {
     ).toContain("Full target label");
   });
 
+  it("limits labels in a crowded column and leaves long names available in tooltips", () => {
+    const crowdedNodes = Array.from({ length: 12 }, (_value, index) => ({
+      ...sankey.nodes[0],
+      id: `bucket:0:path:${index}`,
+      pathLabel:
+        index === 0
+          ? "A very long label that would overlap neighboring node names"
+          : `Path ${index}`,
+      depth: 0,
+      value: (12 - index) * 300,
+    }));
+    const target = {
+      ...sankey.nodes[1],
+      id: "bucket:1:path:target",
+      depth: 1,
+    };
+    const links = crowdedNodes.map((node) => ({
+      source: node.id,
+      target: target.id,
+      sourceLabel: node.pathLabel,
+      targetLabel: target.pathLabel,
+      value: 250,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes: [...crowdedNodes, target], links },
+        bucketCount: 2,
+      },
+    });
+    const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ name: string; label?: { show: boolean } }> }>;
+      tooltip: { formatter: (params: unknown) => string };
+    };
+    const visibleLabels = option.series[0].data.filter(
+      (node) => node.name !== target.id && node.label?.show,
+    );
+
+    expect(visibleLabels.length).toBeLessThanOrEqual(4);
+    expect(
+      option.tooltip.formatter({
+        dataType: "edge",
+        data: { ...links[0], sourceLabel: crowdedNodes[0].pathLabel },
+      }),
+    ).toContain(crowdedNodes[0].pathLabel);
+  });
+
   it("thins bucket total labels while keeping the first and last populated buckets", () => {
     const nodes = Array.from({ length: 14 }, (_value, depth) => ({
       ...sankey.nodes[0],
@@ -231,13 +277,26 @@ describe("PathTimingSankey", () => {
       depth,
       bucketLabel: `Bucket ${depth}`,
     }));
+    const links = Array.from({ length: 13 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
     const wrapper = mount(PathTimingSankey, {
       props: {
-        sankey: { ...sankey, nodes, links: [] },
+        sankey: { ...sankey, nodes, links },
         bucketCount: 14,
       },
     });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ depth: number; label?: { show: boolean } }> }>;
+    }).series[0];
 
+    expect(
+      series.data.filter((node) => node.label?.show).map((node) => node.depth),
+    ).toEqual([0, 2, 4, 6, 8, 10, 13]);
     expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeLessThanOrEqual(8);
     expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeGreaterThan(2);
     expect(wrapper.findAll(".sankey-aggregate-total b")[0].text()).toBe("10m");

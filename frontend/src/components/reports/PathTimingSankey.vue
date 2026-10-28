@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
 import { use } from "echarts/core";
@@ -44,6 +44,16 @@ const props = withDefaults(
   },
 );
 use([SankeyChart, TooltipComponent, SVGRenderer]);
+
+const chartWidth = ref(1200);
+function updateChartWidth() {
+  chartWidth.value = Math.max(560, window.innerWidth);
+}
+onMounted(() => {
+  updateChartWidth();
+  window.addEventListener("resize", updateChartWidth);
+});
+onUnmounted(() => window.removeEventListener("resize", updateChartWidth));
 
 const visibleSankey = computed<Sankey>(() => {
   const bucketCount = Math.max(
@@ -93,6 +103,48 @@ const selectedBucketCount = computed(() => {
   );
   return lastDepth - firstDepth + 1;
 });
+const visibleNodeLabelIds = computed(() => {
+  const depths = [...new Set(visibleSankey.value.nodes.map((node) => node.depth))].sort(
+    (left, right) => left - right,
+  );
+  const plotWidth = Math.max(1, chartWidth.value - 150 - 150 - 14);
+  const columnSpacing = plotWidth / Math.max(1, selectedBucketCount.value - 1);
+  const labelInterval = Math.max(1, Math.ceil(110 / columnSpacing));
+  let selectedDepths: Set<number>;
+  if (depths.length <= 2) {
+    selectedDepths = new Set(depths);
+  } else {
+    const firstDepth = depths[0];
+    const lastDepth = depths.at(-1)!;
+    const selected = [firstDepth];
+
+    for (const depth of depths.slice(1, -1)) {
+      if (
+        depth - selected.at(-1)! >= labelInterval &&
+        lastDepth - depth >= labelInterval
+      ) {
+        selected.push(depth);
+      }
+    }
+
+    if (lastDepth - selected.at(-1)! < labelInterval && selected.length > 1) {
+      selected.pop();
+    }
+    selected.push(lastDepth);
+    selectedDepths = new Set(selected);
+  }
+  const labelsPerDepth = chartWidth.value < 700 ? 3 : 4;
+  const visibleIds = new Set<string>();
+  for (const depth of selectedDepths) {
+    const nodes = visibleSankey.value.nodes.filter((node) => node.depth === depth);
+    const candidates = nodes
+      .filter((node) => nodes.length === 1 || node.pathLabel.length <= 28)
+      .sort((left, right) => right.value - left.value)
+      .slice(0, labelsPerDepth);
+    for (const node of candidates) visibleIds.add(node.id);
+  }
+  return visibleIds;
+});
 
 const aggregateTotals = computed(() => {
   const totals = new Map<number, { bucketLabel: string; seconds: number }>();
@@ -103,15 +155,31 @@ const aggregateTotals = computed(() => {
       seconds: (current?.seconds || 0) + node.value,
     });
   }
-  const lastDepth = Math.max(
-    -1,
-    ...visibleSankey.value.nodes.map((node) => node.depth),
+  const availableLabelWidth = Math.max(1, chartWidth.value - 150 - 150);
+  const maximumVisibleLabels = Math.max(2, Math.floor(availableLabelWidth / 90));
+  const labelInterval = Math.max(
+    1,
+    Math.ceil(selectedBucketCount.value / maximumVisibleLabels),
   );
-  return Array.from({ length: lastDepth + 1 }, (_, depth) => ({
-    depth,
-    bucketLabel: totals.get(depth)?.bucketLabel || "",
-    seconds: totals.get(depth)?.seconds || 0,
-  }));
+  const populatedDepths = [...totals.entries()]
+    .filter(([, total]) => total.seconds > 0)
+    .map(([depth]) => depth);
+  const firstPopulatedDepth = Math.min(...populatedDepths);
+  const lastPopulatedDepth = Math.max(-1, ...populatedDepths);
+  return Array.from({ length: selectedBucketCount.value }, (_, depth) => {
+    const total = totals.get(depth);
+    const seconds = total?.seconds || 0;
+    return {
+      depth,
+      bucketLabel: total?.bucketLabel || "",
+      seconds,
+      showLabel:
+        seconds > 0 &&
+        (depth === firstPopulatedDepth ||
+          depth === lastPopulatedDepth ||
+          depth % labelInterval === 0),
+    };
+  });
 });
 const isolatedBuckets = computed(() => {
   const buckets = new Map<
@@ -199,12 +267,13 @@ const option = computed<EChartsOption>(() => ({
       nodeGap: 12,
       nodeAlign: "left",
       draggable: false,
+      labelLayout: { hideOverlap: true },
       emphasis: { focus: "adjacency" },
       lineStyle: { color: "gradient", opacity: 0.42, curveness: 0.48 },
       label: {
         color: chartTheme.value.text,
         overflow: "break",
-        width: 140,
+        width: 110,
         lineHeight: 16,
         formatter: (params: unknown) => {
           const item = params as {
@@ -217,8 +286,7 @@ const option = computed<EChartsOption>(() => ({
       data: [
         ...visibleSankey.value.nodes.map((node) => {
           const firstDepth = Math.min(...visibleSankey.value.nodes.map((item) => item.depth));
-          const lastDepth = Math.max(...visibleSankey.value.nodes.map((item) => item.depth));
-          const endpoint = node.depth === firstDepth ? "left" : node.depth === lastDepth ? "right" : "hidden";
+          const position = node.depth === firstDepth ? "left" : "right";
           return {
             name: node.id,
             value: node.value,
@@ -226,9 +294,9 @@ const option = computed<EChartsOption>(() => ({
             pathLabel: node.pathLabel,
             bucketLabel: node.bucketLabel,
             label: {
-              show: endpoint !== "hidden",
-              position: endpoint === "left" ? "left" : "right",
-              align: endpoint === "left" ? "right" : "left",
+              show: visibleNodeLabelIds.value.has(node.id),
+              position,
+              align: position === "left" ? "right" : "left",
             },
             itemStyle: node.color ? { color: node.color } : undefined,
           };
@@ -301,7 +369,7 @@ const option = computed<EChartsOption>(() => ({
         "
         :class="{ 'has-total': total.seconds > 0 }"
       >
-        <b v-if="total.seconds > 0">{{
+        <b v-if="total.showLabel">{{
           formatSankeyDuration(total.seconds)
         }}</b>
       </span>

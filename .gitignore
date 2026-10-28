@@ -3,6 +3,7 @@
 !.env.example
 backups/*
 !backups/.gitignore
+/demo/
 secrets
 node_modules/
 .wxt/
