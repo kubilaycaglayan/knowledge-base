@@ -1,7 +1,8 @@
 # Report range selector acceptance checklist
 
-The draggable range selector below the Reports bar chart (shown when a range has more than 31 buckets).
+The draggable range selector below the Reports bar chart (shown when a range has more than two aggregation buckets).
 
-- [x] RS-01: By default the selector covers the whole date range chosen in the date picker (start 0%, end 100%), for both the slider and the inside (wheel/drag) zoom. Test: `SummaryBarChart.test.ts` "selects the whole date range in the range selector by default".
+- [x] RS-01: The selector defaults to the full selected date range for both the slider and inside zoom. The icon button can switch to the first and last buckets with tracked time, with one bucket of margin on each side; an all-zero range stays full. Test: `SummaryBarChart.test.ts` "focuses available data with one bucket of margin and falls back for zero data".
 - [x] RS-02: The selector is twice as tall as before (36px instead of 18px), and the chart grid leaves room for it so it does not overlap the axis labels. The chart grows by the extra 18px (`.has-range-selector`) so the bars keep their height. Test: `SummaryBarChart.test.ts` "draws a double-height range selector below the axis labels".
-- [x] RS-03: Ranges of 31 buckets or fewer still have no selector. Test: `SummaryBarChart.test.ts` "keeps short ranges without a range selector".
+- [x] RS-03: Ranges of two buckets or fewer have no selector; longer ranges include a control beside the slider to switch between full range and available data. Test: `SummaryBarChart.test.ts` "keeps ranges of two buckets or fewer without a range selector" and "offers a button to switch between full and available data views".
+- [x] RS-04: Date-range changes reset to the full selected range; aggregation and filter changes preserve the current zoom window. The `zoom=available|full` query value restores the selected view after reload and browser history navigation. Tests: `SummaryBarChart.test.ts` "keeps the zoom window on data changes until the date range changes" and `ReportsView.test.ts` "persists chart range mode and resets it to the full range when dates change".

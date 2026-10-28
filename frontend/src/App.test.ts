@@ -4,6 +4,19 @@ import { routeLocationKey, routerKey } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
 
 const stubs = {
+  VDialog: {
+    props: ["modelValue"],
+    template: '<div v-if="modelValue"><slot /></div>',
+  },
+  VCard: { template: '<section v-bind="$attrs"><slot /></section>' },
+  VCardTitle: { template: "<h2 v-bind=\"$attrs\"><slot /></h2>" },
+  VCardText: { template: "<p v-bind=\"$attrs\"><slot /></p>" },
+  VCardActions: { template: "<div><slot /></div>" },
+  VSpacer: { template: "<span />" },
+  VBtn: {
+    emits: ["click"],
+    template: '<button type="button" @click="$emit(\'click\')"><slot /></button>',
+  },
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   RouterView: { template: "<div data-test=router-view />" },
   FloatingTimeTracker: { template: "<aside data-test= floating-tracker />" },
@@ -85,9 +98,25 @@ describe("App", () => {
 
     await wrapper.get("button.ghost").trigger("click");
 
+    expect(localStorage.getItem("know_token")).toBe("token");
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain("Sign out?");
+    await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+
     expect(localStorage.getItem("know_token")).toBeNull();
     expect(wrapper.find("nav").exists()).toBe(false);
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
+  });
+
+  it("keeps the session when sign-out confirmation is cancelled", async () => {
+    localStorage.setItem("know_token", "token");
+    const wrapper = mount(App, { global: { stubs } });
+
+    await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get('[role="alertdialog"] button').trigger("click");
+
+    expect(localStorage.getItem("know_token")).toBe("token");
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
+    expect(wrapper.find("nav").exists()).toBe(true);
   });
 
   it("puts the product name first in the browser title", async () => {

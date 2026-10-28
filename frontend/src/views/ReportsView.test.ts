@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from "pinia";
 import vuetify from "../plugins/vuetify";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
-import { endOfWeek, format, startOfWeek, subDays, subYears } from "date-fns";
+import { endOfWeek, format, startOfWeek, subDays } from "date-fns";
 
 vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
 
@@ -586,46 +586,87 @@ describe("ReportsView", () => {
     );
   });
 
-  it("selects ranges suited to daily, weekly, monthly, and quarterly aggregation", async () => {
+  it("keeps the selected date range when changing aggregation", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/reports?startDate=2026-08-10&endDate=2026-08-20&aggregation=DAY",
+    );
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      return {
+        period: "CUSTOM",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: 0,
+        days: [],
+        paths: [],
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    const expectedEnd = format(new Date(), "yyyy-MM-dd");
-
-    for (const [label, aggregation, expectedStart] of [
-      [
-        "Daily",
-        "DAY",
-        format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
-      ],
-      ["Weekly", "WEEK", format(subDays(new Date(), 29), "yyyy-MM-dd")],
-      ["Monthly", "MONTH", format(subYears(new Date(), 1), "yyyy-MM-dd")],
-      ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
-    ] as const) {
-      const reportRequestCount = vi
-        .mocked(api)
-        .mock.calls.filter(
-          ([path]) => typeof path === "string" && path.startsWith("/reports?"),
-        ).length;
+    for (const aggregation of ["WEEK", "MONTH", "QUARTER", "YEAR"]) {
       await wrapper
         .get('[aria-label="Report aggregation"]')
         .setValue(aggregation);
       await flushPromises();
-      const expectedRangeEnd =
-        aggregation === "DAY"
-          ? format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd")
-          : expectedEnd;
-      const reportRequests = vi
-        .mocked(api)
-        .mock.calls.filter(
-          ([path]) => typeof path === "string" && path.startsWith("/reports?"),
-        );
-      expect(reportRequests.at(-1)?.[0]).toBe(
-        `/reports?startDate=${expectedStart}&endDate=${expectedRangeEnd}&aggregation=${aggregation}`,
+      expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+        `/reports?startDate=2026-08-10&endDate=2026-08-20&aggregation=${aggregation}`,
       );
-      expect(reportRequests.length).toBe(
-        reportRequestCount + (aggregation === "DAY" ? 0 : 1),
-      );
+      const params = new URL(window.location.href).searchParams;
+      expect(params.get("startDate")).toBe("2026-08-10");
+      expect(params.get("endDate")).toBe("2026-08-20");
+      expect(params.get("aggregation")).toBe(aggregation.toLowerCase());
     }
+  });
+
+  it("persists chart range mode and resets it to the full range when dates change", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      return {
+        period: "CUSTOM",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: 3600,
+        days: Array.from({ length: 5 }, (_, index) => ({
+          date: `2026-08-${String(10 + index).padStart(2, "0")}`,
+          totalSeconds: index === 2 ? 3600 : 0,
+          paths: index === 2 ? [{ id: "path-1", label: "Wander", seconds: 3600 }] : [],
+          sessionLabels: [],
+        })),
+        paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    expect(new URL(window.location.href).searchParams.get("zoom")).toBe("full");
+    expect(wrapper.get(".chart-zoom-toggle").attributes("aria-label")).toContain(
+      "show available data",
+    );
+    await wrapper.get(".chart-zoom-toggle").trigger("click");
+    expect(new URL(window.location.href).searchParams.get("zoom")).toBe("available");
+    expect(wrapper.get(".chart-zoom-toggle").attributes("aria-label")).toContain(
+      "show full range",
+    );
+
+    wrapper.unmount();
+    const restored = mount(ReportsView, { global });
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.get("zoom")).toBe("available");
+    expect(restored.get(".chart-zoom-toggle").attributes("aria-label")).toContain(
+      "show full range",
+    );
+
+    await restored.find(".test-range").trigger("click");
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.get("zoom")).toBe("full");
   });
 
   it("aggregates chart values at the selected semantic interval", async () => {
@@ -686,19 +727,65 @@ describe("ReportsView", () => {
 
   it("shows the server-provided Sankey flow and stores the choice in the URL", async () => {
     window.history.replaceState({}, "", "/reports");
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      return {
+        period: "CUSTOM",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: 3600,
+        days: [10, 11, 12].map((day) => ({
+          date: `2026-08-${day}`,
+          totalSeconds: day === 11 ? 3600 : 0,
+          paths: [],
+          sessionLabels: [],
+        })),
+        paths: [],
+        sessionLabels: [],
+        calendarLabels: [],
+        sankey: {
+          granularity: "DAY",
+          nodes: [0, 1, 2].map((depth) => ({
+            id: `bucket:${depth}:path:path-1`,
+            label: `Bucket ${depth} · Wander`,
+            color: "#123456",
+            depth,
+            value: 1200,
+            pathLabel: "Wander",
+            bucketLabel: `Bucket ${depth}`,
+          })),
+          links: [0, 1].map((depth) => ({
+            source: `bucket:${depth}:path:path-1`,
+            target: `bucket:${depth + 1}:path:path-1`,
+            sourceLabel: `Bucket ${depth} · Wander`,
+            targetLabel: `Bucket ${depth + 1} · Wander`,
+            value: 1200,
+          })),
+        },
+      } as never;
+    });
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
+    expect(wrapper.findComponent({ name: "SummaryBarChart" }).exists()).toBe(
+      true,
+    );
 
     await wrapper.get(".sankey-toggle").trigger("click");
     await flushPromises();
     expect(wrapper.get("#sankey-flow").text()).toContain("Path timing by day");
-    expect(wrapper.find(".chart-frame").exists()).toBe(false);
-    expect(wrapper.text()).toContain("0 tracked flows");
+    expect(wrapper.findComponent({ name: "SummaryBarChart" }).exists()).toBe(
+      false,
+    );
+    expect(wrapper.find(".sankey-range-controls").exists()).toBe(false);
+    expect(wrapper.text()).toContain("2 tracked flows");
     expect(new URLSearchParams(window.location.search).get("sankey")).toBe("1");
 
     await wrapper.get(".sankey-toggle").trigger("click");
     expect(wrapper.find("#sankey-flow").exists()).toBe(false);
-    expect(wrapper.find(".chart-frame").exists()).toBe(true);
+    expect(wrapper.findComponent({ name: "SummaryBarChart" }).exists()).toBe(
+      true,
+    );
   });
 
   it("shifts the selected interval in both directions without changing aggregation", async () => {

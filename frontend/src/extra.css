@@ -610,6 +610,58 @@
   gap: 8px;
   margin-top: 20px;
 }
+.sign-out-dialog-content {
+  width: min(420px, calc(100vw - 32px));
+  max-width: 420px;
+  margin: 16px;
+}
+.sign-out-dialog {
+  overflow: hidden;
+  border: 1px solid var(--workspace-border);
+  border-radius: 12px;
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+  box-shadow: 0 12px 32px #0005;
+}
+.sign-out-dialog .sign-out-dialog-title {
+  min-height: 0;
+  padding: 20px 24px 4px;
+  color: var(--workspace-text);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+}
+.sign-out-dialog .sign-out-dialog-description {
+  padding: 4px 24px 8px;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.sign-out-dialog .sign-out-dialog-actions {
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px 20px;
+}
+.sign-out-dialog .sign-out-dialog-actions .v-btn {
+  min-width: 84px;
+  min-height: 40px;
+  border-radius: var(--workspace-radius);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.sign-out-dialog .sign-out-cancel {
+  border-color: var(--workspace-control-border);
+  color: var(--workspace-text);
+}
+.sign-out-dialog .sign-out-cancel:hover {
+  background: var(--workspace-hover);
+}
+.sign-out-dialog .sign-out-confirm {
+  --v-btn-height: 40px;
+}
 .merge-path-options {
   display: grid;
   gap: 6px;
@@ -965,6 +1017,12 @@
   margin: 4px 0 0;
   font-size: 16px;
 }
+.report-visualization-stage {
+  min-height: 390px;
+}
+.sankey-card {
+  margin-top: 24px;
+}
 .total-display {
   font-size: 18px;
   font-variant-numeric: tabular-nums;
@@ -982,9 +1040,6 @@
 .chart-frame.has-range-selector .report-echart {
   min-height: 378px;
   height: 378px;
-}
-.sankey-card {
-  margin-top: 24px;
 }
 .sankey-frame {
   min-height: 360px;
@@ -1955,6 +2010,9 @@
   }
 }
 @media (max-width: 700px) {
+  .report-visualization-stage {
+    min-height: 310px;
+  }
   .session-heading {
     flex-wrap: wrap;
   }

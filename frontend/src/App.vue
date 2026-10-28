@@ -22,6 +22,7 @@ const boards = useBoardsStore();
 const preferences = usePreferencesStore();
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
+const showLogoutConfirmation = ref(false);
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
@@ -101,6 +102,7 @@ watchEffect(() => {
   document.title = `Knowledge Base · ${page.charAt(0).toUpperCase()}${page.slice(1)}`;
 });
 function logout() {
+  showLogoutConfirmation.value = false;
   auth.clearToken();
   void router?.replace("/");
 }
@@ -196,11 +198,58 @@ function authenticated() {
             />
           </svg>
         </button>
-        <button v-if="auth.isAuthenticated" class="ghost" @click="logout">
+        <button
+          v-if="auth.isAuthenticated"
+          class="ghost"
+          type="button"
+          aria-haspopup="dialog"
+          @click="showLogoutConfirmation = true"
+        >
           Sign out
         </button>
       </div>
     </header>
+    <v-dialog
+      v-model="showLogoutConfirmation"
+      max-width="420"
+      content-class="sign-out-dialog-content"
+    >
+      <v-card
+        class="sign-out-dialog"
+        role="alertdialog"
+        aria-labelledby="sign-out-title"
+        aria-describedby="sign-out-description"
+      >
+        <v-card-title class="sign-out-dialog-title" id="sign-out-title">
+          Sign out?
+        </v-card-title>
+        <v-card-text
+          class="sign-out-dialog-description"
+          id="sign-out-description"
+        >
+          Are you sure you want to sign out of Knowledge Base?
+        </v-card-text>
+        <v-card-actions class="sign-out-dialog-actions">
+          <v-btn
+            type="button"
+            class="sign-out-cancel"
+            variant="outlined"
+            @click="showLogoutConfirmation = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            type="button"
+            class="sign-out-confirm"
+            color="error"
+            variant="flat"
+            @click="logout"
+          >
+            Sign out
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <main id="main-content" tabindex="-1">
       <AuthView
         v-if="!auth.isAuthenticated"

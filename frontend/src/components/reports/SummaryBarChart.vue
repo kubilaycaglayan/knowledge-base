@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal } from "@mdi/js";
 import { reportColors as colors } from "../../lib/chart-colors";
 import { paletteColors } from "../../lib/color-palette";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { chartTheme } from "../../lib/theme";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
@@ -33,6 +34,7 @@ type Day = {
 const fallbackLabelColor = paletteColors[1];
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
 export type TrendlineMode = "OFF" | "LINEAR" | "PARABOLIC";
+type ChartZoomMode = "available" | "full";
 const props = withDefaults(
   defineProps<{
     days: Day[];
@@ -40,9 +42,18 @@ const props = withDefaults(
     showCalendar?: boolean;
     aggregation?: Aggregation;
     trendlineMode?: TrendlineMode;
+    zoomMode?: ChartZoomMode;
+    dateRangeKey?: string;
   }>(),
-  { showCalendar: false, aggregation: "DAY", trendlineMode: "OFF" },
+  {
+    showCalendar: false,
+    aggregation: "DAY",
+    trendlineMode: "OFF",
+    zoomMode: "full",
+    dateRangeKey: "",
+  },
 );
+const emit = defineEmits<{ "update:zoomMode": [mode: ChartZoomMode] }>();
 use([
   BarChart,
   CustomChart,
@@ -234,6 +245,47 @@ const trendlineValues = computed(() => {
       ? linearTrend(points, firstIndex, lastIndex)
       : [];
 });
+const zoomWindow = ref({ start: 0, end: 100 });
+let manualZoomWindow: { start: number; end: number } | null = null;
+const availableZoomWindow = computed(() => {
+  const count = props.days.length;
+  const nonzero = props.days
+    .map((day, index) => (day.totalSeconds > 0 ? index : -1))
+    .filter((index) => index >= 0);
+  if (count <= 1 || !nonzero.length) return { start: 0, end: 100 };
+  const first = Math.max(0, nonzero[0] - 1);
+  const last = Math.min(count - 1, nonzero.at(-1)! + 1);
+  return { start: (first / count) * 100, end: ((last + 1) / count) * 100 };
+});
+function applyZoomMode(mode: ChartZoomMode) {
+  manualZoomWindow = null;
+  zoomWindow.value =
+    mode === "full" ? { start: 0, end: 100 } : availableZoomWindow.value;
+}
+watch(
+  () => props.dateRangeKey,
+  () => applyZoomMode(props.zoomMode),
+  { immediate: true },
+);
+watch(
+  () => props.zoomMode,
+  (mode) => applyZoomMode(mode),
+  { immediate: true },
+);
+function handleDataZoom(event: unknown) {
+  const candidate = Array.isArray(event) ? event[0] : event;
+  const payload =
+    candidate && typeof candidate === "object" && "batch" in candidate
+      ? (candidate as { batch?: unknown[] }).batch?.[0]
+      : candidate;
+  if (!payload || typeof payload !== "object") return;
+  const zoom = payload as { start?: number; end?: number };
+  if (typeof zoom.start !== "number" || typeof zoom.end !== "number") return;
+  manualZoomWindow = { start: zoom.start, end: zoom.end };
+}
+function toggleZoomMode() {
+  emit("update:zoomMode", props.zoomMode === "full" ? "available" : "full");
+}
 function calendarPattern(
   x: number,
   y: number,
@@ -260,6 +312,10 @@ type CalendarRenderApi = {
   coord(value: number[]): number[];
   size?(value: number[]): number | number[];
 };
+function zoomWindowForOption() {
+  const presetZoomWindow = zoomWindow.value;
+  return manualZoomWindow || presetZoomWindow;
+}
 const option = computed<EChartsOption>(() => ({
   animation: false,
   textStyle: { color: chartTheme.value.text },
@@ -268,13 +324,20 @@ const option = computed<EChartsOption>(() => ({
     left: 48,
     right: 18,
     top: 30,
-    bottom: props.days.length > 31 ? 104 : 58,
+    bottom: props.days.length > 2 ? 104 : 58,
   },
   dataZoom:
-    props.days.length > 31
+    props.days.length > 2
       ? [
-          { type: "inside", start: 0, end: 100 },
-          { type: "slider", start: 0, end: 100, height: 36, bottom: 12 },
+          { type: "inside", ...zoomWindowForOption() },
+          {
+            type: "slider",
+            ...zoomWindowForOption(),
+            left: 48,
+            right: 150,
+            height: 36,
+            bottom: 12,
+          },
         ]
       : [],
   tooltip: {
@@ -433,25 +496,81 @@ const option = computed<EChartsOption>(() => ({
 </script>
 
 <template>
-  <div
-    class="chart-frame"
-    :class="{ 'has-range-selector': days.length > 31 }"
-    role="img"
-    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
-      days
-        .filter((day) => day.totalSeconds > 0)
-        .map(
-          (day) =>
-            `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`,
-        )
-        .join('; ') || 'No tracked time'
-    }`"
-  >
-    <v-chart
-      class="report-echart"
-      :option="option"
-      :init-options="{ renderer: 'svg' }"
-      autoresize
-    />
+  <div class="chart-frame-shell">
+    <div
+      class="chart-frame"
+      :class="{ 'has-range-selector': days.length > 2 }"
+      role="img"
+      :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
+        days
+          .filter((day) => day.totalSeconds > 0)
+          .map(
+            (day) =>
+              `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`,
+          )
+          .join('; ') || 'No tracked time'
+      }`"
+    >
+      <v-chart
+        class="report-echart"
+        :option="option"
+        :init-options="{ renderer: 'svg' }"
+        autoresize
+        @datazoom="handleDataZoom"
+      />
+    </div>
+    <button
+      v-if="days.length > 2"
+      class="chart-zoom-toggle"
+      type="button"
+      :aria-pressed="zoomMode === 'available'"
+      :aria-label="`Chart range: ${zoomMode === 'available' ? 'available data' : 'full range'}. Activate to show ${zoomMode === 'available' ? 'full range' : 'available data'}.`"
+      :title="zoomMode === 'available' ? 'Show full range' : 'Show available data'"
+      @click="toggleZoomMode"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path
+          :d="
+            zoomMode === 'available'
+              ? mdiArrowExpandHorizontal
+              : mdiArrowCollapseHorizontal
+          "
+          fill="currentColor"
+        />
+      </svg>
+    </button>
   </div>
 </template>
+
+<style scoped>
+.chart-frame-shell {
+  position: relative;
+}
+
+.chart-zoom-toggle {
+  position: absolute;
+  right: 18px;
+  bottom: 2px;
+  z-index: 2;
+  display: inline-flex;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: 6px;
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chart-zoom-toggle:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 2px;
+}
+
+</style>

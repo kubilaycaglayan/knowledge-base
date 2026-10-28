@@ -73,7 +73,7 @@
 
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 
-- [x] Open the Reports range selector on the whole picked date range and double its height, growing the chart so bars keep their size (see `docs/report-range-selector-acceptance-checklist.md`).
+- [x] Keep report aggregation independent from the chosen date range; default the chart selector to the full range after date changes and allow focusing on available data (see `docs/report-range-selector-acceptance-checklist.md`).
 
 - [x] Standardize the nav bar on every page (same width in the board Gantt view, 10px bottom margin) and route the logo home without a page reload, reusing cached session data.
 
@@ -172,10 +172,10 @@
   and theme-aware dropdowns, dialogs, date picker, and charts.
 - [x] Show report Sankey data as chronological path-aggregate columns for days,
   weeks, or months, with flows between adjacent periods.
-- [x] Keep the report date interval independent from daily, weekly, monthly,
-  quarterly, and yearly chart aggregation.
-- [x] Provide quarter date presets and useful rolling report windows: 30 days
-  for weekly, 1 year for monthly, and 2 years for quarterly aggregation.
+- [x] Keep the report date interval unchanged when switching daily, weekly,
+  monthly, quarterly, and yearly chart aggregation.
+- [x] Provide quarter date presets and rolling range presets independently of
+  chart aggregation.
 - [x] Add repeatable browser review for all routes and both themes, keyboard
   interaction, responsive layouts, and sparse/error/long-content states.
 - [x] Allow Google-only accounts to add password sign-in from Settings while

@@ -298,7 +298,7 @@ describe("SummaryBarChart", () => {
     grid: { bottom: number };
   };
 
-  it("RS-01: selects the whole date range in the range selector by default", () => {
+  it("uses the full selector extent when all buckets contain tracked time", () => {
     const wrapper = mount(SummaryBarChart, {
       props: { days: rangeDays(90), categories },
     });
@@ -330,9 +330,9 @@ describe("SummaryBarChart", () => {
     );
   });
 
-  it("RS-03: keeps short ranges without a range selector", () => {
+  it("RS-03: keeps ranges of two buckets or fewer without a range selector", () => {
     const wrapper = mount(SummaryBarChart, {
-      props: { days: rangeDays(31), categories },
+      props: { days: rangeDays(2), categories },
     });
     const option = wrapper
       .getComponent({ name: "VChart" })
@@ -343,6 +343,95 @@ describe("SummaryBarChart", () => {
     expect(wrapper.get(".chart-frame").classes()).not.toContain(
       "has-range-selector",
     );
+  });
+
+  it("focuses available data with one bucket of margin and falls back for zero data", async () => {
+    const zeroDay = (index: number, totalSeconds = 0) => ({
+      date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+      totalSeconds,
+      paths: [],
+    });
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        days: [
+          zeroDay(0),
+          zeroDay(1),
+          zeroDay(2),
+          zeroDay(3, 3600),
+          zeroDay(4),
+          zeroDay(5),
+          zeroDay(6),
+        ],
+        categories: [],
+        zoomMode: "available",
+        dateRangeKey: "first-range",
+      },
+    });
+    const getZoom = () =>
+      (wrapper.getComponent({ name: "VChart" }).props("option") as ZoomOption)
+        .dataZoom;
+
+    expect(getZoom()[0].start).toBeCloseTo(28.571, 2);
+    expect(getZoom()[0].end).toBeCloseTo(71.429, 2);
+    await wrapper.setProps({
+      days: Array.from({ length: 7 }, (_, i) => zeroDay(i)),
+      dateRangeKey: "second-range",
+    });
+    expect(getZoom()[0]).toMatchObject({ start: 0, end: 100 });
+  });
+
+  it("keeps the zoom window on data changes until the date range changes", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        days: rangeDays(10).map((day, index) => ({
+          ...day,
+          totalSeconds: index === 4 ? 3600 : 0,
+          paths: index === 4 ? day.paths : [],
+        })),
+        categories,
+        zoomMode: "available",
+        dateRangeKey: "first-range",
+      },
+    });
+    const getZoom = () =>
+      (wrapper.getComponent({ name: "VChart" }).props("option") as ZoomOption)
+        .dataZoom;
+
+    expect(getZoom()[0]).toMatchObject({ start: 30, end: 60 });
+    await wrapper.setProps({
+      aggregation: "WEEK",
+      days: rangeDays(10).map((day, index) => ({
+        ...day,
+        totalSeconds: index === 8 ? 3600 : 0,
+        paths: index === 8 ? day.paths : [],
+      })),
+    });
+    expect(getZoom()[0]).toMatchObject({ start: 30, end: 60 });
+
+    await wrapper.setProps({ dateRangeKey: "second-range" });
+    expect(getZoom()[0]).toMatchObject({ start: 70, end: 100 });
+  });
+
+  it("retains a manually adjusted slider window through chart option changes", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(10), categories },
+    });
+    const chart = wrapper.getComponent({ name: "VChart" });
+    chart.vm.$emit("datazoom", { batch: [{ start: 20, end: 60 }] });
+    await wrapper.setProps({ trendlineMode: "LINEAR" });
+
+    const zoom = (chart.props("option") as ZoomOption).dataZoom;
+    expect(zoom[0]).toMatchObject({ start: 20, end: 60 });
+  });
+
+  it("offers a button to switch between full and available data views", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(3), categories },
+    });
+
+    await wrapper.get(".chart-zoom-toggle").trigger("click");
+
+    expect(wrapper.emitted("update:zoomMode")).toEqual([["available"]]);
   });
 
   it("returns a safe empty tooltip when no day matches", () => {
