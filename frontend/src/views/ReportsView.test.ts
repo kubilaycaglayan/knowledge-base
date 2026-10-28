@@ -1,5 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
+import ReportRangeSelector from "../components/reports/ReportRangeSelector.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
 import vuetify from "../plugins/vuetify";
@@ -777,7 +778,14 @@ describe("ReportsView", () => {
     expect(wrapper.findComponent({ name: "SummaryBarChart" }).exists()).toBe(
       false,
     );
-    expect(wrapper.find(".sankey-range-controls").exists()).toBe(false);
+    expect(wrapper.findComponent(ReportRangeSelector).exists()).toBe(true);
+    wrapper
+      .getComponent(ReportRangeSelector)
+      .vm.$emit("update:modelValue", { start: 34, end: 67 });
+    await flushPromises();
+    expect(wrapper.getComponent(ReportRangeSelector).props("modelValue")).toEqual(
+      { start: 34, end: 67 },
+    );
     expect(wrapper.text()).toContain("00:00:00");
     expect(new URLSearchParams(window.location.search).get("sankey")).toBe("1");
 

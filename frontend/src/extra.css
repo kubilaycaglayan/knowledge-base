@@ -1018,10 +1018,10 @@
   font-size: 16px;
 }
 .report-visualization-stage {
-  min-height: 390px;
+  min-height: 442px;
 }
-.sankey-card {
-  margin-top: 24px;
+.sankey-range-selector {
+  width: 100%;
 }
 .total-display {
   font-size: 18px;
@@ -2011,7 +2011,7 @@
 }
 @media (max-width: 700px) {
   .report-visualization-stage {
-    min-height: 310px;
+    min-height: 362px;
   }
   .session-heading {
     flex-wrap: wrap;

@@ -74,6 +74,7 @@
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 
 - [x] Keep report aggregation independent from the chosen date range; default the chart selector to the full range after date changes and allow focusing on available data (see `docs/report-range-selector-acceptance-checklist.md`).
+- [x] Show the same range selector in bar and Sankey reports, preserving its selection across chart switches and filtering Sankey buckets and flows to the selected interval.
 
 - [x] Standardize the nav bar on every page (same width in the board Gantt view, 10px bottom margin) and route the logo home without a page reload, reusing cached session data.
 

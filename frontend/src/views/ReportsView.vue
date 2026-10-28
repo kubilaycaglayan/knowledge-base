@@ -6,6 +6,7 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  watch,
 } from "vue";
 import { routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
@@ -36,6 +37,7 @@ import ReportDateRange, {
 import SummaryBarChart, {
   type TrendlineMode,
 } from "../components/reports/SummaryBarChart.vue";
+import ReportRangeSelector from "../components/reports/ReportRangeSelector.vue";
 import ReportVisualizationLoading from "../components/reports/ReportVisualizationLoading.vue";
 import ProjectDonutChart from "../components/reports/ProjectDonutChart.vue";
 import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue";
@@ -101,6 +103,7 @@ type Report = {
 type PathOption = { id: string; name: string; status?: string };
 type LabelOption = { id: string; name: string; color?: string | null };
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
+type RangeWindow = { start: number; end: number };
 const PathTimingSankey = defineAsyncComponent({
   loader: () => import("../components/reports/PathTimingSankey.vue"),
   loadingComponent: ReportVisualizationLoading,
@@ -299,8 +302,41 @@ function zoomModeFromUrl(params: URLSearchParams): ChartZoomMode {
   return params.get("zoom") === "available" ? "available" : "full";
 }
 const chartZoomMode = ref(zoomModeFromUrl(initialParams));
+const chartRangeWindow = ref<RangeWindow>({ start: 0, end: 100 });
 const dateRangeKey = computed(
   () => (report.value ? `${report.value.from}:${report.value.to}` : ""),
+);
+const availableRangeWindow = computed<RangeWindow>(() => {
+  const count = aggregatedDays.value.length;
+  const nonzero = aggregatedDays.value
+    .map((day, index) => (day.totalSeconds > 0 ? index : -1))
+    .filter((index) => index >= 0);
+  if (count <= 1 || !nonzero.length) return { start: 0, end: 100 };
+  const first = Math.max(0, nonzero[0] - 1);
+  const last = Math.min(count - 1, nonzero.at(-1)! + 1);
+  return { start: (first / count) * 100, end: ((last + 1) / count) * 100 };
+});
+const sankeyBucketValues = computed(() => {
+  const nodes = report.value?.sankey?.nodes || [];
+  return Array.from({ length: aggregatedDays.value.length }, (_value, depth) =>
+    nodes
+      .filter((node) => node.depth === depth)
+      .reduce((total, node) => total + node.value, 0),
+  );
+});
+function setChartRangeWindow(window: RangeWindow) {
+  chartRangeWindow.value = {
+    start: Math.max(0, Math.min(100, window.start)),
+    end: Math.max(0, Math.min(100, window.end)),
+  };
+}
+watch(
+  [dateRangeKey, chartZoomMode],
+  ([key, mode], [previousKey, previousMode]) => {
+    if (!key || (key === previousKey && mode === previousMode)) return;
+    chartRangeWindow.value =
+      mode === "full" ? { start: 0, end: 100 } : availableRangeWindow.value;
+  },
 );
 
 function syncSankeyFromUrl() {
@@ -522,6 +558,7 @@ function selectAggregation(value: string) {
 }
 function selectRange(value: DateRange) {
   chartZoomMode.value = "full";
+  chartRangeWindow.value = { start: 0, end: 100 };
   selectedRange.value = value;
   storeReportState();
   void load();
@@ -553,6 +590,7 @@ function shiftAnchor(amount: number) {
     endDate: format(nextEnd, "yyyy-MM-dd"),
   };
   chartZoomMode.value = "full";
+  chartRangeWindow.value = { start: 0, end: 100 };
   storeReportState();
   void load();
 }
@@ -730,8 +768,9 @@ onBeforeUnmount(() =>
             :show-calendar="aggregation === 'DAY' && showCalendarInputs"
             :trendline-mode="trendlineMode"
             :zoom-mode="chartZoomMode"
-            :date-range-key="dateRangeKey"
+            :range-window="chartRangeWindow"
             @update:zoom-mode="setChartZoomMode"
+            @range-window-change="setChartRangeWindow"
           />
         </div>
       </section>
@@ -755,6 +794,18 @@ onBeforeUnmount(() =>
         <div class="report-visualization-stage">
           <PathTimingSankey
             :sankey="report.sankey"
+            :bucket-count="aggregatedDays.length"
+            :range-window="chartRangeWindow"
+          />
+          <ReportRangeSelector
+            v-if="aggregatedDays.length > 2"
+            class="sankey-range-selector"
+            :values="sankeyBucketValues"
+            :model-value="chartRangeWindow"
+            :zoom-mode="chartZoomMode"
+            :date-range-key="dateRangeKey"
+            @update:model-value="setChartRangeWindow"
+            @update:zoom-mode="setChartZoomMode"
           />
         </div>
       </section>

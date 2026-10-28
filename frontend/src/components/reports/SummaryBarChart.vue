@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal } from "@mdi/js";
 import { reportColors as colors } from "../../lib/chart-colors";
 import { paletteColors } from "../../lib/color-palette";
 import { computed, ref, watch } from "vue";
 import { chartTheme } from "../../lib/theme";
+import ReportRangeSelector from "./ReportRangeSelector.vue";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
 import { use } from "echarts/core";
@@ -35,6 +35,7 @@ const fallbackLabelColor = paletteColors[1];
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
 export type TrendlineMode = "OFF" | "LINEAR" | "PARABOLIC";
 type ChartZoomMode = "available" | "full";
+type RangeWindow = { start: number; end: number };
 const props = withDefaults(
   defineProps<{
     days: Day[];
@@ -43,17 +44,20 @@ const props = withDefaults(
     aggregation?: Aggregation;
     trendlineMode?: TrendlineMode;
     zoomMode?: ChartZoomMode;
-    dateRangeKey?: string;
+    rangeWindow?: RangeWindow;
   }>(),
   {
     showCalendar: false,
     aggregation: "DAY",
     trendlineMode: "OFF",
     zoomMode: "full",
-    dateRangeKey: "",
+    rangeWindow: () => ({ start: 0, end: 100 }),
   },
 );
-const emit = defineEmits<{ "update:zoomMode": [mode: ChartZoomMode] }>();
+const emit = defineEmits<{
+  "update:zoomMode": [mode: ChartZoomMode];
+  "range-window-change": [window: RangeWindow];
+}>();
 use([
   BarChart,
   CustomChart,
@@ -245,32 +249,28 @@ const trendlineValues = computed(() => {
       ? linearTrend(points, firstIndex, lastIndex)
       : [];
 });
-const zoomWindow = ref({ start: 0, end: 100 });
-let manualZoomWindow: { start: number; end: number } | null = null;
-const availableZoomWindow = computed(() => {
-  const count = props.days.length;
-  const nonzero = props.days
-    .map((day, index) => (day.totalSeconds > 0 ? index : -1))
-    .filter((index) => index >= 0);
-  if (count <= 1 || !nonzero.length) return { start: 0, end: 100 };
-  const first = Math.max(0, nonzero[0] - 1);
-  const last = Math.min(count - 1, nonzero.at(-1)! + 1);
-  return { start: (first / count) * 100, end: ((last + 1) / count) * 100 };
-});
-function applyZoomMode(mode: ChartZoomMode) {
-  manualZoomWindow = null;
-  zoomWindow.value =
-    mode === "full" ? { start: 0, end: 100 } : availableZoomWindow.value;
-}
-watch(
-  () => props.dateRangeKey,
-  () => applyZoomMode(props.zoomMode),
-  { immediate: true },
+const zoomWindow = ref<RangeWindow>({ ...props.rangeWindow });
+let manualZoomWindow: RangeWindow | null = null;
+const rangeWindowRevision = ref(0);
+const rangeSelectorValues = computed(() =>
+  props.days.map((day) => day.totalSeconds),
 );
+const rangeWindowForSelector = computed(() => {
+  rangeWindowRevision.value;
+  return manualZoomWindow || zoomWindow.value;
+});
 watch(
-  () => props.zoomMode,
-  (mode) => applyZoomMode(mode),
-  { immediate: true },
+  () => props.rangeWindow,
+  (window) => {
+    if (
+      manualZoomWindow &&
+      Math.abs(window.start - manualZoomWindow.start) < 0.01 &&
+      Math.abs(window.end - manualZoomWindow.end) < 0.01
+    )
+      return;
+    manualZoomWindow = null;
+    zoomWindow.value = { ...window };
+  },
 );
 function handleDataZoom(event: unknown) {
   const candidate = Array.isArray(event) ? event[0] : event;
@@ -282,9 +282,14 @@ function handleDataZoom(event: unknown) {
   const zoom = payload as { start?: number; end?: number };
   if (typeof zoom.start !== "number" || typeof zoom.end !== "number") return;
   manualZoomWindow = { start: zoom.start, end: zoom.end };
+  rangeWindowRevision.value += 1;
+  emit("range-window-change", manualZoomWindow);
 }
-function toggleZoomMode() {
-  emit("update:zoomMode", props.zoomMode === "full" ? "available" : "full");
+function handleRangeWindowChange(window: RangeWindow) {
+  manualZoomWindow = null;
+  zoomWindow.value = { ...window };
+  rangeWindowRevision.value += 1;
+  emit("range-window-change", window);
 }
 function calendarPattern(
   x: number,
@@ -328,17 +333,7 @@ const option = computed<EChartsOption>(() => ({
   },
   dataZoom:
     props.days.length > 2
-      ? [
-          { type: "inside", ...zoomWindowForOption() },
-          {
-            type: "slider",
-            ...zoomWindowForOption(),
-            left: 48,
-            right: 150,
-            height: 36,
-            bottom: 12,
-          },
-        ]
+      ? [{ type: "inside", ...zoomWindowForOption() }]
       : [],
   tooltip: {
     backgroundColor: chartTheme.value.surface,
@@ -519,26 +514,16 @@ const option = computed<EChartsOption>(() => ({
         @datazoom="handleDataZoom"
       />
     </div>
-    <button
-      v-if="days.length > 2"
-      class="chart-zoom-toggle"
-      type="button"
-      :aria-pressed="zoomMode === 'available'"
-      :aria-label="`Chart range: ${zoomMode === 'available' ? 'available data' : 'full range'}. Activate to show ${zoomMode === 'available' ? 'full range' : 'available data'}.`"
-      :title="zoomMode === 'available' ? 'Show full range' : 'Show available data'"
-      @click="toggleZoomMode"
-    >
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path
-          :d="
-            zoomMode === 'available'
-              ? mdiArrowExpandHorizontal
-              : mdiArrowCollapseHorizontal
-          "
-          fill="currentColor"
-        />
-      </svg>
-    </button>
+    <div v-if="days.length > 2" class="chart-range-selector-overlay">
+      <ReportRangeSelector
+        :values="rangeSelectorValues"
+        :model-value="rangeWindowForSelector"
+        :zoom-mode="zoomMode"
+        :date-range-key="`${days[0]?.date ?? ''}:${days.at(-1)?.date ?? ''}`"
+        @update:model-value="handleRangeWindowChange"
+        @update:zoom-mode="emit('update:zoomMode', $event)"
+      />
+    </div>
   </div>
 </template>
 
@@ -546,31 +531,13 @@ const option = computed<EChartsOption>(() => ({
 .chart-frame-shell {
   position: relative;
 }
-
-.chart-zoom-toggle {
+.chart-range-selector-overlay {
   position: absolute;
-  right: 18px;
-  bottom: 2px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 2;
-  display: inline-flex;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid var(--workspace-control-border);
-  border-radius: 6px;
-  background: var(--workspace-surface);
-  color: var(--workspace-text);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.chart-zoom-toggle:focus-visible {
-  outline: 2px solid var(--workspace-accent);
-  outline-offset: 2px;
+  height: 60px;
 }
 
 </style>

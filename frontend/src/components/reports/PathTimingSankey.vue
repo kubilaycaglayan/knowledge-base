@@ -26,17 +26,58 @@ type SankeyLink = {
   value: number;
 };
 type Sankey = {
-  granularity: "DAY" | "WEEK" | "MONTH";
+  granularity: "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
   nodes: SankeyNode[];
   links: SankeyLink[];
 };
 
-const props = defineProps<{ sankey: Sankey }>();
+type RangeWindow = { start: number; end: number };
+const props = withDefaults(
+  defineProps<{
+    sankey: Sankey;
+    bucketCount?: number;
+    rangeWindow?: RangeWindow;
+  }>(),
+  {
+    bucketCount: 0,
+    rangeWindow: () => ({ start: 0, end: 100 }),
+  },
+);
 use([SankeyChart, TooltipComponent, SVGRenderer]);
+
+const visibleSankey = computed<Sankey>(() => {
+  const bucketCount = Math.max(
+    props.bucketCount,
+    ...props.sankey.nodes.map((node) => node.depth + 1),
+  );
+  if (!bucketCount) return props.sankey;
+  const firstDepth = Math.min(
+    bucketCount - 1,
+    Math.floor((props.rangeWindow.start / 100) * bucketCount),
+  );
+  const lastDepth = Math.max(
+    firstDepth,
+    Math.min(
+      bucketCount - 1,
+      Math.ceil((props.rangeWindow.end / 100) * bucketCount) - 1,
+    ),
+  );
+  const nodes = props.sankey.nodes
+    .filter((node) => node.depth >= firstDepth && node.depth <= lastDepth)
+    .map((node) => ({ ...node, depth: node.depth - firstDepth }));
+  const visibleIds = new Set(nodes.map((node) => node.id));
+  return {
+    ...props.sankey,
+    nodes,
+    links: props.sankey.links.filter(
+      (link) => visibleIds.has(link.source) && visibleIds.has(link.target),
+    ),
+  };
+});
 
 const aggregateTotals = computed(() => {
   const totals = new Map<number, { bucketLabel: string; seconds: number }>();
-  for (const node of props.sankey.nodes) {
+  for (const node of visibleSankey.value.nodes) {
     const current = totals.get(node.depth);
     totals.set(node.depth, {
       bucketLabel: current?.bucketLabel || node.bucketLabel,
@@ -45,7 +86,7 @@ const aggregateTotals = computed(() => {
   }
   const lastDepth = Math.max(
     -1,
-    ...props.sankey.nodes.map((node) => node.depth),
+    ...visibleSankey.value.nodes.map((node) => node.depth),
   );
   return Array.from({ length: lastDepth + 1 }, (_, depth) => ({
     depth,
@@ -68,7 +109,7 @@ function formatSankeyDuration(seconds: number): string {
 
 const ariaLabel = computed(
   () =>
-    `Time flow by ${props.sankey.granularity.toLowerCase()}: ${props.sankey.links.map((link) => `${link.sourceLabel} to ${link.targetLabel}, ${formatDuration(link.value)}`).join("; ") || "No tracked time"}`,
+    `Time flow by ${visibleSankey.value.granularity.toLowerCase()}: ${visibleSankey.value.links.map((link) => `${link.sourceLabel} to ${link.targetLabel}, ${formatDuration(link.value)}`).join("; ") || "No tracked time"}`,
 );
 const option = computed<EChartsOption>(() => ({
   animation: false,
@@ -119,7 +160,7 @@ const option = computed<EChartsOption>(() => ({
           return item.data?.pathLabel || item.name || "";
         },
       },
-      data: props.sankey.nodes.map((node) => ({
+      data: visibleSankey.value.nodes.map((node) => ({
         name: node.id,
         value: node.value,
         depth: node.depth,
@@ -127,7 +168,7 @@ const option = computed<EChartsOption>(() => ({
         bucketLabel: node.bucketLabel,
         itemStyle: node.color ? { color: node.color } : undefined,
       })),
-      links: props.sankey.links,
+      links: visibleSankey.value.links,
     },
   ],
 }));
@@ -136,7 +177,7 @@ const option = computed<EChartsOption>(() => ({
 <template>
   <div class="sankey-frame" role="img" :aria-label="ariaLabel">
     <v-chart
-      v-if="sankey.nodes.length"
+      v-if="visibleSankey.nodes.length"
       class="report-echart sankey-echart"
       :option="option"
       :init-options="{ renderer: 'svg' }"
