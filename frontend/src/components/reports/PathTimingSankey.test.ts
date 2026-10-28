@@ -96,7 +96,7 @@ describe("PathTimingSankey", () => {
     expect(wrapper.text()).toContain("No tracked time to show in this flow.");
   });
 
-  it("shows isolated bucket data without stretching a linkless Sankey", () => {
+  it("shows a single isolated bucket as a column of Sankey nodes, not a table", () => {
     const longPath = "A complete path label with enough words to wrap over lines";
     const wrapper = mount(PathTimingSankey, {
       props: {
@@ -117,6 +117,8 @@ describe("PathTimingSankey", () => {
 
     expect(wrapper.findComponent({ name: "VChart" }).exists()).toBe(false);
     expect(wrapper.get(".sankey-isolated-bucket").text()).toContain(longPath);
+    expect(wrapper.findAll(".sankey-isolated-node")).toHaveLength(1);
+    expect(wrapper.find(".sankey-isolated-node-mark").exists()).toBe(true);
     expect(wrapper.get('[role="img"]').attributes("aria-label")).toContain(
       `May 2026, ${longPath}, 00:10:00`,
     );
