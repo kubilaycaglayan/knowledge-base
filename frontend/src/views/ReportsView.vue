@@ -748,9 +748,9 @@ onBeforeUnmount(() =>
               Path timing by {{ report.sankey.granularity.toLowerCase() }}
             </h2>
           </div>
-          <span class="muted"
-            >{{ report.sankey.links.length }} tracked flows</span
-          >
+          <strong class="total-display">{{
+            formatDuration(filteredTotal)
+          }}</strong>
         </div>
         <div class="report-visualization-stage">
           <PathTimingSankey

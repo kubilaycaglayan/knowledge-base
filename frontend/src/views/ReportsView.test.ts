@@ -778,7 +778,7 @@ describe("ReportsView", () => {
       false,
     );
     expect(wrapper.find(".sankey-range-controls").exists()).toBe(false);
-    expect(wrapper.text()).toContain("2 tracked flows");
+    expect(wrapper.text()).toContain("00:00:00");
     expect(new URLSearchParams(window.location.search).get("sankey")).toBe("1");
 
     await wrapper.get(".sankey-toggle").trigger("click");
