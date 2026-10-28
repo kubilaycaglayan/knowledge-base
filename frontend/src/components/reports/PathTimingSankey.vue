@@ -188,7 +188,12 @@ const isolatedBuckets = computed(() => {
       depth: number;
       bucketLabel: string;
       seconds: number;
-      paths: Array<{ id: string; label: string; seconds: number }>;
+      paths: Array<{
+        id: string;
+        label: string;
+        seconds: number;
+        color?: string | null;
+      }>;
     }
   >();
   for (const node of visibleSankey.value.nodes) {
@@ -203,6 +208,7 @@ const isolatedBuckets = computed(() => {
       id: node.id,
       label: node.pathLabel,
       seconds: node.value,
+      color: node.color,
     });
     buckets.set(node.depth, bucket);
   }
@@ -344,7 +350,13 @@ const option = computed<EChartsOption>(() => ({
           }}</strong>
         </header>
         <ul class="sankey-isolated-paths">
-          <li v-for="path in bucket.paths" :key="path.id">
+          <li
+            v-for="path in bucket.paths"
+            :key="path.id"
+            class="sankey-isolated-node"
+            :style="{ '--sankey-node-color': path.color || 'var(--workspace-border)' }"
+          >
+            <span class="sankey-isolated-node-mark" aria-hidden="true" />
             <span class="sankey-isolated-path">{{ path.label }}</span>
             <span class="sankey-isolated-duration">{{
               formatSankeyDuration(path.seconds)
@@ -417,9 +429,8 @@ const option = computed<EChartsOption>(() => ({
 }
 
 .sankey-isolated-paths {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 18px;
+  display: flex;
+  flex-direction: column;
   gap: 7px;
   margin: 0;
   padding: 0;
@@ -428,15 +439,33 @@ const option = computed<EChartsOption>(() => ({
 
 .sankey-isolated-paths li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 12px;
-  border-top: 1px solid var(--workspace-border);
-  padding-top: 7px;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 3px;
+  min-height: 42px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--workspace-surface) 72%, transparent);
+}
+
+.sankey-isolated-node-mark {
+  grid-row: span 2;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--sankey-node-color);
 }
 
 .sankey-isolated-path {
+  grid-column: 2;
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.sankey-isolated-paths .sankey-isolated-duration {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .sankey-aggregate-totals {
@@ -482,10 +511,6 @@ const option = computed<EChartsOption>(() => ({
   .sankey-aggregate-totals {
     margin-left: 150px;
     margin-right: 150px;
-  }
-
-  .sankey-isolated-paths {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .sankey-isolated-bucket {
