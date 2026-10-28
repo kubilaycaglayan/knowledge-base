@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { reportColors as colors } from "../../lib/chart-colors";
 import { paletteColors } from "../../lib/color-palette";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { chartTheme } from "../../lib/theme";
+import ReportRangeSelector from "./ReportRangeSelector.vue";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
 import { use } from "echarts/core";
@@ -33,6 +34,8 @@ type Day = {
 const fallbackLabelColor = paletteColors[1];
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
 export type TrendlineMode = "OFF" | "LINEAR" | "PARABOLIC";
+type ChartZoomMode = "available" | "full";
+type RangeWindow = { start: number; end: number };
 const props = withDefaults(
   defineProps<{
     days: Day[];
@@ -40,9 +43,21 @@ const props = withDefaults(
     showCalendar?: boolean;
     aggregation?: Aggregation;
     trendlineMode?: TrendlineMode;
+    zoomMode?: ChartZoomMode;
+    rangeWindow?: RangeWindow;
   }>(),
-  { showCalendar: false, aggregation: "DAY", trendlineMode: "OFF" },
+  {
+    showCalendar: false,
+    aggregation: "DAY",
+    trendlineMode: "OFF",
+    zoomMode: "full",
+    rangeWindow: () => ({ start: 0, end: 100 }),
+  },
 );
+const emit = defineEmits<{
+  "update:zoomMode": [mode: ChartZoomMode];
+  "range-window-change": [window: RangeWindow];
+}>();
 use([
   BarChart,
   CustomChart,
@@ -234,6 +249,48 @@ const trendlineValues = computed(() => {
       ? linearTrend(points, firstIndex, lastIndex)
       : [];
 });
+const zoomWindow = ref<RangeWindow>({ ...props.rangeWindow });
+let manualZoomWindow: RangeWindow | null = null;
+const rangeWindowRevision = ref(0);
+const rangeSelectorValues = computed(() =>
+  props.days.map((day) => day.totalSeconds),
+);
+const rangeWindowForSelector = computed(() => {
+  rangeWindowRevision.value;
+  return manualZoomWindow || zoomWindow.value;
+});
+watch(
+  () => props.rangeWindow,
+  (window) => {
+    if (
+      manualZoomWindow &&
+      Math.abs(window.start - manualZoomWindow.start) < 0.01 &&
+      Math.abs(window.end - manualZoomWindow.end) < 0.01
+    )
+      return;
+    manualZoomWindow = null;
+    zoomWindow.value = { ...window };
+  },
+);
+function handleDataZoom(event: unknown) {
+  const candidate = Array.isArray(event) ? event[0] : event;
+  const payload =
+    candidate && typeof candidate === "object" && "batch" in candidate
+      ? (candidate as { batch?: unknown[] }).batch?.[0]
+      : candidate;
+  if (!payload || typeof payload !== "object") return;
+  const zoom = payload as { start?: number; end?: number };
+  if (typeof zoom.start !== "number" || typeof zoom.end !== "number") return;
+  manualZoomWindow = { start: zoom.start, end: zoom.end };
+  rangeWindowRevision.value += 1;
+  emit("range-window-change", manualZoomWindow);
+}
+function handleRangeWindowChange(window: RangeWindow) {
+  manualZoomWindow = null;
+  zoomWindow.value = { ...window };
+  rangeWindowRevision.value += 1;
+  emit("range-window-change", window);
+}
 function calendarPattern(
   x: number,
   y: number,
@@ -260,6 +317,10 @@ type CalendarRenderApi = {
   coord(value: number[]): number[];
   size?(value: number[]): number | number[];
 };
+function zoomWindowForOption() {
+  const presetZoomWindow = zoomWindow.value;
+  return manualZoomWindow || presetZoomWindow;
+}
 const option = computed<EChartsOption>(() => ({
   animation: false,
   textStyle: { color: chartTheme.value.text },
@@ -268,14 +329,11 @@ const option = computed<EChartsOption>(() => ({
     left: 48,
     right: 18,
     top: 30,
-    bottom: props.days.length > 31 ? 104 : 58,
+    bottom: props.days.length > 2 ? 104 : 58,
   },
   dataZoom:
-    props.days.length > 31
-      ? [
-          { type: "inside", start: 0, end: 100 },
-          { type: "slider", start: 0, end: 100, height: 36, bottom: 12 },
-        ]
+    props.days.length > 2
+      ? [{ type: "inside", ...zoomWindowForOption() }]
       : [],
   tooltip: {
     backgroundColor: chartTheme.value.surface,
@@ -433,25 +491,53 @@ const option = computed<EChartsOption>(() => ({
 </script>
 
 <template>
-  <div
-    class="chart-frame"
-    :class="{ 'has-range-selector': days.length > 31 }"
-    role="img"
-    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
-      days
-        .filter((day) => day.totalSeconds > 0)
-        .map(
-          (day) =>
-            `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`,
-        )
-        .join('; ') || 'No tracked time'
-    }`"
-  >
-    <v-chart
-      class="report-echart"
-      :option="option"
-      :init-options="{ renderer: 'svg' }"
-      autoresize
-    />
+  <div class="chart-frame-shell">
+    <div
+      class="chart-frame"
+      :class="{ 'has-range-selector': days.length > 2 }"
+      role="img"
+      :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
+        days
+          .filter((day) => day.totalSeconds > 0)
+          .map(
+            (day) =>
+              `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`,
+          )
+          .join('; ') || 'No tracked time'
+      }`"
+    >
+      <v-chart
+        class="report-echart"
+        :option="option"
+        :init-options="{ renderer: 'svg' }"
+        autoresize
+        @datazoom="handleDataZoom"
+      />
+    </div>
+    <div v-if="days.length > 2" class="chart-range-selector-overlay">
+      <ReportRangeSelector
+        :values="rangeSelectorValues"
+        :model-value="rangeWindowForSelector"
+        :zoom-mode="zoomMode"
+        :date-range-key="`${days[0]?.date ?? ''}:${days.at(-1)?.date ?? ''}`"
+        @update:model-value="handleRangeWindowChange"
+        @update:zoom-mode="emit('update:zoomMode', $event)"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.chart-frame-shell {
+  position: relative;
+}
+.chart-range-selector-overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  height: 60px;
+}
+
+</style>

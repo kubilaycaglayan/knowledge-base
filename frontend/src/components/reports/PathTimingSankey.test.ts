@@ -95,4 +95,281 @@ describe("PathTimingSankey", () => {
     });
     expect(wrapper.text()).toContain("No tracked time to show in this flow.");
   });
+
+  it("shows a single isolated bucket as a column of Sankey nodes, not a table", () => {
+    const longPath = "A complete path label with enough words to wrap over lines";
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: {
+          ...sankey,
+          nodes: [
+            {
+              ...sankey.nodes[0],
+              pathLabel: longPath,
+              bucketLabel: "May 2026",
+            },
+          ],
+          links: [],
+        },
+        bucketCount: 3,
+      },
+    });
+
+    expect(wrapper.findComponent({ name: "VChart" }).exists()).toBe(false);
+    expect(wrapper.get(".sankey-isolated-bucket").text()).toContain(longPath);
+    expect(wrapper.findAll(".sankey-isolated-node")).toHaveLength(1);
+    expect(wrapper.find(".sankey-isolated-node-mark").exists()).toBe(true);
+    expect(wrapper.get('[role="img"]').attributes("aria-label")).toContain(
+      `May 2026, ${longPath}, 00:10:00`,
+    );
+  });
+
+  it("groups multiple isolated paths into one month bucket", () => {
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: {
+          ...sankey,
+          nodes: sankey.nodes.map((node) => ({
+            ...node,
+            depth: 0,
+            bucketLabel: "Oct 2026",
+          })),
+          links: [],
+        },
+        bucketCount: 3,
+      },
+    });
+
+    expect(wrapper.findAll(".sankey-isolated-bucket")).toHaveLength(1);
+    expect(wrapper.findAll(".sankey-isolated-paths li")).toHaveLength(2);
+  });
+
+  it("reserves empty bucket positions and label gutters at both flow endpoints", () => {
+    const wrapper = mount(PathTimingSankey, {
+      props: { sankey, bucketCount: 4 },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{
+        left: number;
+        right: number;
+        nodeAlign: string;
+        data: Array<{
+          name: string;
+          depth: number;
+          value: number;
+          itemStyle?: { opacity?: number };
+          label?: { show: boolean; position?: string; align?: string };
+        }>;
+        label: { overflow: string; width: number; lineHeight: number };
+      }>;
+    }).series[0];
+
+    expect(series).toMatchObject({ left: 150, right: 150, nodeAlign: "left" });
+    expect(series.label).toMatchObject({
+      overflow: "break",
+      width: 110,
+      lineHeight: 16,
+    });
+    expect(series.data.map((node) => node.depth)).toEqual([0, 1, 2, 3]);
+    expect(series.data.slice(2).map((node) => node.name)).toEqual([
+      "empty-bucket:2",
+      "empty-bucket:3",
+    ]);
+    expect(series.data[2]).toMatchObject({
+      value: Number.EPSILON,
+      itemStyle: { opacity: 0 },
+      label: { show: false },
+    });
+    expect(series.data[0].label).toMatchObject({
+      show: true,
+      position: "left",
+      align: "right",
+    });
+    expect(series.data[1].label).toMatchObject({
+      show: true,
+      position: "right",
+      align: "left",
+    });
+    expect(series.data[2].label).toEqual({ show: false });
+  });
+
+  it("keeps node labels available at every bucket and lets layout hide collisions", () => {
+    const nodes = Array.from({ length: 4 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const links = Array.from({ length: 3 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: { sankey: { ...sankey, nodes, links }, bucketCount: 4 },
+    });
+    const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{
+        data: Array<{ label?: { show: boolean } }>;
+        labelLayout?: { hideOverlap?: boolean };
+      }>;
+      tooltip: { formatter: (params: unknown) => string };
+    };
+
+    expect(option.series[0].data.map((node) => node.label?.show)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(option.series[0].labelLayout).toMatchObject({ hideOverlap: true });
+    expect(
+      option.tooltip.formatter({
+        dataType: "edge",
+        data: { ...links[1], sourceLabel: "Full source label", targetLabel: "Full target label" },
+      }),
+    ).toContain("Full target label");
+  });
+
+  it("limits labels in a crowded column and leaves long names available in tooltips", () => {
+    const crowdedNodes = Array.from({ length: 12 }, (_value, index) => ({
+      ...sankey.nodes[0],
+      id: `bucket:0:path:${index}`,
+      pathLabel:
+        index === 0
+          ? "A very long label that would overlap neighboring node names"
+          : `Path ${index}`,
+      depth: 0,
+      value: (12 - index) * 300,
+    }));
+    const target = {
+      ...sankey.nodes[1],
+      id: "bucket:1:path:target",
+      depth: 1,
+    };
+    const links = crowdedNodes.map((node) => ({
+      source: node.id,
+      target: target.id,
+      sourceLabel: node.pathLabel,
+      targetLabel: target.pathLabel,
+      value: 250,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes: [...crowdedNodes, target], links },
+        bucketCount: 2,
+      },
+    });
+    const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ name: string; label?: { show: boolean } }> }>;
+      tooltip: { formatter: (params: unknown) => string };
+    };
+    const visibleLabels = option.series[0].data.filter(
+      (node) => node.name !== target.id && node.label?.show,
+    );
+
+    expect(visibleLabels.length).toBeLessThanOrEqual(4);
+    expect(
+      option.tooltip.formatter({
+        dataType: "edge",
+        data: { ...links[0], sourceLabel: crowdedNodes[0].pathLabel },
+      }),
+    ).toContain(crowdedNodes[0].pathLabel);
+  });
+
+  it("thins bucket total labels while keeping the first and last populated buckets", () => {
+    const nodes = Array.from({ length: 14 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const links = Array.from({ length: 13 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes, links },
+        bucketCount: 14,
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ depth: number; label?: { show: boolean } }> }>;
+    }).series[0];
+
+    expect(
+      series.data.filter((node) => node.label?.show).map((node) => node.depth),
+    ).toEqual([0, 2, 4, 6, 8, 10, 13]);
+    expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeLessThanOrEqual(8);
+    expect(wrapper.findAll(".sankey-aggregate-total b").length).toBeGreaterThan(2);
+    expect(wrapper.findAll(".sankey-aggregate-total b")[0].text()).toBe("10m");
+    expect(wrapper.findAll(".sankey-aggregate-total b").at(-1)?.text()).toBe("10m");
+  });
+
+  it("removes trailing buckets when the right edge of the range moves left", () => {
+    const nodes = Array.from({ length: 4 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const links = Array.from({ length: 3 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes, links },
+        bucketCount: 4,
+        rangeWindow: { start: 0, end: 60 },
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ depth: number }>; links: typeof links }>;
+    }).series[0];
+
+    expect(series.data.map((node) => node.depth)).toEqual([0, 1, 2]);
+    expect(series.links).toHaveLength(2);
+  });
+
+  it("does not include the empty bucket before an exact nonzero range start", () => {
+    const nodes = Array.from({ length: 3 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const links = Array.from({ length: 2 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes, links },
+        bucketCount: 3,
+        rangeWindow: { start: (1 / 3) * 100, end: 100 },
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ name: string; depth: number }> }>;
+    }).series[0];
+
+    expect(series.data.map((node) => node.name)).toEqual([
+      nodes[1].id,
+      nodes[2].id,
+    ]);
+    expect(series.data.map((node) => node.depth)).toEqual([0, 1]);
+  });
 });

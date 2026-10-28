@@ -478,7 +478,7 @@ it("keeps protected deep-link content hidden while signed out and restores it af
   await page.locator(".reports-page").waitFor();
 
   assert.equal(new URL(page.url()).pathname, "/reports");
-  assert.equal(new URL(page.url()).search, query);
+  assert.equal(new URL(page.url()).searchParams.get("zoom"), "full");
   assert.ok(requests.includes("/auth/login"));
 });
 
@@ -1237,6 +1237,7 @@ it("clears authentication on sign-out and keeps protected routes gated on Back a
   await visit(page, "/reports");
   await page.locator(".reports-page").waitFor();
   await activate(page.getByRole("button", { name: "Sign out" }));
+  await page.getByRole("alertdialog").getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("heading", { name: "Sign in" }).waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
 
@@ -2266,6 +2267,7 @@ it("restores report filters after navigation and browser Back/Forward", async (t
     const params = new URLSearchParams(new URL(page.url()).search);
     assert.equal(params.get("endDate"), "2026-09-07");
     assert.equal(params.get("aggregation"), "month");
+    assert.equal(params.get("zoom"), "full");
     assert.deepEqual(params.getAll("pathId"), ["path-1"]);
     assert.deepEqual(params.getAll("labelId"), ["label-1"]);
     assert.equal(await page.getByRole("combobox", { name: "Report aggregation" }).inputValue(), "MONTH");
@@ -2378,7 +2380,7 @@ it("loads report filters from a direct query URL and keeps them on reload", asyn
   await page.locator(".reports-page").waitFor();
   const assertLoadedReportState = async () => {
     await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
-    assert.equal(new URL(page.url()).search, query);
+    assert.equal(new URL(page.url()).searchParams.get("zoom"), "full");
     assert.equal(await page.getByRole("textbox", { name: "Datepicker input" }).inputValue(), expectedReportDateRange("2026-09-01", "2026-09-07"));
     assert.equal(await page.getByLabel("Selected path: Writing").count(), 1);
     assert.equal(await page.locator(".label-picker-control .selected-chip .chip-name").innerText(), "Focus");
@@ -2419,13 +2421,6 @@ it("switches report aggregation by keyboard and preserves Path and Label filters
     `${server.resolvedUrls.local[0]}reports?startDate=2026-10-04&endDate=2026-10-10&aggregation=DAY&pathId=path-1&labelId=label-1`,
   );
   await page.locator(".reports-page").waitFor();
-  const expectedWeek = await page.evaluate(() => {
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(start.getDate() - 29);
-    const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return { start: iso(start), end: iso(end) };
-  });
   const aggregation = page.getByRole("combobox", { name: "Report aggregation" });
   await activate(aggregation);
   await page.keyboard.press("ArrowDown");
@@ -2437,8 +2432,8 @@ it("switches report aggregation by keyboard and preserves Path and Label filters
   }, undefined, { timeout: 5000 });
   const query = new URL(page.url()).searchParams;
   assert.equal(await aggregation.inputValue(), "WEEK");
-  assert.equal(query.get("startDate"), expectedWeek.start);
-  assert.equal(query.get("endDate"), expectedWeek.end);
+  assert.equal(query.get("startDate"), "2026-10-04");
+  assert.equal(query.get("endDate"), "2026-10-10");
   assert.equal(query.get("pathId"), "path-1");
   assert.equal(query.get("labelId"), "label-1");
   assert.equal(query.get("aggregation"), "week");

@@ -6,6 +6,7 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  watch,
 } from "vue";
 import { routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
@@ -25,8 +26,6 @@ import {
   startOfQuarter,
   startOfWeek,
   startOfYear,
-  subDays,
-  subYears,
 } from "date-fns";
 import { api } from "../lib/api";
 import { paletteColors } from "../lib/color-palette";
@@ -38,6 +37,8 @@ import ReportDateRange, {
 import SummaryBarChart, {
   type TrendlineMode,
 } from "../components/reports/SummaryBarChart.vue";
+import ReportRangeSelector from "../components/reports/ReportRangeSelector.vue";
+import ReportVisualizationLoading from "../components/reports/ReportVisualizationLoading.vue";
 import ProjectDonutChart from "../components/reports/ProjectDonutChart.vue";
 import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue";
 import { formatDuration } from "../utils/duration";
@@ -102,9 +103,12 @@ type Report = {
 type PathOption = { id: string; name: string; status?: string };
 type LabelOption = { id: string; name: string; color?: string | null };
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
-const PathTimingSankey = defineAsyncComponent(
-  () => import("../components/reports/PathTimingSankey.vue"),
-);
+type RangeWindow = { start: number; end: number };
+const PathTimingSankey = defineAsyncComponent({
+  loader: () => import("../components/reports/PathTimingSankey.vue"),
+  loadingComponent: ReportVisualizationLoading,
+  delay: 0,
+});
 
 const today = new Date();
 const initialParams = new URLSearchParams(window.location.search);
@@ -152,7 +156,6 @@ function normalizeInvalidQuery() {
   const normalizeRange = hasRequestedRange && !requestedRangeIsValid;
   const normalizeAggregation =
     initialParams.has("aggregation") && !requestedAggregationIsValid;
-  if (!normalizeRange && !normalizeAggregation) return;
   const url = new URL(window.location.href);
   if (normalizeRange) {
     url.searchParams.set("startDate", selectedRange.value.startDate);
@@ -160,6 +163,14 @@ function normalizeInvalidQuery() {
   }
   if (normalizeAggregation)
     url.searchParams.set("aggregation", aggregation.value.toLowerCase());
+  if (!url.searchParams.has("zoom"))
+    url.searchParams.set("zoom", chartZoomMode.value);
+  else if (!["available", "full"].includes(url.searchParams.get("zoom") || ""))
+    url.searchParams.set("zoom", chartZoomMode.value);
+  const normalizeZoom =
+    !initialParams.has("zoom") ||
+    !["available", "full"].includes(initialParams.get("zoom") || "");
+  if (!normalizeRange && !normalizeAggregation && !normalizeZoom) return;
   window.history.replaceState(window.history.state, "", url);
 }
 const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
@@ -286,6 +297,47 @@ const trendlineMode = ref<TrendlineMode>(
 const showSankey = ref(
   new URLSearchParams(window.location.search).get("sankey") === "1",
 );
+type ChartZoomMode = "available" | "full";
+function zoomModeFromUrl(params: URLSearchParams): ChartZoomMode {
+  return params.get("zoom") === "available" ? "available" : "full";
+}
+const chartZoomMode = ref(zoomModeFromUrl(initialParams));
+const chartRangeWindow = ref<RangeWindow>({ start: 0, end: 100 });
+const dateRangeKey = computed(
+  () => (report.value ? `${report.value.from}:${report.value.to}` : ""),
+);
+const availableRangeWindow = computed<RangeWindow>(() => {
+  const count = aggregatedDays.value.length;
+  const nonzero = aggregatedDays.value
+    .map((day, index) => (day.totalSeconds > 0 ? index : -1))
+    .filter((index) => index >= 0);
+  if (count <= 1 || !nonzero.length) return { start: 0, end: 100 };
+  const first = nonzero[0];
+  const last = nonzero.at(-1)!;
+  return { start: (first / count) * 100, end: ((last + 1) / count) * 100 };
+});
+const sankeyBucketValues = computed(() => {
+  const nodes = report.value?.sankey?.nodes || [];
+  return Array.from({ length: aggregatedDays.value.length }, (_value, depth) =>
+    nodes
+      .filter((node) => node.depth === depth)
+      .reduce((total, node) => total + node.value, 0),
+  );
+});
+function setChartRangeWindow(window: RangeWindow) {
+  chartRangeWindow.value = {
+    start: Math.max(0, Math.min(100, window.start)),
+    end: Math.max(0, Math.min(100, window.end)),
+  };
+}
+watch(
+  [dateRangeKey, chartZoomMode],
+  ([key, mode], [previousKey, previousMode]) => {
+    if (!key || (key === previousKey && mode === previousMode)) return;
+    chartRangeWindow.value =
+      mode === "full" ? { start: 0, end: 100 } : availableRangeWindow.value;
+  },
+);
 
 function syncSankeyFromUrl() {
   showSankey.value =
@@ -309,6 +361,7 @@ function syncReportStateFromUrl() {
   const endDate = params.get("endDate");
   const nextPathIds = params.getAll("pathId");
   const nextLabelIds = params.getAll("labelId");
+  chartZoomMode.value = zoomModeFromUrl(params);
   let changed = false;
   if (
     aggregationValues.includes(nextAggregation) &&
@@ -347,6 +400,7 @@ function storeReportState() {
   url.searchParams.set("aggregation", aggregation.value.toLowerCase());
   url.searchParams.set("startDate", selectedRange.value.startDate);
   url.searchParams.set("endDate", selectedRange.value.endDate);
+  url.searchParams.set("zoom", chartZoomMode.value);
   if (breakdownMode.value === "Labels") url.searchParams.set("groupBy", "labels");
   else url.searchParams.delete("groupBy");
   url.searchParams.delete("pathId");
@@ -379,6 +433,13 @@ function toggleSankey() {
   if (showSankey.value) url.searchParams.delete("sankey");
   else url.searchParams.set("sankey", "1");
   showSankey.value = !showSankey.value;
+  pushReportUrl(url);
+}
+
+function setChartZoomMode(mode: ChartZoomMode) {
+  chartZoomMode.value = mode;
+  const url = new URL(window.location.href);
+  url.searchParams.set("zoom", mode);
   pushReportUrl(url);
 }
 
@@ -492,31 +553,12 @@ function removePath(pathId: string) {
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
-  if (aggregation.value === "DAY") {
-    selectedRange.value = {
-      startDate: format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
-      endDate: format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
-    };
-  } else if (aggregation.value === "WEEK") {
-    selectedRange.value = {
-      startDate: format(subDays(today, 29), "yyyy-MM-dd"),
-      endDate: format(today, "yyyy-MM-dd"),
-    };
-  } else if (aggregation.value === "MONTH") {
-    selectedRange.value = {
-      startDate: format(subYears(today, 1), "yyyy-MM-dd"),
-      endDate: format(today, "yyyy-MM-dd"),
-    };
-  } else if (aggregation.value === "QUARTER") {
-    selectedRange.value = {
-      startDate: format(subYears(today, 2), "yyyy-MM-dd"),
-      endDate: format(today, "yyyy-MM-dd"),
-    };
-  }
   storeReportState();
   void load();
 }
 function selectRange(value: DateRange) {
+  chartZoomMode.value = "full";
+  chartRangeWindow.value = { start: 0, end: 100 };
   selectedRange.value = value;
   storeReportState();
   void load();
@@ -547,6 +589,8 @@ function shiftAnchor(amount: number) {
     startDate: format(nextStart, "yyyy-MM-dd"),
     endDate: format(nextEnd, "yyyy-MM-dd"),
   };
+  chartZoomMode.value = "full";
+  chartRangeWindow.value = { start: 0, end: 100 };
   storeReportState();
   void load();
 }
@@ -705,23 +749,30 @@ onBeforeUnmount(() =>
       <section
         v-if="!showSankey || !report.sankey"
         class="report-card report-chart-card"
+        aria-labelledby="summary-heading"
       >
         <div class="report-card-heading">
           <div>
             <span class="section-kicker">SUMMARY</span>
-            <h2>Tracked time</h2>
+            <h2 id="summary-heading">Tracked time</h2>
           </div>
           <strong class="total-display">{{
             formatDuration(filteredTotal)
           }}</strong>
         </div>
-        <SummaryBarChart
-          :days="aggregatedDays"
-          :categories="categories"
-          :aggregation="aggregation"
-          :show-calendar="aggregation === 'DAY' && showCalendarInputs"
-          :trendline-mode="trendlineMode"
-        />
+        <div class="report-visualization-stage">
+          <SummaryBarChart
+            :days="aggregatedDays"
+            :categories="categories"
+            :aggregation="aggregation"
+            :show-calendar="aggregation === 'DAY' && showCalendarInputs"
+            :trendline-mode="trendlineMode"
+            :zoom-mode="chartZoomMode"
+            :range-window="chartRangeWindow"
+            @update:zoom-mode="setChartZoomMode"
+            @range-window-change="setChartRangeWindow"
+          />
+        </div>
       </section>
       <section
         v-if="showSankey && report.sankey"
@@ -736,11 +787,27 @@ onBeforeUnmount(() =>
               Path timing by {{ report.sankey.granularity.toLowerCase() }}
             </h2>
           </div>
-          <span class="muted"
-            >{{ report.sankey.links.length }} tracked flows</span
-          >
+          <strong class="total-display">{{
+            formatDuration(filteredTotal)
+          }}</strong>
         </div>
-        <PathTimingSankey :sankey="report.sankey" />
+        <div class="report-visualization-stage">
+          <PathTimingSankey
+            :sankey="report.sankey"
+            :bucket-count="aggregatedDays.length"
+            :range-window="chartRangeWindow"
+          />
+          <ReportRangeSelector
+            v-if="aggregatedDays.length > 2"
+            class="sankey-range-selector"
+            :values="sankeyBucketValues"
+            :model-value="chartRangeWindow"
+            :zoom-mode="chartZoomMode"
+            :date-range-key="dateRangeKey"
+            @update:model-value="setChartRangeWindow"
+            @update:zoom-mode="setChartZoomMode"
+          />
+        </div>
       </section>
       <section class="report-card breakdown-card">
         <div class="breakdown-toolbar" aria-label="Report filters and grouping">

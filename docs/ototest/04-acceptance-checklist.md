@@ -427,8 +427,8 @@ and `ImportsView.vue`; and `chrome-extension/wxt.config.ts`,
 - [x] **REPORT-01** Open `/reports`; confirm the initial report interval,
   current date range, and loading/empty/error feedback are understandable.
 - [x] **REPORT-02** Select each available daily, weekly, monthly, quarterly,
-  and yearly interval; confirm totals and date boundaries update for that
-  interval.
+  and yearly aggregation; confirm bucket totals update while the selected
+  start and end dates remain unchanged.
 - [x] **REPORT-03** Select a custom date range; confirm its displayed start
   and end match the selected dates and include the documented boundary days.
 - [x] **REPORT-04** Move to the previous and next report interval; confirm the

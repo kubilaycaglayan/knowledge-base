@@ -50,7 +50,7 @@ it("keeps protected Reports hidden while signed out and handles sign-in return r
     await signIn();
     await signedOut.locator(".reports-page").waitFor();
     assert.equal(new URL(signedOut.url()).pathname, "/reports");
-    assert.equal(new URL(signedOut.url()).search, query);
+    assert.equal(new URL(signedOut.url()).searchParams.get("zoom"), "available");
 
     for (const redirect of ["https://outside.example/path", "//outside.example/path"]) {
       await signedOut.getByRole("button", { name: "Sign out", exact: true }).click();
@@ -594,6 +594,7 @@ it("opens the nonzero Sankey flow with a text alternative and returns to the bar
   await page.waitForFunction(() => new URL(location.href).searchParams.get("sankey") === "1");
   await page.getByRole("button", { name: "Show bar chart", exact: true }).waitFor();
   await page.locator("#sankey-flow").waitFor();
+  await page.locator(".chart-frame").waitFor({ state: "hidden" });
   const flow = page.locator(".sankey-frame");
   await flow.waitFor();
   const flowText = await flow.getAttribute("aria-label");
@@ -661,7 +662,7 @@ it("keeps trendline and Sankey controls in sync with clicked and restored URL st
   await restoredBarChartButton.click();
   await page.waitForFunction(() => !new URL(location.href).searchParams.has("sankey"));
   assert.equal(await page.getByRole("button", { name: "Show Sankey", exact: true }).getAttribute("aria-pressed"), "false");
-  assert.equal(await page.locator("#sankey-flow").count(), 0);
+  await page.locator(".sankey-frame").waitFor({ state: "detached" });
 });
 
 it("selects report presets and advances each interval by its calendar unit", async () => {

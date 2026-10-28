@@ -13,6 +13,12 @@ vi.mock("./lib/warmup", () => ({
 }));
 
 const stubs = {
+  VDialog: { template: "<div><slot /></div>" },
+  VCard: { template: "<div><slot /></div>" },
+  VCardTitle: { template: "<div><slot /></div>" },
+  VCardText: { template: "<div><slot /></div>" },
+  VCardActions: { template: "<div><slot /></div>" },
+  VBtn: { template: '<button><slot /></button>' },
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   RouterView: { template: "<div />" },
   FloatingTimeTracker: { template: "<aside />" },
@@ -47,6 +53,7 @@ describe("App navigation warm-up", () => {
     expect(cancel).not.toHaveBeenCalled();
 
     await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get(".sign-out-confirm").trigger("click");
 
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(clearWarmupCooldown).toHaveBeenCalledTimes(1);

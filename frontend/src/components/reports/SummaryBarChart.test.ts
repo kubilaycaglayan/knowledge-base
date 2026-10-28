@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import SummaryBarChart from "./SummaryBarChart.vue";
+import ReportRangeSelector from "./ReportRangeSelector.vue";
 
 vi.mock("vue-echarts", () => ({
   default: { name: "VChart", props: ["option"], template: "<div />" },
@@ -270,7 +271,7 @@ describe("SummaryBarChart", () => {
       tooltip: { formatter(params: unknown): string };
     };
 
-    expect(option.dataZoom).toHaveLength(2);
+    expect(option.dataZoom).toHaveLength(1);
     expect(option.series[0].data).toEqual([{ value: [0, 0.82, 1, "#64748B"] }]);
     const tooltip = option.tooltip.formatter([
       { axisValue: "Sat, Aug 1", dataIndex: 0 },
@@ -298,7 +299,7 @@ describe("SummaryBarChart", () => {
     grid: { bottom: number };
   };
 
-  it("RS-01: selects the whole date range in the range selector by default", () => {
+  it("uses the full selector extent when all buckets contain tracked time", () => {
     const wrapper = mount(SummaryBarChart, {
       props: { days: rangeDays(90), categories },
     });
@@ -306,10 +307,13 @@ describe("SummaryBarChart", () => {
       .getComponent({ name: "VChart" })
       .props("option") as ZoomOption;
 
-    expect(option.dataZoom).toHaveLength(2);
-    for (const zoom of option.dataZoom) {
-      expect(zoom).toMatchObject({ start: 0, end: 100 });
-    }
+    const selector = wrapper.getComponent(ReportRangeSelector);
+    const selectorOption = selector
+      .getComponent({ name: "VChart" })
+      .props("option") as ZoomOption;
+    expect(option.dataZoom).toHaveLength(1);
+    expect(option.dataZoom[0]).toMatchObject({ type: "inside", start: 0, end: 100 });
+    expect(selectorOption.dataZoom[0]).toMatchObject({ start: 0, end: 100 });
   });
 
   it("RS-02: draws a double-height range selector below the axis labels", () => {
@@ -317,22 +321,21 @@ describe("SummaryBarChart", () => {
       props: { days: rangeDays(90), categories },
     });
     const option = wrapper
+      .getComponent(ReportRangeSelector)
       .getComponent({ name: "VChart" })
       .props("option") as ZoomOption;
     const slider = option.dataZoom.find((zoom) => zoom.type === "slider");
 
     expect(slider?.height).toBe(36);
-    expect(option.grid.bottom).toBeGreaterThanOrEqual(
-      (slider?.bottom ?? 0) + 36 + 56,
-    );
+    expect(slider?.bottom).toBe(12);
     expect(wrapper.get(".chart-frame").classes()).toContain(
       "has-range-selector",
     );
   });
 
-  it("RS-03: keeps short ranges without a range selector", () => {
+  it("RS-03: keeps ranges of two buckets or fewer without a range selector", () => {
     const wrapper = mount(SummaryBarChart, {
-      props: { days: rangeDays(31), categories },
+      props: { days: rangeDays(2), categories },
     });
     const option = wrapper
       .getComponent({ name: "VChart" })
@@ -340,9 +343,108 @@ describe("SummaryBarChart", () => {
 
     expect(option.dataZoom).toEqual([]);
     expect(option.grid.bottom).toBe(58);
+    expect(wrapper.findComponent(ReportRangeSelector).exists()).toBe(false);
     expect(wrapper.get(".chart-frame").classes()).not.toContain(
       "has-range-selector",
     );
+  });
+
+  it("keeps selector input stable while its range changes", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(4), categories, rangeWindow: { start: 0, end: 100 } },
+    });
+    const selector = wrapper.getComponent(ReportRangeSelector);
+    const values = selector.props("values");
+
+    await wrapper.setProps({ rangeWindow: { start: 0, end: 65 } });
+
+    expect(selector.props("values")).toBe(values);
+  });
+
+  it("focuses exactly the available data buckets and falls back for zero data", async () => {
+    const wrapper = mount(ReportRangeSelector, {
+      props: {
+        values: [0, 0, 0, 3600, 0, 0, 0],
+        modelValue: { start: 0, end: 100 },
+        zoomMode: "full",
+      },
+    });
+    await wrapper.get(".chart-zoom-toggle").trigger("click");
+    const availableRange = wrapper.emitted("update:modelValue")?.at(-1)?.[0] as {
+      start: number;
+      end: number;
+    };
+
+    expect(availableRange.start).toBeCloseTo(42.857, 2);
+    expect(availableRange.end).toBeCloseTo(57.143, 2);
+    expect(wrapper.emitted("update:zoomMode")).toEqual([["available"]]);
+
+    const empty = mount(ReportRangeSelector, {
+      props: {
+        values: Array.from({ length: 7 }, () => 0),
+        modelValue: { start: 0, end: 100 },
+        zoomMode: "full",
+      },
+    });
+    await empty.get(".chart-zoom-toggle").trigger("click");
+    expect(empty.emitted("update:modelValue")?.at(-1)?.[0]).toEqual({
+      start: 0,
+      end: 100,
+    });
+  });
+
+  it("keeps the zoom window on data changes until the date range changes", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        days: rangeDays(10).map((day, index) => ({
+          ...day,
+          totalSeconds: index === 4 ? 3600 : 0,
+          paths: index === 4 ? day.paths : [],
+        })),
+        categories,
+        rangeWindow: { start: 30, end: 60 },
+        zoomMode: "available",
+      },
+    });
+    const getZoom = () =>
+      (wrapper.getComponent({ name: "VChart" }).props("option") as ZoomOption)
+        .dataZoom;
+
+    expect(getZoom()[0]).toMatchObject({ start: 30, end: 60 });
+    await wrapper.setProps({
+      aggregation: "WEEK",
+      days: rangeDays(10).map((day, index) => ({
+        ...day,
+        totalSeconds: index === 8 ? 3600 : 0,
+        paths: index === 8 ? day.paths : [],
+      })),
+    });
+    expect(getZoom()[0]).toMatchObject({ start: 30, end: 60 });
+
+    await wrapper.setProps({ rangeWindow: { start: 70, end: 100 } });
+    expect(getZoom()[0]).toMatchObject({ start: 70, end: 100 });
+  });
+
+  it("retains a manually adjusted slider window through chart option changes", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(10), categories },
+    });
+    const chart = wrapper.getComponent({ name: "VChart" });
+    chart.vm.$emit("datazoom", { batch: [{ start: 20, end: 60 }] });
+    await wrapper.setProps({ trendlineMode: "LINEAR" });
+
+    const zoom = (chart.props("option") as ZoomOption).dataZoom;
+    expect(zoom[0]).toMatchObject({ start: 20, end: 60 });
+  });
+
+  it("offers a button to switch between full and available data views", async () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(3), categories },
+    });
+
+    await wrapper.get(".chart-zoom-toggle").trigger("click");
+
+    expect(wrapper.emitted("update:zoomMode")).toEqual([["available"]]);
   });
 
   it("returns a safe empty tooltip when no day matches", () => {

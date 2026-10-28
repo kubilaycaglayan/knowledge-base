@@ -22,6 +22,7 @@ const boards = useBoardsStore();
 const preferences = usePreferencesStore();
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
+const showLogoutConfirmation = ref(false);
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
@@ -101,6 +102,7 @@ watchEffect(() => {
   document.title = `Knowledge Base · ${page.charAt(0).toUpperCase()}${page.slice(1)}`;
 });
 function logout() {
+  showLogoutConfirmation.value = false;
   auth.clearToken();
   void router?.replace("/");
 }
@@ -192,15 +194,62 @@ function authenticated() {
             aria-hidden="true"
           >
             <path
-              d="M12 2.5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM12 18.5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4.93 3.52a1 1 0 0 1 1.41 0l.71.71a1 1 0 0 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM16.24 14.83a1 1 0 0 1 1.41 0l.71.71a1 1 0 1 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM2.5 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 0 2h-1a1 1 0 0 1-1-1ZM18.5 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 0 2h-1a1 1 0 0 1-1-1ZM4.93 20.48a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0ZM16.24 9.17a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"
+              d="M12 2.5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM12 18.5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4.93 3.52a1 1 0 0 1 1.41 0l.71.71a1 1 0 0 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM16.24 14.83a1 1 0 0 1 1.41 0l.71.71a1 1 0 1 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM2.5 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM18.5 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM4.93 20.48a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0ZM16.24 9.17a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"
             />
           </svg>
         </button>
-        <button v-if="auth.isAuthenticated" class="ghost" @click="logout">
+        <button
+          v-if="auth.isAuthenticated"
+          class="ghost"
+          type="button"
+          aria-haspopup="dialog"
+          @click="showLogoutConfirmation = true"
+        >
           Sign out
         </button>
       </div>
     </header>
+    <v-dialog
+      v-model="showLogoutConfirmation"
+      max-width="420"
+      content-class="sign-out-dialog-content"
+    >
+      <v-card
+        class="sign-out-dialog"
+        role="alertdialog"
+        aria-labelledby="sign-out-title"
+        aria-describedby="sign-out-description"
+      >
+        <v-card-title class="sign-out-dialog-title" id="sign-out-title">
+          Sign out?
+        </v-card-title>
+        <v-card-text
+          class="sign-out-dialog-description"
+          id="sign-out-description"
+        >
+          Are you sure you want to sign out of Knowledge Base?
+        </v-card-text>
+        <v-card-actions class="sign-out-dialog-actions">
+          <v-btn
+            type="button"
+            class="sign-out-cancel"
+            variant="outlined"
+            @click="showLogoutConfirmation = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            type="button"
+            class="sign-out-confirm"
+            color="error"
+            variant="flat"
+            @click="logout"
+          >
+            Sign out
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <main id="main-content" tabindex="-1">
       <AuthView
         v-if="!auth.isAuthenticated"
