@@ -305,7 +305,9 @@ const option = computed<EChartsOption>(() => ({
           .filter((depth) => !visibleSankey.value.nodes.some((node) => node.depth === depth))
           .map((depth) => ({
             name: `empty-bucket:${depth}`,
-            value: 0,
+            // ECharts disables vertical relaxation if any node has zero value.
+            // Keep empty buckets invisible while allowing populated nodes to center.
+            value: Number.EPSILON,
             depth,
             pathLabel: "",
             bucketLabel: "",

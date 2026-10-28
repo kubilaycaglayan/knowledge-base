@@ -154,6 +154,8 @@ describe("PathTimingSankey", () => {
         data: Array<{
           name: string;
           depth: number;
+          value: number;
+          itemStyle?: { opacity?: number };
           label?: { show: boolean; position?: string; align?: string };
         }>;
         label: { overflow: string; width: number; lineHeight: number };
@@ -171,6 +173,11 @@ describe("PathTimingSankey", () => {
       "empty-bucket:2",
       "empty-bucket:3",
     ]);
+    expect(series.data[2]).toMatchObject({
+      value: Number.EPSILON,
+      itemStyle: { opacity: 0 },
+      label: { show: false },
+    });
     expect(series.data[0].label).toMatchObject({
       show: true,
       position: "left",
