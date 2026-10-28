@@ -312,8 +312,8 @@ const availableRangeWindow = computed<RangeWindow>(() => {
     .map((day, index) => (day.totalSeconds > 0 ? index : -1))
     .filter((index) => index >= 0);
   if (count <= 1 || !nonzero.length) return { start: 0, end: 100 };
-  const first = Math.max(0, nonzero[0] - 1);
-  const last = Math.min(count - 1, nonzero.at(-1)! + 1);
+  const first = nonzero[0];
+  const last = nonzero.at(-1)!;
   return { start: (first / count) * 100, end: ((last + 1) / count) * 100 };
 });
 const sankeyBucketValues = computed(() => {

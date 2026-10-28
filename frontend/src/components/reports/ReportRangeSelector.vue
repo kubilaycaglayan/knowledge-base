@@ -37,8 +37,8 @@ const availableWindow = computed<RangeWindow>(() => {
     .filter((index) => index >= 0);
   if (props.values.length <= 1 || !nonzero.length)
     return { start: 0, end: 100 };
-  const first = Math.max(0, nonzero[0] - 1);
-  const last = Math.min(props.values.length - 1, nonzero.at(-1)! + 1);
+  const first = nonzero[0];
+  const last = nonzero.at(-1)!;
   return {
     start: (first / props.values.length) * 100,
     end: ((last + 1) / props.values.length) * 100,

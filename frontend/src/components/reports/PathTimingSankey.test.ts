@@ -340,4 +340,36 @@ describe("PathTimingSankey", () => {
     expect(series.data.map((node) => node.depth)).toEqual([0, 1, 2]);
     expect(series.links).toHaveLength(2);
   });
+
+  it("does not include the empty bucket before an exact nonzero range start", () => {
+    const nodes = Array.from({ length: 3 }, (_value, depth) => ({
+      ...sankey.nodes[0],
+      id: `bucket:${depth}:path:walk`,
+      depth,
+      bucketLabel: `Bucket ${depth}`,
+    }));
+    const links = Array.from({ length: 2 }, (_value, depth) => ({
+      source: nodes[depth].id,
+      target: nodes[depth + 1].id,
+      sourceLabel: nodes[depth].label,
+      targetLabel: nodes[depth + 1].label,
+      value: 500,
+    }));
+    const wrapper = mount(PathTimingSankey, {
+      props: {
+        sankey: { ...sankey, nodes, links },
+        bucketCount: 3,
+        rangeWindow: { start: (1 / 3) * 100, end: 100 },
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: Array<{ name: string; depth: number }> }>;
+    }).series[0];
+
+    expect(series.data.map((node) => node.name)).toEqual([
+      nodes[1].id,
+      nodes[2].id,
+    ]);
+    expect(series.data.map((node) => node.depth)).toEqual([0, 1]);
+  });
 });

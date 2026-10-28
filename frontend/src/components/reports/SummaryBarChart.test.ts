@@ -361,7 +361,7 @@ describe("SummaryBarChart", () => {
     expect(selector.props("values")).toBe(values);
   });
 
-  it("focuses available data with one bucket of margin and falls back for zero data", async () => {
+  it("focuses exactly the available data buckets and falls back for zero data", async () => {
     const wrapper = mount(ReportRangeSelector, {
       props: {
         values: [0, 0, 0, 3600, 0, 0, 0],
@@ -375,8 +375,8 @@ describe("SummaryBarChart", () => {
       end: number;
     };
 
-    expect(availableRange.start).toBeCloseTo(28.571, 2);
-    expect(availableRange.end).toBeCloseTo(71.429, 2);
+    expect(availableRange.start).toBeCloseTo(42.857, 2);
+    expect(availableRange.end).toBeCloseTo(57.143, 2);
     expect(wrapper.emitted("update:zoomMode")).toEqual([["available"]]);
 
     const empty = mount(ReportRangeSelector, {

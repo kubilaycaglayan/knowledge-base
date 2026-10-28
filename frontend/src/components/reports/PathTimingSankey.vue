@@ -63,13 +63,13 @@ const visibleSankey = computed<Sankey>(() => {
   if (!bucketCount) return props.sankey;
   const firstDepth = Math.min(
     bucketCount - 1,
-    Math.floor((props.rangeWindow.start / 100) * bucketCount),
+    Math.floor((props.rangeWindow.start / 100) * bucketCount + 1e-9),
   );
   const lastDepth = Math.max(
     firstDepth,
     Math.min(
       bucketCount - 1,
-      Math.ceil((props.rangeWindow.end / 100) * bucketCount) - 1,
+      Math.ceil((props.rangeWindow.end / 100) * bucketCount - 1e-9) - 1,
     ),
   );
   const nodes = props.sankey.nodes
@@ -92,13 +92,13 @@ const selectedBucketCount = computed(() => {
   if (!bucketCount) return 0;
   const firstDepth = Math.min(
     bucketCount - 1,
-    Math.floor((props.rangeWindow.start / 100) * bucketCount),
+    Math.floor((props.rangeWindow.start / 100) * bucketCount + 1e-9),
   );
   const lastDepth = Math.max(
     firstDepth,
     Math.min(
       bucketCount - 1,
-      Math.ceil((props.rangeWindow.end / 100) * bucketCount) - 1,
+      Math.ceil((props.rangeWindow.end / 100) * bucketCount - 1e-9) - 1,
     ),
   );
   return lastDepth - firstDepth + 1;
