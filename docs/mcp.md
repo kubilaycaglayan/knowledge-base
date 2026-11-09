@@ -15,9 +15,15 @@ and user ownership on every request. List tools are bounded; calendar and
 report ranges have server-side limits. Archived notes, paths, boards and cards
 include an archived marker where supported by their domain view.
 
-Available tools: `notes_list`, `logs_list`, `calendar_days`, `sessions_list`,
-`activity_list`, `report_read`, `paths_list`, `labels_list`, `boards_list`,
-`board_cards`, and `search`.
+Available tools: `notes_list`, `note_get`, `logs_list`, `calendar_days`,
+`sessions_list`, `activity_list`, `report_read`, `paths_list`, `labels_list`,
+`boards_list`, `board_cards`, and `search`.
+`report_read` returns totals and category breakdowns by default. Daily rows are
+omitted unless `includeDays=true`; requested rows are paginated with a maximum
+page size of 31. Sankey visualization data is not returned by MCP.
+`notes_list` returns compact note metadata. Use `note_get` with a `noteId` to
+retrieve one note's plain-text body; the rich-text JSON document is not exposed
+through MCP.
 
 ## Codex
 
@@ -26,7 +32,7 @@ https://<your-host>/mcp`, then configure its bearer token in the Codex MCP
 server settings. A direct `~/.codex/config.toml` entry can use:
 
 ```toml
-[mcp_servers.knowledge_base]
+[mcp_servers."knowledge-base"]
 url = "https://<your-host>/mcp"
 bearer_token_env_var = "KNOWLEDGE_BASE_MCP_TOKEN"
 ```

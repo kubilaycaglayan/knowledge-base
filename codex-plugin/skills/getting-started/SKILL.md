@@ -32,12 +32,12 @@ Use the MCP connection already configured in the client. If the user supplies a 
 
 ## Choose the tool
 
-- **Hours today / this week / this month / this year:** report_read. It returns total seconds plus day, path, session-label, and calendar-label breakdowns. Convert seconds to hours and state the dates used.
+- **Hours today / this week / this month / this year:** report_read. It returns total seconds plus path, session-label, and calendar-label breakdowns. Daily rows are omitted by default; request them only when useful with includeDays=true and page through the bounded result. Sankey data is not returned. Convert seconds to hours and state the dates used.
 - **Last month / last year:** report_read with explicit startDate and endDate. Bare WEEK, MONTH, and YEAR mean the current calendar period, not the previous one.
 - **Work by project or topic:** report_read for time totals; use path and session-label breakdowns. Use search for related notes, logs, sessions, cards, or calendar records.
 - **A date's journal/calendar details:** calendar_days.
 - **Short updates:** logs_list. Use labels_list and search to explore their labels.
-- **Longer written material:** notes_list; use q for text and archived=true when archived notes are requested.
+- **Longer written material:** use notes_list to find matching note metadata (q searches text); call note_get with the returned noteId to read one note's plain-text body. Use archived=true when archived notes are requested.
 - **Label exploration:** labels_list gives the names, IDs, and scopes. Then search by the exact label name. Label-based results include via=LABEL and viaName; use these to identify records found through that label.
 - **Projects and tasks:** paths_list, boards_list, then board_cards using a boardId returned by boards_list.
 - **Recent changes:** activity_list.
@@ -49,10 +49,11 @@ These are MCP tools on the connected server, not separate REST endpoints. Calls 
 
 | Tool | Arguments and limits |
 | --- | --- |
-| report_read | period=WEEK, MONTH, YEAR means current calendar period. Or send inclusive startDate/endDate as YYYY-MM-DD; custom ranges may not exceed two years. |
+| report_read | period=WEEK, MONTH, YEAR means current calendar period. Or send inclusive startDate/endDate as YYYY-MM-DD; custom ranges may not exceed two years. Returns totals and category breakdowns; daily rows are omitted unless includeDays=true, then daysPage/daysSize paginate at most 31 rows. Sankey data is omitted. |
 | calendar_days | Optional ISO startDate/endDate; defaults to the past 30 days through today; maximum range one year. |
 | sessions_list | page is zero-based; size defaults to 20 and is capped at 50. No date filter. |
-| notes_list | page is zero-based; size defaults to 20 and is capped at 100; optional q and archived. |
+| notes_list | Returns metadata without note bodies. page is zero-based; size defaults to 20 and is capped at 100; optional q and archived. |
+| note_get | Requires noteId from notes_list; returns plain-text content for one note, without the rich-text JSON document. |
 | logs_list | page is zero-based; size defaults to 50 and is capped at 100. No date or text filter. |
 | activity_list | Latest 200 entries maximum; no date filter. |
 | labels_list | Lists labels, IDs, scopes, and system status. |

@@ -4,6 +4,8 @@
 
 - [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP
   endpoint for AI clients; manage tokens in Settings. See [MCP setup](mcp.md).
+- [x] Keep MCP report responses compact, fetch individual notes as plain text,
+  and align the documented Codex server name with the plugin.
 
 - [x] Set a clear 20,000-character limit for note bodies in the web editor and
   API; rich-text document metadata remains separate from the body-text limit.

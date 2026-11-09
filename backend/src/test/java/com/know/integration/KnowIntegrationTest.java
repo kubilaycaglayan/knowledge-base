@@ -135,6 +135,21 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         base + path, HttpMethod.POST, new HttpEntity<>(body, bearer(token)), JsonNode.class);
   }
 
+  ResponseEntity<JsonNode> mcpPost(String token, String body) {
+    return rest.exchange(base + "/mcp", HttpMethod.POST, new HttpEntity<>(body, bearer(token)), JsonNode.class);
+  }
+
+  void ensureMcpTokenTable() {
+    jdbc.execute("CREATE TABLE IF NOT EXISTS mcp_access_token (id UUID PRIMARY KEY, user_id UUID NOT NULL REFERENCES app_user(id), name VARCHAR(100) NOT NULL, token_hash CHAR(64) NOT NULL UNIQUE, categories TEXT ARRAY NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, expires_at TIMESTAMP WITH TIME ZONE NOT NULL, last_used_at TIMESTAMP WITH TIME ZONE, revoked_at TIMESTAMP WITH TIME ZONE)");
+  }
+
+  JsonNode mcpToolData(String token, String name, String arguments) throws Exception {
+    JsonNode response = mcpPost(token, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"" + name + "\",\"arguments\":" + arguments + "}}").getBody();
+    assertNotNull(response);
+    assertTrue(response.path("result").path("content").isArray(), response.toString());
+    return mapper.readTree(response.path("result").path("content").get(0).path("text").asText());
+  }
+
   ResponseEntity<JsonNode> put(String path, String token, String body) {
     return rest.exchange(
         base + path, HttpMethod.PUT, new HttpEntity<>(body, bearer(token)), JsonNode.class);
@@ -2024,6 +2039,65 @@ class KnowIntegrationTest extends IntegrationTestSupport {
       assertTrue(report.getBody().has("period"), "should have period field");
       assertTrue(report.getBody().has("days"), "should have days field");
     }
+  }
+
+  @Test
+  void mcpReportDefaultsToCompactSummaryAndPaginatesOptionalDays() throws Exception {
+    ensureMcpTokenTable();
+    String accountToken = freshToken();
+    ResponseEntity<JsonNode> tokenResponse = post("/api/v1/mcp-tokens", accountToken,
+        "{\"name\":\"Report integration\",\"categories\":[\"reports\"],\"expiry\":\"one_week\"}");
+    assertEquals(HttpStatus.OK, tokenResponse.getStatusCode(), String.valueOf(tokenResponse.getBody()));
+    JsonNode created = tokenResponse.getBody();
+    String mcpToken = created.get("secret").asText();
+
+    JsonNode compact = mcpToolData(mcpToken, "report_read",
+        "{\"startDate\":\"2024-01-01\",\"endDate\":\"2024-03-31\"}");
+    assertTrue(compact.has("totalSeconds"));
+    assertTrue(compact.has("paths"));
+    assertFalse(compact.has("days"));
+    assertFalse(compact.has("sankey"));
+
+    JsonNode dayPage = mcpToolData(mcpToken, "report_read",
+        "{\"startDate\":\"2024-01-01\",\"endDate\":\"2024-03-31\",\"includeDays\":true,\"daysPage\":1,\"daysSize\":10}");
+    assertEquals(10, dayPage.get("days").size());
+    assertEquals(1, dayPage.get("daysPage").asInt());
+    assertEquals(10, dayPage.get("daysPageSize").asInt());
+    assertEquals(91, dayPage.get("totalDays").asInt());
+    assertFalse(dayPage.has("sankey"));
+
+    JsonNode cappedDayPage = mcpToolData(mcpToken, "report_read",
+        "{\"startDate\":\"2024-01-01\",\"endDate\":\"2024-03-31\",\"includeDays\":true,\"daysPage\":0,\"daysSize\":1000}");
+    assertEquals(31, cappedDayPage.get("days").size());
+    assertEquals(31, cappedDayPage.get("daysPageSize").asInt());
+  }
+
+  @Test
+  void mcpNoteListReturnsCompactMetadataAndIndividualReadReturnsPlainText() throws Exception {
+    ensureMcpTokenTable();
+    String accountToken = freshToken();
+    String richText = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"" + "A lengthy note body ".repeat(150) + "\"}]}]}";
+    String plainText = "A lengthy note body ".repeat(150);
+    List<String> ids = new ArrayList<>();
+    for (int i = 0; i < 19; i++) {
+      ResponseEntity<JsonNode> created = post("/api/v1/notes", accountToken,
+          "{\"title\":\"MCP note " + i + "\",\"content\":" + quote(richText) + ",\"contentText\":" + quote(plainText) + "}");
+      assertEquals(HttpStatus.OK, created.getStatusCode());
+      ids.add(created.getBody().get("id").asText());
+    }
+    JsonNode tokenResponse = post("/api/v1/mcp-tokens", accountToken,
+        "{\"name\":\"Notes integration\",\"categories\":[\"notes\"],\"expiry\":\"one_week\"}").getBody();
+    String mcpToken = tokenResponse.get("secret").asText();
+
+    JsonNode listed = mcpToolData(mcpToken, "notes_list", "{\"page\":0,\"size\":20}");
+    assertEquals(19, listed.get("items").size());
+    assertFalse(listed.toString().contains("contentText"));
+    assertFalse(listed.toString().contains("\"content\""));
+    assertTrue(listed.toString().length() < 15000, "Note metadata list should remain compact");
+
+    JsonNode note = mcpToolData(mcpToken, "note_get", "{\"noteId\":\"" + ids.getFirst() + "\"}");
+    assertEquals(plainText, note.get("contentText").asText());
+    assertFalse(note.has("content"));
   }
 
   @Test

@@ -57,36 +57,87 @@ public class McpController {
     if (auth == null || !auth.startsWith("Bearer ")) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
     String secret=auth.substring(7);
     String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8)));
-    List<Access> ids=jdbc.query("select user_id,categories from mcp_access_token where token_hash=? and revoked_at is null and expires_at>now()",(rs,n)->new Access(rs.getObject(1,UUID.class),Set.of((String[])rs.getArray(2).getArray())),hash);
+    List<Access> ids =
+        jdbc.query(
+            "select user_id,categories from mcp_access_token where token_hash=? and revoked_at is null and expires_at>now()",
+            (rs, n) -> {
+              Object[] values = (Object[]) rs.getArray(2).getArray();
+              Set<String> categories =
+                  Arrays.stream(values)
+                      .map(Objects::toString)
+                      .collect(java.util.stream.Collectors.toUnmodifiableSet());
+              return new Access(rs.getObject(1, UUID.class), categories);
+            },
+            hash);
     if(ids.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
     jdbc.update("update mcp_access_token set last_used_at=now() where token_hash=?",hash);
     return ids.get(0);
   }
   Map<String,Object> toolList(Set<String> grants) {
     Map<String,String> descriptions=Map.ofEntries(
-      Map.entry("notes_list","List retained notes, including archived notes with archived=true. Supports page, size, q, archived."),
+      Map.entry("notes_list","List retained note metadata, including archived notes with archived=true. Use note_get to retrieve one note's plain-text body. Supports page, size, q, archived."),
+      Map.entry("note_get","Get one retained note by noteId. Returns plain-text content without rich-text JSON."),
       Map.entry("logs_list","List retained logs."), Map.entry("calendar_days","Read calendar days for an ISO date range (maximum one year)."),
       Map.entry("sessions_list","List retained time entries using page and size."), Map.entry("activity_list","List recent activity."),
-      Map.entry("report_read","Read a report for period WEEK, MONTH, or YEAR, or startDate/endDate."),
+      Map.entry("report_read","Read report totals and category breakdowns for period WEEK, MONTH, or YEAR, or startDate/endDate. Daily rows are omitted by default; set includeDays=true to fetch a page of at most 31 days. Sankey data is not returned."),
       Map.entry("labels_list","List labels."), Map.entry("search","Search across only the data categories granted to this token."),
       Map.entry("paths_list","List retained paths; archived paths are marked."), Map.entry("boards_list","List retained boards; archived boards are marked."),
       Map.entry("board_cards","List cards for a user-owned board, including archived cards when requested."));
     List<Map<String,Object>> tools=new ArrayList<>();
-    descriptions.forEach((name,description)->{ String category=switch(name) { case "notes_list" -> "notes"; case "logs_list" -> "logs"; case "calendar_days" -> "calendar"; case "sessions_list" -> "sessions"; case "activity_list" -> "activity"; case "report_read" -> "reports"; case "labels_list" -> "labels"; case "search" -> ""; case "paths_list" -> "paths"; default -> "boards"; }; if((category.isEmpty() ? !searchTypes(grants).isEmpty() : grants.contains(category))) tools.add(Map.of("name",name,"description",description,"inputSchema",Map.of("type","object","properties",Map.of("page",Map.of("type","integer"),"size",Map.of("type","integer"),"q",Map.of("type","string"),"archived",Map.of("type","boolean"),"startDate",Map.of("type","string","format","date"),"endDate",Map.of("type","string","format","date"),"period",Map.of("type","string"),"boardId",Map.of("type","string")),"additionalProperties",false))); });
+    descriptions.forEach(
+        (name, description) -> {
+          String category =
+              switch (name) {
+                case "notes_list", "note_get" -> "notes";
+                case "logs_list" -> "logs";
+                case "calendar_days" -> "calendar";
+                case "sessions_list" -> "sessions";
+                case "activity_list" -> "activity";
+                case "report_read" -> "reports";
+                case "labels_list" -> "labels";
+                case "search" -> "";
+                case "paths_list" -> "paths";
+                default -> "boards";
+              };
+          if (category.isEmpty() ? !searchTypes(grants).isEmpty() : grants.contains(category)) {
+            tools.add(
+                Map.of(
+                    "name", name,
+                    "description", description,
+                    "inputSchema", inputSchema()));
+          }
+        });
     return Map.of("tools",tools);
+  }
+  private static Map<String, Object> inputSchema() {
+    Map<String, Object> properties = new LinkedHashMap<>();
+    properties.put("page", Map.of("type", "integer"));
+    properties.put("size", Map.of("type", "integer"));
+    properties.put("q", Map.of("type", "string"));
+    properties.put("archived", Map.of("type", "boolean"));
+    properties.put("startDate", Map.of("type", "string", "format", "date"));
+    properties.put("endDate", Map.of("type", "string", "format", "date"));
+    properties.put("period", Map.of("type", "string"));
+    properties.put("includeDays", Map.of("type", "boolean"));
+    properties.put("daysPage", Map.of("type", "integer"));
+    properties.put("daysSize", Map.of("type", "integer"));
+    properties.put("noteId", Map.of("type", "string"));
+    properties.put("boardId", Map.of("type", "string"));
+    return Map.of("type", "object", "properties", properties, "additionalProperties", false);
   }
   Map<String,Object> callTool(Access access, Map<String,Object> params) throws Exception {
     String name=Objects.toString(params.get("name"),""); Map<String,Object> a=params.get("arguments") instanceof Map<?,?> m?(Map<String,Object>)m:Map.of();
-    String category=switch(name) { case "notes_list" -> "notes"; case "logs_list" -> "logs"; case "calendar_days" -> "calendar"; case "sessions_list" -> "sessions"; case "activity_list" -> "activity"; case "report_read" -> "reports"; case "labels_list" -> "labels"; case "search" -> ""; case "paths_list" -> "paths"; case "boards_list", "board_cards" -> "boards"; default -> ""; };
+    String category=switch(name) { case "notes_list", "note_get" -> "notes"; case "logs_list" -> "logs"; case "calendar_days" -> "calendar"; case "sessions_list" -> "sessions"; case "activity_list" -> "activity"; case "report_read" -> "reports"; case "labels_list" -> "labels"; case "search" -> ""; case "paths_list" -> "paths"; case "boards_list", "board_cards" -> "boards"; default -> ""; };
     if ((category.isEmpty() && ( !name.equals("search") || searchTypes(access.categories()).isEmpty())) || (!category.isEmpty() && !access.categories().contains(category))) throw new IllegalArgumentException("This token does not have access to that category");
     UUID user=access.user();
     Object value=switch(name) {
-      case "notes_list" -> { var page=knowledge.pageNotes(user, integer(a,"page",0), integer(a,"size",20), (String)a.get("q"), Boolean.TRUE.equals(a.get("archived"))); List<Map<String,Object>> items=page.items().stream().map(note->{Map<String,Object> item=json.convertValue(note,Map.class); item.put("archived",note.deletedAt()!=null); item.put("retained",true); return item;}).toList(); yield Map.of("items",items,"page",page.page(),"size",page.size(),"totalItems",page.totalItems(),"totalPages",page.totalPages()); }
+      case "notes_list" -> { var page=knowledge.pageNotes(user, integer(a,"page",0), integer(a,"size",20), (String)a.get("q"), Boolean.TRUE.equals(a.get("archived"))); yield Map.of("items",page.items().stream().map(note->noteOutput(note,false)).toList(),"page",page.page(),"size",page.size(),"totalItems",page.totalItems(),"totalPages",page.totalPages()); }
+      case "note_get" -> noteOutput(knowledge.getNote(user,UUID.fromString(Objects.toString(a.get("noteId"),""))),true);
       case "logs_list" -> logs.page(user,integer(a,"page",0),Math.min(100,integer(a,"size",50)));
       case "calendar_days" -> { LocalDate from=LocalDate.parse(Objects.toString(a.get("startDate"),LocalDate.now().minusDays(30).toString())); LocalDate to=LocalDate.parse(Objects.toString(a.get("endDate"),LocalDate.now().toString())); if(to.isBefore(from)||from.plusYears(1).isBefore(to)) throw new IllegalArgumentException("Calendar range must be between zero days and one year"); yield calendar.days(user,from,to); }
       case "sessions_list" -> { var page=timers.historyPage(user,integer(a,"page",0),Math.min(50,integer(a,"size",20))); yield Map.of("sessions",page.sessions().stream().map(session->{Map<String,Object> item=json.convertValue(session,Map.class); item.put("retained",true); return item;}).toList(),"page",page.page(),"pageSize",page.pageSize(),"totalSessions",page.totalSessions(),"totalPages",page.totalPages()); }
       case "activity_list" -> knowledge.activities(user).stream().limit(200).toList();
-      case "report_read" -> { if(a.containsKey("startDate")) { LocalDate from=LocalDate.parse((String)a.get("startDate")); LocalDate to=LocalDate.parse(Objects.toString(a.get("endDate"),"")); if(to.isBefore(from)||from.plusYears(2).isBefore(to)) throw new IllegalArgumentException("Report range cannot exceed two years"); yield reports.report(user,from,to); } yield reports.report(user,ReportService.Period.valueOf(Objects.toString(a.get("period"),"WEEK").toUpperCase(Locale.ROOT)),null); }
+      case "report_read" -> reportOutput(user, a);
       case "labels_list" -> labels.list(user);
       case "paths_list" -> paths.findAllByUserIdOrderByUpdatedAtDesc(user,PageRequest.of(integer(a,"page",0),Math.min(100,Math.max(1,integer(a,"size",50))))).stream().map(p -> Map.of("id",p.getId(),"name",p.getName(),"description",Objects.toString(p.getDescription(),""),"status",p.getStatus(),"archived",p.getStatus()==PathStatus.ARCHIVED,"createdAt",p.getCreatedAt())).toList();
       case "boards_list" -> boards.findAllByUserIdOrderByUpdatedAtDesc(user,PageRequest.of(integer(a,"page",0),Math.min(100,Math.max(1,integer(a,"size",50))))).stream().map(b -> Map.of("id",b.getId(),"name",b.getName(),"pathId",Objects.toString(b.getPathId(),""),"archived",b.isArchived(),"hidden",b.isHidden(),"updatedAt",b.getUpdatedAt())).toList();
@@ -97,6 +148,47 @@ public class McpController {
     return Map.of("content",List.of(Map.of("type","text","text",json.writeValueAsString(value))),"isError",false);
   }
   private static int integer(Map<String,Object> a,String key,int fallback) { Object v=a.get(key); return v instanceof Number n?Math.max(0,n.intValue()):fallback; }
+  private Map<String, Object> reportOutput(UUID user, Map<String, Object> arguments) {
+    ReportService.Report report;
+    if (arguments.containsKey("startDate")) {
+      LocalDate from = LocalDate.parse((String) arguments.get("startDate"));
+      LocalDate to = LocalDate.parse(Objects.toString(arguments.get("endDate"), ""));
+      if (to.isBefore(from) || from.plusYears(2).isBefore(to)) {
+        throw new IllegalArgumentException("Report range cannot exceed two years");
+      }
+      report = reports.report(user, from, to);
+    } else {
+      ReportService.Period period =
+          ReportService.Period.valueOf(
+              Objects.toString(arguments.get("period"), "WEEK").toUpperCase(Locale.ROOT));
+      report = reports.report(user, period, null);
+    }
+
+    Map<String, Object> output = json.convertValue(report, Map.class);
+    output.remove("sankey");
+    List<?> days = (List<?>) output.remove("days");
+    if (Boolean.TRUE.equals(arguments.get("includeDays"))) {
+      int page = integer(arguments, "daysPage", 0);
+      int size = Math.min(31, Math.max(1, integer(arguments, "daysSize", 31)));
+      int start = (int) Math.min(days.size(), (long) page * size);
+      int end = Math.min(days.size(), start + size);
+      output.put("days", days.subList(start, end));
+      output.put("daysPage", page);
+      output.put("daysPageSize", size);
+      output.put("totalDays", days.size());
+      output.put("totalDayPages", (days.size() + size - 1) / size);
+    }
+    return output;
+  }
+  private static Map<String,Object> noteOutput(KnowledgeService.NoteView note,boolean includeContent) {
+    Map<String,Object> output=new LinkedHashMap<>();
+    output.put("id",note.id()); output.put("pathId",note.pathId()); output.put("activityId",note.activityId());
+    output.put("timeEntryId",note.timeEntryId()); output.put("title",note.title()); output.put("createdAt",note.createdAt());
+    output.put("updatedAt",note.updatedAt()); output.put("tags",note.tags()); output.put("pinned",note.pinned());
+    output.put("archived",note.deletedAt()!=null); output.put("retained",true);
+    if(includeContent) output.put("contentText",Objects.toString(note.contentText(),""));
+    return output;
+  }
   private static Set<SearchService.Type> searchTypes(Set<String> grants) {
     EnumSet<SearchService.Type> types=EnumSet.noneOf(SearchService.Type.class);
     if(grants.contains("paths")) types.add(SearchService.Type.PATH);

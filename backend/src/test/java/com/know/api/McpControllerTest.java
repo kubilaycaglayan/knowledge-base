@@ -21,7 +21,7 @@ class McpControllerTest {
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {
     var response=controller.toolList(Set.of("notes"));
     @SuppressWarnings("unchecked") var tools=(List<Map<String,Object>>)response.get("tools");
-    assertEquals(List.of("notes_list","search"),tools.stream().map(t->t.get("name")).toList());
+    assertEquals(Set.of("notes_list","note_get","search"),new HashSet<>(tools.stream().map(t->(String)t.get("name")).toList()));
     assertTrue(controller.toolList(Set.of()).get("tools").equals(List.of()));
   }
 
@@ -49,6 +49,25 @@ class McpControllerTest {
     String serialized=(String)content.get(0).get("text");
     assertTrue(serialized.contains("\"archived\":true"));
     assertTrue(serialized.contains("\"retained\":true"));
+    assertFalse(serialized.contains("contentText"));
+    assertFalse(serialized.contains("content\""));
     verify(knowledge).pageNotes(user,2,25,null,true);
+  }
+
+  @Test void noteGetReturnsPlainTextWithoutRichTextDocument() throws Exception {
+    UUID user=UUID.randomUUID();
+    UUID noteId=UUID.randomUUID();
+    var note=new KnowledgeService.NoteView(noteId,null,null,null,"A note","{\"type\":\"doc\"}",null,null,
+        null,1,"Plain text body",List.of(),false,null,null);
+    when(knowledge.getNote(user,noteId)).thenReturn(note);
+
+    var result=controller.callTool(new McpController.Access(user,Set.of("notes")),
+        Map.of("name","note_get","arguments",Map.of("noteId",noteId.toString())));
+
+    @SuppressWarnings("unchecked") var content=(List<Map<String,Object>>)result.get("content");
+    String serialized=(String)content.get(0).get("text");
+    assertTrue(serialized.contains("\"contentText\":\"Plain text body\""));
+    assertFalse(serialized.contains("\"content\""));
+    verify(knowledge).getNote(user,noteId);
   }
 }

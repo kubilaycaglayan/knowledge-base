@@ -10,6 +10,9 @@ if (( ${#JWT_SECRET} < 32 )); then
   echo "JWT_SECRET must be at least 32 characters" >&2
   exit 1
 fi
+grep -Fq 'codex mcp add knowledge-base' docs/mcp.md
+grep -Fq '[mcp_servers."knowledge-base"]' docs/mcp.md
+grep -Fq 'Default MCP server name: knowledge-base' codex-plugin/README.md
 if [[ -z "${COMPOSE_PROJECT_NAME:-}" ]]; then
   smoke_pid="${BASHPID:-$$}"
   export COMPOSE_PROJECT_NAME="knowledge-base-smoke-${smoke_pid}-$(date +%s%N)"
@@ -268,7 +271,7 @@ auth="$(api "${content_json[@]}" --post-data="{\"email\":\"$email\",\"password\"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 [[ -n "$token" ]]
 header=(--header="Authorization: Bearer $token")
-mcp_created="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke MCP","categories":["notes"],"expiry":"one_week"}' http://localhost:8080/api/v1/mcp-tokens)"
+mcp_created="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke MCP","categories":["notes","reports"],"expiry":"one_week"}' http://localhost:8080/api/v1/mcp-tokens)"
 mcp_secret="$(printf '%s' "$mcp_created" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')"
 [[ -n "$mcp_secret" ]]
 mcp_header=(--header="Authorization: Bearer $mcp_secret")
@@ -277,7 +280,7 @@ if api "${mcp_header[@]}" http://localhost:8080/api/v1/notes >/dev/null; then
   exit 1
 fi
 mcp_tools="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' http://localhost:8080/mcp)"
-[[ "$mcp_tools" == *'notes_list'* && "$mcp_tools" != *'logs_list'* ]]
+[[ "$mcp_tools" == *'notes_list'* && "$mcp_tools" == *'note_get'* && "$mcp_tools" == *'report_read'* && "$mcp_tools" != *'logs_list'* ]]
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   curl -kfsS --connect-timeout 2 --max-time 5 -H "Authorization: Bearer $mcp_secret" \
     -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
@@ -386,7 +389,13 @@ note="$(api "${header[@]}" "${content_json[@]}" --post-data="$note_payload" http
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 [[ -n "$note_id" ]]
 mcp_note="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"notes_list","arguments":{"page":0,"size":10}}}' http://localhost:8080/mcp)"
-MCP_RESPONSE="$mcp_note" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); const data=JSON.parse(result.result.content[0].text); if (!data.items.some(item=>item.title==="Smoke note" && item.retained===true && item.archived===false)) process.exit(1);'
+MCP_RESPONSE="$mcp_note" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); const data=JSON.parse(result.result.content[0].text); if (!data.items.some(item=>item.title==="Smoke note" && item.retained===true && item.archived===false) || data.items.some(item=>"content" in item || "contentText" in item)) process.exit(1);'
+mcp_note_detail="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data="{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"note_get\",\"arguments\":{\"noteId\":\"$note_id\"}}}" http://localhost:8080/mcp)"
+MCP_RESPONSE="$mcp_note_detail" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); if (result.error) throw new Error(JSON.stringify(result.error)); const data=JSON.parse(result.result.content[0].text); if (data.contentText!=="Persisted knowledge" || "content" in data) process.exit(1);'
+mcp_report="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"report_read","arguments":{"startDate":"2024-01-01","endDate":"2024-03-31"}}}' http://localhost:8080/mcp)"
+MCP_RESPONSE="$mcp_report" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); if (result.error) throw new Error(JSON.stringify(result.error)); const data=JSON.parse(result.result.content[0].text); if (!("totalSeconds" in data) || "days" in data || "sankey" in data) process.exit(1);'
+mcp_report_days="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"report_read","arguments":{"startDate":"2024-01-01","endDate":"2024-03-31","includeDays":true,"daysPage":1,"daysSize":1000}}}' http://localhost:8080/mcp)"
+MCP_RESPONSE="$mcp_report_days" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); if (result.error) throw new Error(JSON.stringify(result.error)); const data=JSON.parse(result.result.content[0].text); if (data.days.length!==31 || data.daysPage!==1 || data.daysPageSize!==31 || data.totalDays!==91 || data.sankey!==undefined) process.exit(1);'
 # A label created by tagging a note shows everywhere except the Calendar.
 api "${header[@]}" http://localhost:8080/api/v1/labels \
   | grep -o '"name":"Smoke"[^]]*]' \
