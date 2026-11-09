@@ -6,6 +6,7 @@ import java.util.UUID;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +14,7 @@ public interface LogRepository extends JpaRepository<Log, UUID> {
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
 
   List<Log> findAllByUserIdOrderByOccurredAtDescIdDesc(UUID userId);
+  List<Log> findAllByUserIdOrderByOccurredAtDescIdDesc(UUID userId, Pageable pageable);
 
   Optional<Log> findByIdAndUserId(UUID id, UUID userId);
 
