@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "recall-personal-knowledge-base",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Recall Personal Knowledge Base brings your work and time insights to ChatGPT and Codex.",
   "author": {
     "name": "Knowledge Base"
@@ -18,7 +18,7 @@
       "interface": {
         "displayName": "Recall Personal Knowledge Base",
         "shortDescription": "Ask about your work and time",
-        "longDescription": "Explore tracked work, time by project or label, notes, logs, daily records, boards, and recent activity through your existing Knowledge Base MCP connection. Read-only.",
+        "longDescription": "Explore tracked work, time by project or label, notes, logs, daily records, boards, and recent activity through the Knowledge Base MCP server. Read-only.",
         "developerName": "Knowledge Base",
         "category": "Productivity",
         "capabilities": [
