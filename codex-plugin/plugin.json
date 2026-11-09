@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "knowledge-base",
-  "version": "1.0.1",
-  "description": "Ask about your tracked work, time, notes, logs, and calendar.",
+  "version": "1.0.2",
+  "description": "Knowledge Base work and time insights for ChatGPT and Codex.",
   "author": {
     "name": "Knowledge Base"
   },
@@ -16,9 +16,9 @@
     "com.openai": {
       "onboardingSkill": "./skills/getting-started/SKILL.md",
       "interface": {
-        "displayName": "Knowledge Base",
-        "shortDescription": "Explore your work, time, notes, and daily records.",
-        "longDescription": "Ask about time by project or label, notes, logs, daily calendar records, and boards. Uses your existing Knowledge Base MCP connection and is read-only.",
+        "displayName": "Knowledge Base Work Companion",
+        "shortDescription": "Ask about your work and time",
+        "longDescription": "Explore tracked work, time by project or label, notes, logs, daily records, boards, and recent activity through your existing Knowledge Base MCP connection. Read-only.",
         "developerName": "Knowledge Base",
         "category": "Productivity",
         "capabilities": [
@@ -26,6 +26,7 @@
           "Read"
         ],
         "websiteURL": "https://knowledgebase.blaqc.space",
+        "supportURL": "https://github.com/kubilaycaglayan/knowledge-base/issues",
         "brandColor": "#15351F",
         "composerIcon": "./assets/icon.png",
         "logo": "./assets/logo.png"
