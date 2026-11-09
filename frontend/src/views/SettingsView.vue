@@ -607,13 +607,17 @@ onMounted(load);
 .mcp-token { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
 .mcp-token p { margin: 3px 0 0; }
 @media (max-width: 560px) {
+  .settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .settings-card-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
   }
   .settings-tabs button {
-    flex: 1;
+    min-width: 0;
     padding-inline: 10px;
   }
   .settings-subsection {
