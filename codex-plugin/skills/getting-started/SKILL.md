@@ -1,9 +1,9 @@
 ---
-name: knowledge-base
-description: Use the user's Knowledge Base MCP connection for questions about tracked work, hours by project or label, notes, logs, daily records, boards, and recent activity.
+name: recall-personal-knowledge-base
+description: Use Recall Personal Knowledge Base with the user's Knowledge Base MCP connection for questions about tracked work, hours by project or label, notes, logs, daily records, boards, and recent activity.
 ---
 
-# Knowledge Base
+# Recall Personal Knowledge Base
 
 Use the user's existing Knowledge Base MCP connection for questions about their own records. It is read-only. Retrieve, compare, and summarize; do not claim to create or change records.
 

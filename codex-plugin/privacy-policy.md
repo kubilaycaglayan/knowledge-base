@@ -2,7 +2,7 @@
 
 **Effective date: November 9, 2026**
 
-This policy describes information handled by the Knowledge Base application and its companion plugin. The plugin itself is an instruction package: it does not collect data, store credentials, or operate a separate service. The Knowledge Base service is operated by the Knowledge Base project maintainer.
+This policy describes information handled by the Knowledge Base application and its companion plugin. The plugin itself is an instruction package: it does not collect data, store credentials, or operate a separate service. The Knowledge Base service is operated by **Kubilay Caglayan**, an individual based in **Turkey**.
 
 ## Information the service handles
 
@@ -20,7 +20,7 @@ Application records are stored in a PostgreSQL database. Production operations m
 
 ## Your choices
 
-You can manage or revoke MCP tokens in Knowledge Base under **Settings → MCP**. Do not share your token. You can manage records through the application. For questions, access, correction, or deletion requests, contact the maintainer through [Knowledge Base support](https://github.com/kubilaycaglayan/knowledge-base/issues); do not post passwords, tokens, or private records in a public issue. We will handle requests subject to technical, security, and legal requirements.
+You can manage or revoke MCP tokens in Knowledge Base under **Settings → MCP**. Do not share your token. You can manage records through the application. For access, correction, or deletion requests, email [contactkubilay@gmail.com](mailto:contactkubilay@gmail.com). For general support, use [Knowledge Base support](https://github.com/kubilaycaglayan/knowledge-base/issues). Do not post passwords, tokens, or private records in a public issue. Requests are handled subject to technical, security, and legal requirements.
 
 ## Security and changes
 
