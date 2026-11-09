@@ -17,7 +17,7 @@ Default endpoint: https://knowledgebase.blaqc.space/mcp
 Default Codex bearer-token environment variable: KNOWLEDGE_BASE_MCP_TOKEN  
 Default server name: knowledge-base
 
-Use the MCP connection already configured in the client. If the user supplies a different endpoint, server name, or token variable name, follow those values. Never ask the user to paste a secret into chat or print/read its value. If no MCP connection is available, explain that the user can create a scoped token in Knowledge Base under Settings → MCP and configure the server in their client.
+The plugin declares the default remote MCP server as `knowledge-base` at `https://knowledgebase.blaqc.space/mcp` and uses bearer-token authentication. When the client requests a credential, the user should provide a scoped MCP token created in Knowledge Base under **Settings → MCP**. For direct Codex MCP configuration, the default token variable is `KNOWLEDGE_BASE_MCP_TOKEN`. If the user supplies a different endpoint, server name, or token variable name, follow those values. Never ask the user to paste a secret into chat or print/read its value. If the server is not connected, explain that the user can create a scoped token and configure the MCP server in their client.
 
 ## Knowledge Base records
 
