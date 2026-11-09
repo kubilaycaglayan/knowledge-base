@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "knowledge-base",
+  "version": "1.0.1",
+  "description": "Ask about your tracked work, time, notes, logs, and calendar.",
+  "author": {
+    "name": "Knowledge Base"
+  },
+  "keywords": [
+    "knowledge management",
+    "time tracking",
+    "notes",
+    "MCP"
+  ],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/getting-started/SKILL.md",
+      "interface": {
+        "displayName": "Knowledge Base",
+        "shortDescription": "Explore your work, time, notes, and daily records.",
+        "longDescription": "Ask about time by project or label, notes, logs, daily calendar records, and boards. Uses your existing Knowledge Base MCP connection and is read-only.",
+        "developerName": "Knowledge Base",
+        "category": "Productivity",
+        "capabilities": [
+          "Search",
+          "Read"
+        ],
+        "websiteURL": "https://knowledgebase.blaqc.space",
+        "brandColor": "#15351F",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png"
+      }
+    }
+  }
+}

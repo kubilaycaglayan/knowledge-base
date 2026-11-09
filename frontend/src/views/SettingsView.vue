@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { api, download } from "../lib/api";
 import ImportsView from "./ImportsView.vue";
 import {
@@ -23,7 +23,73 @@ const message = ref("");
 const error = ref("");
 const saving = ref(false);
 const exportMessage = ref("");
-const activeTab = ref<"account" | "data" | "export">("account");
+const activeTab = ref<"account" | "data" | "export" | "mcp">("account");
+type McpToken = { id: string; name: string; categories: string[]; createdAt: string; expiresAt: string; lastUsedAt: string | null };
+const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
+const mcpTokens = ref<McpToken[]>([]);
+const mcpName = ref("");
+const mcpExpiry = ref("one_month");
+const selectedCategories = ref([...mcpCategories]);
+const revealedSecret = ref("");
+const copyStatus = ref("");
+const copiedSecret = ref(false);
+const mcpError = ref("");
+const creatingToken = ref(false);
+const revokeDialogOpen = ref(false);
+const tokenToRevoke = ref<McpToken | null>(null);
+const revokingToken = ref(false);
+const revokeError = ref("");
+const mcpEndpoint = `${window.location.origin}/mcp`;
+
+async function loadMcpTokens() {
+  try { mcpTokens.value = await api<McpToken[]>("/mcp-tokens"); } catch { mcpError.value = "Could not load MCP tokens."; }
+}
+async function createMcpToken() {
+  mcpError.value = ""; revealedSecret.value = ""; copyStatus.value = ""; copiedSecret.value = false; creatingToken.value = true;
+  try {
+    const created = await api<{ token: McpToken; secret: string }>("/mcp-tokens", { method: "POST", body: JSON.stringify({ name: mcpName.value.trim(), categories: selectedCategories.value, expiry: mcpExpiry.value }) });
+    mcpTokens.value = [created.token, ...mcpTokens.value]; revealedSecret.value = created.secret; mcpName.value = "";
+  } catch { mcpError.value = "Could not create token. Choose a name and at least one category."; }
+  finally { creatingToken.value = false; }
+}
+async function copyMcpSecret() {
+  if (!revealedSecret.value) return;
+  try {
+    await navigator.clipboard.writeText(revealedSecret.value);
+    copiedSecret.value = true;
+    copyStatus.value = "Token copied to clipboard.";
+  } catch {
+    copiedSecret.value = false;
+    copyStatus.value = "Could not copy the token. Select it and copy it manually.";
+  }
+}
+function requestRevokeMcpToken(token: McpToken) {
+  tokenToRevoke.value = token;
+  revokeError.value = "";
+  revokeDialogOpen.value = true;
+}
+watch(revokeDialogOpen, (isOpen) => {
+  if (!isOpen && !revokingToken.value) {
+    tokenToRevoke.value = null;
+    revokeError.value = "";
+  }
+});
+async function confirmRevokeMcpToken() {
+  const token = tokenToRevoke.value;
+  if (!token || revokingToken.value) return;
+  revokingToken.value = true;
+  revokeError.value = "";
+  try {
+    await api(`/mcp-tokens/${token.id}`, { method: "DELETE" });
+    mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id);
+    revokeDialogOpen.value = false;
+  } catch {
+    revokeError.value = "Could not revoke this token. Try again.";
+  } finally {
+    revokingToken.value = false;
+  }
+}
+function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never"; }
 
 function changeTheme(event: Event) {
   setThemePreference(
@@ -117,7 +183,7 @@ onMounted(load);
               ? "Manage how you sign in to Knowledge Base."
               : activeTab === "data"
                 ? "Import data into Knowledge Base."
-                : "Download a portable copy of your Knowledge Base."
+                : activeTab === "export" ? "Download a portable copy of your Knowledge Base." : "Manage read-only access for AI clients."
           }}
         </p>
       </div>
@@ -134,6 +200,7 @@ onMounted(load);
       >
         Account
       </button>
+      <button id="settings-tab-mcp" type="button" role="tab" aria-controls="settings-panel-mcp" :aria-selected="activeTab === 'mcp'" :class="{ selected: activeTab === 'mcp' }" @click="activeTab = 'mcp'; loadMcpTokens()">MCP</button>
       <button
         id="settings-tab-data"
         type="button"
@@ -157,6 +224,48 @@ onMounted(load);
         Export
       </button>
     </div>
+    <section v-if="activeTab === 'mcp'" id="settings-panel-mcp" class="settings-data" role="tabpanel" aria-labelledby="settings-tab-mcp" tabindex="0">
+      <section class="card settings-card settings-intro-card">
+        <p class="section-kicker">READ-ONLY INTEGRATIONS</p><h2>MCP access</h2>
+        <p>Create a token for Codex or Claude. The secret is shown once; each token can only read the categories you select.</p>
+        <form class="settings-form" @submit.prevent="createMcpToken">
+          <label>Token name<input v-model="mcpName" name="mcpTokenName" autocomplete="off" maxlength="100" required placeholder="e.g. Codex desktop…" /></label>
+          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="three_hours">Three hours</option><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
+          <fieldset class="mcp-categories"><legend>Accessible categories</legend><label v-for="category in mcpCategories" :key="category"><input v-model="selectedCategories" type="checkbox" :value="category" /> {{ category }}</label></fieldset>
+          <button class="primary" type="submit" :disabled="creatingToken">{{ creatingToken ? "Creating…" : "Create token" }}</button>
+        </form>
+        <div v-if="revealedSecret" class="mcp-secret">
+          <strong>Copy this token now; it will not be shown again.</strong>
+          <div class="mcp-secret-value">
+            <code>{{ revealedSecret }}</code>
+            <v-btn type="button" size="small" variant="outlined" :prepend-icon="copiedSecret ? 'mdi-check' : 'mdi-content-copy'" @click="copyMcpSecret">{{ copiedSecret ? "Copied" : "Copy token" }}</v-btn>
+          </div>
+          <span>Endpoint: <code>{{ mcpEndpoint }}</code></span>
+          <p v-if="copyStatus" class="muted" role="status" aria-live="polite">{{ copyStatus }}</p>
+        </div>
+        <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>
+      </section>
+      <section class="card settings-card">
+        <h2>Tokens</h2><p v-if="!mcpTokens.length" class="muted">No active tokens.</p>
+        <article v-for="token in mcpTokens" :key="token.id" class="mcp-token">
+          <div><strong>{{ token.name }}</strong><p class="muted">{{ token.categories.join(", ") }}</p><p class="muted">Created {{ formatDate(token.createdAt) }} · Expires {{ formatDate(token.expiresAt) }} · Last used {{ formatDate(token.lastUsedAt) }}</p></div>
+          <v-btn type="button" color="error" variant="outlined" size="small" @click="requestRevokeMcpToken(token)">Revoke…</v-btn>
+        </article>
+      </section>
+    </section>
+    <v-dialog v-model="revokeDialogOpen" max-width="420" content-class="mcp-revoke-dialog-content" :persistent="revokingToken">
+      <v-card class="mcp-revoke-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mcp-revoke-title" aria-describedby="mcp-revoke-description">
+        <v-card-title class="mcp-revoke-title" id="mcp-revoke-title">Revoke token?</v-card-title>
+        <v-card-text class="mcp-revoke-description" id="mcp-revoke-description">
+          Connected clients using <strong>{{ tokenToRevoke?.name }}</strong> will lose access immediately. This cannot be undone.
+        </v-card-text>
+        <p v-if="revokeError" class="mcp-revoke-error" role="alert">{{ revokeError }}</p>
+        <v-card-actions class="mcp-revoke-actions">
+          <v-btn type="button" variant="outlined" :disabled="revokingToken" @click="revokeDialogOpen = false">Cancel</v-btn>
+          <v-btn class="mcp-revoke-confirm" type="button" color="error" variant="flat" :loading="revokingToken" :disabled="revokingToken" @click="confirmRevokeMcpToken">{{ revokingToken ? "Revoking…" : "Revoke token" }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <section
       v-if="activeTab === 'account'"
       id="settings-panel-account"
@@ -300,7 +409,7 @@ onMounted(load);
       <ImportsView embedded />
     </section>
     <section
-      v-else
+      v-if="activeTab === 'export'"
       id="settings-panel-export"
       class="settings-data"
       role="tabpanel"
@@ -484,14 +593,31 @@ onMounted(load);
 .success {
   color: var(--workspace-success, #247a45);
 }
+.mcp-categories { display: flex; flex-wrap: wrap; gap: 8px 14px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); padding: 12px; }
+.mcp-categories legend { padding-inline: 4px; font-size: 12px; font-weight: 650; }
+.mcp-categories label { display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
+.mcp-categories input { width: auto; min-width: 18px; min-height: 18px; }
+.mcp-secret, .mcp-token { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.mcp-secret code { overflow-wrap: anywhere; padding: 10px; border-radius: 6px; background: var(--workspace-selected); user-select: all; }
+.mcp-secret-value { display: flex; align-items: center; gap: 10px; }
+.mcp-secret-value > code { min-width: 0; flex: 1; }
+.mcp-secret-value :deep(.v-btn) { flex: 0 0 auto; min-height: 40px; }
+.mcp-secret > span > code { padding: 2px 5px; }
+.mcp-copy-status { margin: 0; }
+.mcp-token { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
+.mcp-token p { margin: 3px 0 0; }
 @media (max-width: 560px) {
+  .settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .settings-card-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
   }
   .settings-tabs button {
-    flex: 1;
+    min-width: 0;
     padding-inline: 10px;
   }
   .settings-subsection {

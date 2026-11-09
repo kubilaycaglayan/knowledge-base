@@ -662,6 +662,58 @@
 .sign-out-dialog .sign-out-confirm {
   --v-btn-height: 40px;
 }
+.mcp-revoke-dialog-content {
+  width: min(420px, calc(100vw - 32px));
+  max-width: 420px;
+  margin: 16px;
+}
+.mcp-revoke-dialog {
+  overflow: hidden;
+  border: 1px solid var(--workspace-border);
+  border-radius: 12px;
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+  box-shadow: 0 12px 32px #0005;
+}
+.mcp-revoke-dialog .mcp-revoke-title {
+  min-height: 0;
+  padding: 20px 24px 4px;
+  color: var(--workspace-text);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+}
+.mcp-revoke-dialog .mcp-revoke-description {
+  padding: 4px 24px 8px;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.mcp-revoke-dialog .mcp-revoke-error {
+  margin: 0;
+  padding: 0 24px;
+  color: var(--workspace-danger, #b42318);
+  font-size: 13px;
+}
+.mcp-revoke-dialog .mcp-revoke-actions {
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px 20px;
+}
+.mcp-revoke-dialog .mcp-revoke-actions .v-btn {
+  min-width: 84px;
+  min-height: 40px;
+  border-radius: var(--workspace-radius);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mcp-revoke-dialog .mcp-revoke-actions .v-btn:first-child {
+  border-color: var(--workspace-control-border);
+  color: var(--workspace-text);
+}
 .merge-path-options {
   display: grid;
   gap: 6px;

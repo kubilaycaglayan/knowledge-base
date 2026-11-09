@@ -1,10 +1,17 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { config, flushPromises, mount } from "@vue/test-utils";
 import SettingsView from "./SettingsView.vue";
 import { api, download } from "../lib/api";
 import { setThemePreference, themePreference } from "../lib/theme";
 import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn(), download: vi.fn() }));
+
+config.global.stubs = {
+  VDialog: {
+    props: ["modelValue"],
+    template: '<div v-if="modelValue" class="v-dialog-stub"><slot /></div>',
+  },
+};
 
 describe("SettingsView", () => {
   beforeEach(() => {
@@ -31,9 +38,9 @@ describe("SettingsView", () => {
       (wrapper.get(".theme-select").element as HTMLSelectElement).value,
     ).toBe("auto");
     expect(wrapper.text()).not.toContain("Download Knowledge Base CSV");
-    await wrapper.get('[role="tab"]:nth-child(2)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-data"]').trigger("click");
     expect(wrapper.get('[role="tabpanel"]').text()).toContain("Import Knowledge Base CSV files");
-    await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
     expect(wrapper.text()).toContain("Download Knowledge Base CSV");
     expect(wrapper.text()).not.toContain("Sign-in methods");
   });
@@ -55,7 +62,7 @@ describe("SettingsView", () => {
   it("downloads a Knowledge Base CSV from the Export tab", async () => {
     const wrapper = mount(SettingsView);
     await flushPromises();
-    await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
 
@@ -75,6 +82,78 @@ describe("SettingsView", () => {
     await flushPromises();
 
     expect(wrapper.get('[role="status"]').text()).toBe("Could not export your data. Try again.");
+  });
+
+  it("creates a scoped MCP token and displays its secret only in the creation result", async () => {
+    const token = { id: "token-1", name: "Codex", categories: ["notes"], createdAt: "2026-01-01T00:00:00Z", expiresAt: "2026-02-01T00:00:00Z", lastUsedAt: null };
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/auth/me") return { email: "person@example.com", hasPassword: false, hasGoogle: true };
+      if (path === "/mcp-tokens" && options?.method !== "POST") return [];
+      if (path === "/mcp-tokens/token-1" && options?.method === "DELETE") return undefined;
+      return { token, secret: "kb_mcp_one_time_secret" };
+    });
+    const wrapper = mount(SettingsView, {
+      global: {
+        stubs: {
+          VBtn: {
+            props: ["color", "variant", "size", "prependIcon"],
+            template: '<button type="button" :data-color="color" :data-variant="variant"><slot /></button>',
+          },
+          VDialog: {
+            props: ["modelValue"],
+            template: '<div v-if="modelValue" class="v-dialog-stub"><slot /></div>',
+          },
+          VCard: { template: "<div><slot /></div>" },
+          VCardTitle: { template: "<h2><slot /></h2>" },
+          VCardText: { template: "<p><slot /></p>" },
+          VCardActions: { template: '<div class="mcp-revoke-actions"><slot /></div>' },
+        },
+      },
+    });
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    expect(wrapper.text()).toContain("MCP access");
+    expect(wrapper.text()).not.toContain("KEEP A COPY");
+    expect(wrapper.find('[aria-labelledby="settings-tab-export"]').exists()).toBe(false);
+    expect(wrapper.findAll('.mcp-categories input:checked')).toHaveLength(9);
+    await wrapper.get('input[name="mcpTokenName"]').setValue("Codex");
+    expect(wrapper.get('select[name="mcpExpiry"]').text()).toContain("Three hours");
+    await wrapper.get('select[name="mcpExpiry"]').setValue("three_hours");
+    await wrapper.get('.mcp-categories input[value="logs"]').setValue(false);
+    await wrapper.get('#settings-panel-mcp form').trigger("submit");
+    await flushPromises();
+
+    const createCall = vi.mocked(api).mock.calls.find((call) => call[0] === "/mcp-tokens" && call[1]?.method === "POST");
+    expect(createCall).toBeDefined();
+    expect(JSON.parse(createCall![1]!.body as string)).toMatchObject({ name: "Codex", categories: expect.arrayContaining(["notes"]), expiry: "three_hours" });
+    expect(JSON.parse(createCall![1]!.body as string).categories).not.toContain("logs");
+    expect(wrapper.text()).toContain("kb_mcp_one_time_secret");
+    expect(wrapper.text()).toContain("Expires");
+    expect(wrapper.get(".mcp-token button").attributes()).toMatchObject({ "data-color": "error", "data-variant": "outlined" });
+    await wrapper.get(".mcp-secret-value button").trigger("click");
+    expect(writeText).toHaveBeenCalledWith("kb_mcp_one_time_secret");
+    expect(wrapper.text()).toContain("Token copied to clipboard.");
+    expect(wrapper.get(".mcp-secret-value button").text()).toBe("Copied");
+    writeText.mockRejectedValueOnce(new Error("clipboard unavailable"));
+    await wrapper.get(".mcp-secret-value button").trigger("click");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Could not copy the token. Select it and copy it manually.");
+    expect(wrapper.get(".mcp-secret-value button").text()).toBe("Copy token");
+
+    await wrapper.get(".mcp-token button").trigger("click");
+    expect(wrapper.get('[role="alertdialog"]').attributes()).toMatchObject({ "aria-modal": "true", "aria-labelledby": "mcp-revoke-title", "aria-describedby": "mcp-revoke-description" });
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain("Connected clients using Codex will lose access immediately.");
+    await wrapper.get(".mcp-revoke-actions button:first-child").trigger("click");
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/mcp-tokens/token-1", expect.objectContaining({ method: "DELETE" }));
+
+    await wrapper.get(".mcp-token button").trigger("click");
+    await wrapper.get(".mcp-revoke-confirm").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/mcp-tokens/token-1", expect.objectContaining({ method: "DELETE" }));
+    expect(wrapper.find(".mcp-token").exists()).toBe(false);
   });
 
   it("requires the current password for accounts that also use Google sign-in", async () => {

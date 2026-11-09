@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -35,6 +36,12 @@ public class LogService {
     return logs.findAllByUserIdOrderByOccurredAtDescIdDesc(userId).stream()
         .map(this::view)
         .toList();
+  }
+
+  public List<LogView> page(UUID userId, int page, int size) {
+    return logs.findAllByUserIdOrderByOccurredAtDescIdDesc(userId,
+        PageRequest.of(Math.max(0,page),Math.min(100,Math.max(1,size))))
+        .stream().map(this::view).toList();
   }
 
   public LogView get(UUID userId, UUID id) {

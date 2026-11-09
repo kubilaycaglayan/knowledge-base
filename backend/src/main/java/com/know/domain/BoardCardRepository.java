@@ -11,9 +11,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardCardRepository extends JpaRepository<BoardCard, UUID> {
   List<BoardCard> findAllByBoardIdAndArchivedAtIsNullOrderByStatusIdAscPositionAsc(UUID boardId);
+  List<BoardCard> findAllByBoardIdAndArchivedAtIsNullOrderByStatusIdAscPositionAsc(UUID boardId, Pageable pageable);
   List<BoardCard> findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(UUID boardId, UUID statusId);
   List<BoardCard> findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(UUID boardId, UUID statusId, int position, Pageable pageable);
   List<BoardCard> findAllByBoardIdAndArchivedAtNotNullOrderByUpdatedAtDesc(UUID boardId);
+  List<BoardCard> findAllByBoardIdAndArchivedAtNotNullOrderByUpdatedAtDesc(UUID boardId, Pageable pageable);
   // Priority-sorted columns page by offset: Urgent, High, Medium, Low, then manual position.
   @Query(value = "select * from board_cards c where c.board_id = :boardId and c.status_id = :statusId and c.archived_at is null order by case c.priority when 'URGENT' then 0 when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end, c.position, c.id limit :limit offset :offset", nativeQuery = true)
   List<BoardCard> findPriorityPage(@Param("boardId") UUID boardId, @Param("statusId") UUID statusId, @Param("offset") int offset, @Param("limit") int limit);
