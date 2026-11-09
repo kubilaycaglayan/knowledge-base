@@ -87,6 +87,9 @@ describe("SettingsView", () => {
     const wrapper = mount(SettingsView);
     await flushPromises();
     await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    expect(wrapper.text()).toContain("MCP access");
+    expect(wrapper.text()).not.toContain("KEEP A COPY");
+    expect(wrapper.find('[aria-labelledby="settings-tab-export"]').exists()).toBe(false);
     expect(wrapper.findAll('.mcp-categories input:checked')).toHaveLength(9);
     await wrapper.get('input[name="mcpTokenName"]').setValue("Codex");
     await wrapper.get('.mcp-categories input[value="logs"]').setValue(false);

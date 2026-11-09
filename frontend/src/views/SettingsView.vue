@@ -350,7 +350,7 @@ onMounted(load);
       <ImportsView embedded />
     </section>
     <section
-      v-else
+      v-if="activeTab === 'export'"
       id="settings-panel-export"
       class="settings-data"
       role="tabpanel"
