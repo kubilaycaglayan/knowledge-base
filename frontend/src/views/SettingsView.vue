@@ -28,11 +28,12 @@ type McpToken = { id: string; name: string; categories: string[]; createdAt: str
 const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
 const mcpTokens = ref<McpToken[]>([]);
 const mcpName = ref("");
-const mcpExpiry = ref("one_month");
+const mcpExpiry = ref("fifteen_minutes");
 const selectedCategories = ref([...mcpCategories]);
 const revealedSecret = ref("");
 const copyStatus = ref("");
 const copiedSecret = ref(false);
+const copiedSetupText = ref(false);
 const mcpError = ref("");
 const creatingToken = ref(false);
 const revokeDialogOpen = ref(false);
@@ -61,6 +62,18 @@ async function copyMcpSecret() {
   } catch {
     copiedSecret.value = false;
     copyStatus.value = "Could not copy the token. Select it and copy it manually.";
+  }
+}
+async function copyMcpSetupText() {
+  if (!revealedSecret.value) return;
+  const setupText = `Send a request to https://knowledgebase.blaqc.space/mcp with API token: ${revealedSecret.value} and tell me when you are authenticated successfully`;
+  try {
+    await navigator.clipboard.writeText(setupText);
+    copiedSetupText.value = true;
+    copyStatus.value = "Setup text copied to clipboard.";
+  } catch {
+    copiedSetupText.value = false;
+    copyStatus.value = "Could not copy the setup text. Select it and copy it manually.";
   }
 }
 function requestRevokeMcpToken(token: McpToken) {
@@ -230,7 +243,7 @@ onMounted(load);
         <p>Create a token for Codex or Claude. The secret is shown once; each token can only read the categories you select.</p>
         <form class="settings-form" @submit.prevent="createMcpToken">
           <label>Token name<input v-model="mcpName" name="mcpTokenName" autocomplete="off" maxlength="100" required placeholder="e.g. Codex desktop…" /></label>
-          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="three_hours">Three hours</option><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
+          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="fifteen_minutes">15 minutes</option><option value="three_hours">Three hours</option><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
           <fieldset class="mcp-categories"><legend>Accessible categories</legend><label v-for="category in mcpCategories" :key="category"><input v-model="selectedCategories" type="checkbox" :value="category" /> {{ category }}</label></fieldset>
           <button class="primary" type="submit" :disabled="creatingToken">{{ creatingToken ? "Creating…" : "Create token" }}</button>
         </form>
@@ -241,6 +254,11 @@ onMounted(load);
             <v-btn type="button" size="small" variant="outlined" :prepend-icon="copiedSecret ? 'mdi-check' : 'mdi-content-copy'" @click="copyMcpSecret">{{ copiedSecret ? "Copied" : "Copy token" }}</v-btn>
           </div>
           <span>Endpoint: <code>{{ mcpEndpoint }}</code></span>
+          <div class="mcp-setup-text">
+            <strong>Ready to copy</strong>
+            <p>Send a request to https://knowledgebase.blaqc.space/mcp with API token: {{ revealedSecret }} and tell me when you are authenticated successfully</p>
+            <v-btn type="button" size="small" variant="outlined" :prepend-icon="copiedSetupText ? 'mdi-check' : 'mdi-content-copy'" @click="copyMcpSetupText">{{ copiedSetupText ? "Copied" : "Copy setup text" }}</v-btn>
+          </div>
           <p v-if="copyStatus" class="muted" role="status" aria-live="polite">{{ copyStatus }}</p>
         </div>
         <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>

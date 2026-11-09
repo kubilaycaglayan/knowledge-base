@@ -119,7 +119,8 @@ describe("SettingsView", () => {
     expect(wrapper.find('[aria-labelledby="settings-tab-export"]').exists()).toBe(false);
     expect(wrapper.findAll('.mcp-categories input:checked')).toHaveLength(9);
     await wrapper.get('input[name="mcpTokenName"]').setValue("Codex");
-    expect(wrapper.get('select[name="mcpExpiry"]').text()).toContain("Three hours");
+    expect((wrapper.get('select[name="mcpExpiry"]').element as HTMLSelectElement).value).toBe("fifteen_minutes");
+    expect(wrapper.get('select[name="mcpExpiry"]').text()).toContain("15 minutes");
     await wrapper.get('select[name="mcpExpiry"]').setValue("three_hours");
     await wrapper.get('.mcp-categories input[value="logs"]').setValue(false);
     await wrapper.get('#settings-panel-mcp form').trigger("submit");
@@ -130,6 +131,9 @@ describe("SettingsView", () => {
     expect(JSON.parse(createCall![1]!.body as string)).toMatchObject({ name: "Codex", categories: expect.arrayContaining(["notes"]), expiry: "three_hours" });
     expect(JSON.parse(createCall![1]!.body as string).categories).not.toContain("logs");
     expect(wrapper.text()).toContain("kb_mcp_one_time_secret");
+    expect(wrapper.text()).toContain("Ready to copy");
+    await wrapper.get(".mcp-setup-text button").trigger("click");
+    expect(writeText).toHaveBeenCalledWith("Send a request to https://knowledgebase.blaqc.space/mcp with API token: kb_mcp_one_time_secret and tell me when you are authenticated successfully");
     expect(wrapper.text()).toContain("Expires");
     expect(wrapper.get(".mcp-token button").attributes()).toMatchObject({ "data-color": "error", "data-variant": "outlined" });
     await wrapper.get(".mcp-secret-value button").trigger("click");

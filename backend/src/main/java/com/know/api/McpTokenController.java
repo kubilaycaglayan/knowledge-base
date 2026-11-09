@@ -36,7 +36,7 @@ public class McpTokenController {
     List<String> categories = request.categories() == null ? CATEGORIES : request.categories().stream().distinct().toList();
     if (!CATEGORIES.containsAll(categories)) throw new IllegalArgumentException("Select valid categories");
     Instant now = Instant.now();
-    Instant expires = expiryAt(Objects.toString(request.expiry(), "one_month"), now);
+    Instant expires = expiryAt(Objects.toString(request.expiry(), "fifteen_minutes"), now);
     byte[] bytes = new byte[32]; RANDOM.nextBytes(bytes);
     String secret = "kb_mcp_" + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
@@ -53,6 +53,7 @@ public class McpTokenController {
 
   static Instant expiryAt(String choice, Instant now) {
     return switch (choice) {
+      case "fifteen_minutes" -> now.plus(15, ChronoUnit.MINUTES);
       case "three_hours" -> now.plus(3, ChronoUnit.HOURS);
       case "one_week" -> now.plus(7, ChronoUnit.DAYS);
       case "one_month" -> now.plus(1, ChronoUnit.MONTHS);
