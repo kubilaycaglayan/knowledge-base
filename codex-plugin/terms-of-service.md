@@ -22,10 +22,14 @@ The service is provided on an evolving basis and may be changed, interrupted, or
 
 To the extent permitted by law, the service is provided “as is” and “as available,” without warranties of any kind. Knowledge Base is a record-keeping tool, not professional, legal, financial, medical, or employment advice. To the extent permitted by law, the maintainer is not liable for indirect or consequential losses arising from use of the service. These terms do not limit rights or remedies that cannot legally be limited.
 
+## Governing law
+
+These terms are governed by the laws of the Republic of Türkiye. This does not limit any mandatory legal protections that apply to you.
+
 ## Suspension and updates
 
 Access may be suspended or ended if necessary to protect the service, comply with law, or address a violation of these terms. These terms may be updated as the service changes; the current version and effective date will be posted at this URL. Continued use after an update means you accept the revised terms.
 
-## Contact
+## Operator and contact
 
-For questions about these terms, use [Knowledge Base support](https://github.com/kubilaycaglayan/knowledge-base/issues). Please do not include passwords, tokens, or private records in public issues.
+Knowledge Base is operated by **Kubilay Caglayan**, an individual based in **Turkey**. For questions about these terms, email [contactkubilay@gmail.com](mailto:contactkubilay@gmail.com) or use [Knowledge Base support](https://github.com/kubilaycaglayan/knowledge-base/issues). Please do not include passwords, tokens, or private records in public issues.
