@@ -1,10 +1,17 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { config, flushPromises, mount } from "@vue/test-utils";
 import SettingsView from "./SettingsView.vue";
 import { api, download } from "../lib/api";
 import { setThemePreference, themePreference } from "../lib/theme";
 import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn(), download: vi.fn() }));
+
+config.global.stubs = {
+  VDialog: {
+    props: ["modelValue"],
+    template: '<div v-if="modelValue" class="v-dialog-stub"><slot /></div>',
+  },
+};
 
 describe("SettingsView", () => {
   beforeEach(() => {
@@ -84,6 +91,7 @@ describe("SettingsView", () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/auth/me") return { email: "person@example.com", hasPassword: false, hasGoogle: true };
       if (path === "/mcp-tokens" && options?.method !== "POST") return [];
+      if (path === "/mcp-tokens/token-1" && options?.method === "DELETE") return undefined;
       return { token, secret: "kb_mcp_one_time_secret" };
     });
     const wrapper = mount(SettingsView, {
@@ -93,6 +101,14 @@ describe("SettingsView", () => {
             props: ["color", "variant", "size", "prependIcon"],
             template: '<button type="button" :data-color="color" :data-variant="variant"><slot /></button>',
           },
+          VDialog: {
+            props: ["modelValue"],
+            template: '<div v-if="modelValue" class="v-dialog-stub"><slot /></div>',
+          },
+          VCard: { template: "<div><slot /></div>" },
+          VCardTitle: { template: "<h2><slot /></h2>" },
+          VCardText: { template: "<p><slot /></p>" },
+          VCardActions: { template: '<div class="mcp-revoke-actions"><slot /></div>' },
         },
       },
     });
@@ -125,6 +141,19 @@ describe("SettingsView", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Could not copy the token. Select it and copy it manually.");
     expect(wrapper.get(".mcp-secret-value button").text()).toBe("Copy token");
+
+    await wrapper.get(".mcp-token button").trigger("click");
+    expect(wrapper.get('[role="alertdialog"]').attributes()).toMatchObject({ "aria-modal": "true", "aria-labelledby": "mcp-revoke-title", "aria-describedby": "mcp-revoke-description" });
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain("Connected clients using Codex will lose access immediately.");
+    await wrapper.get(".mcp-revoke-actions button:first-child").trigger("click");
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/mcp-tokens/token-1", expect.objectContaining({ method: "DELETE" }));
+
+    await wrapper.get(".mcp-token button").trigger("click");
+    await wrapper.get(".mcp-revoke-confirm").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/mcp-tokens/token-1", expect.objectContaining({ method: "DELETE" }));
+    expect(wrapper.find(".mcp-token").exists()).toBe(false);
   });
 
   it("requires the current password for accounts that also use Google sign-in", async () => {

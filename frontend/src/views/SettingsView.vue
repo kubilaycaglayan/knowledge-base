@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { api, download } from "../lib/api";
 import ImportsView from "./ImportsView.vue";
 import {
@@ -35,6 +35,10 @@ const copyStatus = ref("");
 const copiedSecret = ref(false);
 const mcpError = ref("");
 const creatingToken = ref(false);
+const revokeDialogOpen = ref(false);
+const tokenToRevoke = ref<McpToken | null>(null);
+const revokingToken = ref(false);
+const revokeError = ref("");
 const mcpEndpoint = `${window.location.origin}/mcp`;
 
 async function loadMcpTokens() {
@@ -59,10 +63,31 @@ async function copyMcpSecret() {
     copyStatus.value = "Could not copy the token. Select it and copy it manually.";
   }
 }
-async function revokeMcpToken(token: McpToken) {
-  if (!window.confirm(`Revoke “${token.name}”? Connected clients will lose access.`)) return;
-  try { await api(`/mcp-tokens/${token.id}`, { method: "DELETE" }); mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id); }
-  catch { mcpError.value = "Could not revoke this token."; }
+function requestRevokeMcpToken(token: McpToken) {
+  tokenToRevoke.value = token;
+  revokeError.value = "";
+  revokeDialogOpen.value = true;
+}
+watch(revokeDialogOpen, (isOpen) => {
+  if (!isOpen && !revokingToken.value) {
+    tokenToRevoke.value = null;
+    revokeError.value = "";
+  }
+});
+async function confirmRevokeMcpToken() {
+  const token = tokenToRevoke.value;
+  if (!token || revokingToken.value) return;
+  revokingToken.value = true;
+  revokeError.value = "";
+  try {
+    await api(`/mcp-tokens/${token.id}`, { method: "DELETE" });
+    mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id);
+    revokeDialogOpen.value = false;
+  } catch {
+    revokeError.value = "Could not revoke this token. Try again.";
+  } finally {
+    revokingToken.value = false;
+  }
 }
 function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never"; }
 
@@ -224,10 +249,23 @@ onMounted(load);
         <h2>Tokens</h2><p v-if="!mcpTokens.length" class="muted">No active tokens.</p>
         <article v-for="token in mcpTokens" :key="token.id" class="mcp-token">
           <div><strong>{{ token.name }}</strong><p class="muted">{{ token.categories.join(", ") }}</p><p class="muted">Created {{ formatDate(token.createdAt) }} · Expires {{ formatDate(token.expiresAt) }} · Last used {{ formatDate(token.lastUsedAt) }}</p></div>
-          <v-btn type="button" color="error" variant="outlined" size="small" @click="revokeMcpToken(token)">Revoke…</v-btn>
+          <v-btn type="button" color="error" variant="outlined" size="small" @click="requestRevokeMcpToken(token)">Revoke…</v-btn>
         </article>
       </section>
     </section>
+    <v-dialog v-model="revokeDialogOpen" max-width="420" content-class="mcp-revoke-dialog-content" :persistent="revokingToken">
+      <v-card class="mcp-revoke-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mcp-revoke-title" aria-describedby="mcp-revoke-description">
+        <v-card-title class="mcp-revoke-title" id="mcp-revoke-title">Revoke token?</v-card-title>
+        <v-card-text class="mcp-revoke-description" id="mcp-revoke-description">
+          Connected clients using <strong>{{ tokenToRevoke?.name }}</strong> will lose access immediately. This cannot be undone.
+        </v-card-text>
+        <p v-if="revokeError" class="mcp-revoke-error" role="alert">{{ revokeError }}</p>
+        <v-card-actions class="mcp-revoke-actions">
+          <v-btn type="button" variant="outlined" :disabled="revokingToken" @click="revokeDialogOpen = false">Cancel</v-btn>
+          <v-btn class="mcp-revoke-confirm" type="button" color="error" variant="flat" :loading="revokingToken" :disabled="revokingToken" @click="confirmRevokeMcpToken">{{ revokingToken ? "Revoking…" : "Revoke token" }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <section
       v-if="activeTab === 'account'"
       id="settings-panel-account"
