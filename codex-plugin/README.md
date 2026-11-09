@@ -14,3 +14,5 @@ The package manifest includes five positive and three negative reviewer test cas
 This package is a skills-only integration that uses the installer's existing MCP connection. It does not bundle an MCP server, reviewer account, or demo recording. Do not add a demo URL until an accessible walkthrough has actually been recorded. If submitting it as an MCP app, also provide working privacy-policy and terms URLs and a reviewer-accessible recording; the current product has no privacy or terms pages in this repository.
 
 After changing the manifest, rebuild `knowledge-base-plugin.zip` from this directory so the uploaded archive carries the same metadata.
+
+Policies: [Privacy](https://github.com/kubilaycaglayan/knowledge-base/blob/main/codex-plugin/privacy-policy.md) · [Terms](https://github.com/kubilaycaglayan/knowledge-base/blob/main/codex-plugin/terms-of-service.md)
