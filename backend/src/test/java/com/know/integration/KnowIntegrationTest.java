@@ -2101,6 +2101,70 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void mcpTokenManagementIsOwnerScopedAndRevocationIsImmediate() {
+    ensureMcpTokenTable();
+    String ownerToken = freshToken();
+    String otherToken = freshToken();
+
+    ResponseEntity<JsonNode> createdResponse =
+        post(
+            "/api/v1/mcp-tokens",
+            ownerToken,
+            "{\"name\":\"Managed MCP token\",\"categories\":[\"notes\"],\"expiry\":\"one_week\"}");
+    assertEquals(HttpStatus.OK, createdResponse.getStatusCode());
+    JsonNode created = createdResponse.getBody();
+    String secret = created.get("secret").asText();
+    String tokenId = created.path("token").path("id").asText();
+    assertTrue(secret.startsWith("kb_mcp_"));
+    assertTrue(secret.length() > 40, "MCP credential must have high entropy");
+    assertFalse(created.path("token").has("tokenHash"));
+    assertFalse(created.path("token").has("secret"));
+    String storedHash =
+        jdbc.queryForObject(
+            "select token_hash from mcp_access_token where id=?", String.class, UUID.fromString(tokenId));
+    assertNotEquals(secret, storedHash);
+    assertTrue(storedHash.matches("[a-f0-9]{64}"));
+
+    JsonNode ownerList = get("/api/v1/mcp-tokens", ownerToken).getBody();
+    JsonNode listedToken = findToken(ownerList, tokenId);
+    assertNotNull(listedToken, "Created token " + tokenId + " was not in owner's list: " + ownerList);
+    assertEquals("notes", listedToken.get("categories").get(0).asText());
+    assertFalse(ownerList.toString().contains(secret));
+    assertTrue(get("/api/v1/mcp-tokens", otherToken).getBody().isEmpty());
+
+    assertEquals(
+        HttpStatus.OK,
+        delete("/api/v1/mcp-tokens/" + tokenId, otherToken).getStatusCode());
+    ResponseEntity<JsonNode> toolsResponse =
+        mcpPost(
+            secret,
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}");
+    assertEquals(HttpStatus.OK, toolsResponse.getStatusCode());
+    JsonNode usedToken = findToken(get("/api/v1/mcp-tokens", ownerToken).getBody(), tokenId);
+    assertNotNull(usedToken);
+    assertFalse(usedToken.get("lastUsedAt").isNull());
+    assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/notes", secret).getStatusCode());
+
+    assertEquals(
+        HttpStatus.OK,
+        delete("/api/v1/mcp-tokens/" + tokenId, ownerToken).getStatusCode());
+    assertNull(findToken(get("/api/v1/mcp-tokens", ownerToken).getBody(), tokenId));
+    assertEquals(
+        HttpStatus.UNAUTHORIZED,
+        mcpPost(
+                secret,
+                "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}")
+            .getStatusCode());
+  }
+
+  private static JsonNode findToken(JsonNode tokens, String id) {
+    for (JsonNode token : tokens) {
+      if (id.equals(token.path("id").asText())) return token;
+    }
+    return null;
+  }
+
+  @Test
   void reportPresetsUseAnchorBoundariesForLeapDayAndYearRollover() {
     String token = freshToken();
     for (String[] window :

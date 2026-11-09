@@ -26,7 +26,7 @@ public class McpTokenController {
   @GetMapping
   public List<TokenView> list(Authentication auth) {
     return jdbc.query("select id,name,categories,created_at,expires_at,last_used_at from mcp_access_token where user_id=? and revoked_at is null order by created_at desc",
-        (rs, n) -> new TokenView(rs.getObject("id", UUID.class), rs.getString("name"), Arrays.asList((String[])rs.getArray("categories").getArray()), rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("expires_at").toInstant(), rs.getTimestamp("last_used_at") == null ? null : rs.getTimestamp("last_used_at").toInstant()), UUID.fromString(auth.getName()));
+        (rs, n) -> new TokenView(rs.getObject("id", UUID.class), rs.getString("name"), Arrays.stream((Object[])rs.getArray("categories").getArray()).map(Objects::toString).toList(), rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("expires_at").toInstant(), rs.getTimestamp("last_used_at") == null ? null : rs.getTimestamp("last_used_at").toInstant()), UUID.fromString(auth.getName()));
   }
 
   @PostMapping
