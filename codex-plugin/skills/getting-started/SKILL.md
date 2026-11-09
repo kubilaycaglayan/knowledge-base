@@ -7,6 +7,10 @@ description: Use the user's Knowledge Base MCP connection for questions about tr
 
 Use the user's existing Knowledge Base MCP connection for questions about their own records. It is read-only. Retrieve, compare, and summarize; do not claim to create or change records.
 
+## First-use context
+
+Before answering the user's first Knowledge Base question in a conversation, call labels_list and paths_list. Collect every available label and path name, paging through paths_list until no more paths are returned. Treat these names as the user's semantic map: records can be organized under one or more labels and paths, and the names can reveal the user's terminology for projects, topics, and kinds of work. Use this context to guide searches and interpret results. Names are clues, not definitions; qualify uncertain interpretations instead of presenting guesses as facts. Reuse the map for later questions in the same conversation, and refresh it when the user asks or when results show it may be stale. If a category is unavailable, say so and continue only with the context and tools the token permits.
+
 ## Connection defaults
 
 Default endpoint: https://knowledgebase.blaqc.space/mcp  
