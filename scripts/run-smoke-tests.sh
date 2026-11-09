@@ -268,6 +268,21 @@ auth="$(api "${content_json[@]}" --post-data="{\"email\":\"$email\",\"password\"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 [[ -n "$token" ]]
 header=(--header="Authorization: Bearer $token")
+mcp_created="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke MCP","categories":["notes"],"expiry":"one_week"}' http://localhost:8080/api/v1/mcp-tokens)"
+mcp_secret="$(printf '%s' "$mcp_created" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')"
+[[ -n "$mcp_secret" ]]
+mcp_header=(--header="Authorization: Bearer $mcp_secret")
+if api "${mcp_header[@]}" http://localhost:8080/api/v1/notes >/dev/null; then
+  echo "MCP token was accepted by a REST endpoint" >&2
+  exit 1
+fi
+mcp_tools="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' http://localhost:8080/mcp)"
+[[ "$mcp_tools" == *'notes_list'* && "$mcp_tools" != *'logs_list'* ]]
+if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
+  curl -kfsS --connect-timeout 2 --max-time 5 -H "Authorization: Bearer $mcp_secret" \
+    -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+    "https://localhost:${PROXY_HTTPS_PORT}/mcp" | grep -q 'notes_list'
+fi
 
 # A deployment must accept a token issued by the previous API container.
 compose up -d --no-deps --force-recreate api
@@ -370,6 +385,8 @@ note_payload="$(printf '{"pathId":"%s","title":"Smoke note","content":"{\\\"type
 note="$(api "${header[@]}" "${content_json[@]}" --post-data="$note_payload" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 [[ -n "$note_id" ]]
+mcp_note="$(api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"notes_list","arguments":{"page":0,"size":10}}}' http://localhost:8080/mcp)"
+MCP_RESPONSE="$mcp_note" node -e 'const result=JSON.parse(process.env.MCP_RESPONSE); const data=JSON.parse(result.result.content[0].text); if (!data.items.some(item=>item.title==="Smoke note" && item.retained===true && item.archived===false)) process.exit(1);'
 # A label created by tagging a note shows everywhere except the Calendar.
 api "${header[@]}" http://localhost:8080/api/v1/labels \
   | grep -o '"name":"Smoke"[^]]*]' \
@@ -399,6 +416,11 @@ api "${header[@]}" "http://localhost:8080/api/v1/notes/$note_id" | check_long_no
 unset long_note_text long_note_payload
 api "${header[@]}" --method=DELETE "http://localhost:8080/api/v1/notes/$note_id" >/dev/null
 api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/notes/$note_id/restore" >/dev/null
+api "${header[@]}" --method=DELETE "http://localhost:8080/api/v1/mcp-tokens/$(printf '%s' "$mcp_created" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')" >/dev/null
+if api "${mcp_header[@]}" "${content_json[@]}" --post-data='{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}' http://localhost:8080/mcp >/dev/null; then
+  echo "revoked MCP token was accepted" >&2
+  exit 1
+fi
 if api "${other_header[@]}" "http://localhost:8080/api/v1/notes/$note_id" >/dev/null; then
   echo "cross-user note access was allowed" >&2
   exit 1

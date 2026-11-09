@@ -31,9 +31,9 @@ describe("SettingsView", () => {
       (wrapper.get(".theme-select").element as HTMLSelectElement).value,
     ).toBe("auto");
     expect(wrapper.text()).not.toContain("Download Knowledge Base CSV");
-    await wrapper.get('[role="tab"]:nth-child(2)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-data"]').trigger("click");
     expect(wrapper.get('[role="tabpanel"]').text()).toContain("Import Knowledge Base CSV files");
-    await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
     expect(wrapper.text()).toContain("Download Knowledge Base CSV");
     expect(wrapper.text()).not.toContain("Sign-in methods");
   });
@@ -55,7 +55,7 @@ describe("SettingsView", () => {
   it("downloads a Knowledge Base CSV from the Export tab", async () => {
     const wrapper = mount(SettingsView);
     await flushPromises();
-    await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
 
@@ -75,6 +75,30 @@ describe("SettingsView", () => {
     await flushPromises();
 
     expect(wrapper.get('[role="status"]').text()).toBe("Could not export your data. Try again.");
+  });
+
+  it("creates a scoped MCP token and displays its secret only in the creation result", async () => {
+    const token = { id: "token-1", name: "Codex", categories: ["notes"], createdAt: "2026-01-01T00:00:00Z", expiresAt: "2026-02-01T00:00:00Z", lastUsedAt: null };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/auth/me") return { email: "person@example.com", hasPassword: false, hasGoogle: true };
+      if (path === "/mcp-tokens" && options?.method !== "POST") return [];
+      return { token, secret: "kb_mcp_one_time_secret" };
+    });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    expect(wrapper.findAll('.mcp-categories input:checked')).toHaveLength(9);
+    await wrapper.get('input[name="mcpTokenName"]').setValue("Codex");
+    await wrapper.get('.mcp-categories input[value="logs"]').setValue(false);
+    await wrapper.get('#settings-panel-mcp form').trigger("submit");
+    await flushPromises();
+
+    const createCall = vi.mocked(api).mock.calls.find((call) => call[0] === "/mcp-tokens" && call[1]?.method === "POST");
+    expect(createCall).toBeDefined();
+    expect(JSON.parse(createCall![1]!.body as string)).toMatchObject({ name: "Codex", categories: expect.arrayContaining(["notes"]), expiry: "one_month" });
+    expect(JSON.parse(createCall![1]!.body as string).categories).not.toContain("logs");
+    expect(wrapper.text()).toContain("kb_mcp_one_time_secret");
+    expect(wrapper.text()).toContain("Expires");
   });
 
   it("requires the current password for accounts that also use Google sign-in", async () => {

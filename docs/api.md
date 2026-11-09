@@ -45,6 +45,8 @@ ownership checks, and timer behavior are unchanged.
 
 The API is rooted at `/api/v1`. Public endpoints are `POST /auth/register`, `POST /auth/login`, and `POST /auth/google`, returning a bearer JWT. Google login accepts a Google Identity Services ID token; the API verifies its signature, audience, issuer, and verified email before linking or creating the account. A new account uses the verified provider display name, falling back to the normalized email's local part when no display name is available. Clients send `Authorization: Bearer <token>`.
 
+MCP credentials are managed with the JWT-protected `GET` and `POST /api/v1/mcp-tokens` endpoints and `DELETE /api/v1/mcp-tokens/{id}`. Creating a token returns its opaque secret once. The read-only Streamable HTTP MCP endpoint is `POST /mcp`; it requires that secret as a bearer token and does not accept account JWTs as MCP credentials. Tool grants are enforced for each call. See [MCP setup](mcp.md) for tools and Codex/Claude configuration.
+
 Interactive OpenAPI documentation is available at `/swagger-ui.html` during development; the machine-readable contract is at `/v3/api-docs`. Both endpoints are disabled in the production Spring profile.
 
 The native iOS client uses the same authentication contracts. Google Sign-In's

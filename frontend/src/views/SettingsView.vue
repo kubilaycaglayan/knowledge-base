@@ -23,7 +23,35 @@ const message = ref("");
 const error = ref("");
 const saving = ref(false);
 const exportMessage = ref("");
-const activeTab = ref<"account" | "data" | "export">("account");
+const activeTab = ref<"account" | "data" | "export" | "mcp">("account");
+type McpToken = { id: string; name: string; categories: string[]; createdAt: string; expiresAt: string; lastUsedAt: string | null };
+const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
+const mcpTokens = ref<McpToken[]>([]);
+const mcpName = ref("");
+const mcpExpiry = ref("one_month");
+const selectedCategories = ref([...mcpCategories]);
+const revealedSecret = ref("");
+const mcpError = ref("");
+const creatingToken = ref(false);
+const mcpEndpoint = `${window.location.origin}/mcp`;
+
+async function loadMcpTokens() {
+  try { mcpTokens.value = await api<McpToken[]>("/mcp-tokens"); } catch { mcpError.value = "Could not load MCP tokens."; }
+}
+async function createMcpToken() {
+  mcpError.value = ""; revealedSecret.value = ""; creatingToken.value = true;
+  try {
+    const created = await api<{ token: McpToken; secret: string }>("/mcp-tokens", { method: "POST", body: JSON.stringify({ name: mcpName.value.trim(), categories: selectedCategories.value, expiry: mcpExpiry.value }) });
+    mcpTokens.value = [created.token, ...mcpTokens.value]; revealedSecret.value = created.secret; mcpName.value = "";
+  } catch { mcpError.value = "Could not create token. Choose a name and at least one category."; }
+  finally { creatingToken.value = false; }
+}
+async function revokeMcpToken(token: McpToken) {
+  if (!window.confirm(`Revoke “${token.name}”? Connected clients will lose access.`)) return;
+  try { await api(`/mcp-tokens/${token.id}`, { method: "DELETE" }); mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id); }
+  catch { mcpError.value = "Could not revoke this token."; }
+}
+function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never"; }
 
 function changeTheme(event: Event) {
   setThemePreference(
@@ -117,7 +145,7 @@ onMounted(load);
               ? "Manage how you sign in to Knowledge Base."
               : activeTab === "data"
                 ? "Import data into Knowledge Base."
-                : "Download a portable copy of your Knowledge Base."
+                : activeTab === "export" ? "Download a portable copy of your Knowledge Base." : "Manage read-only access for AI clients."
           }}
         </p>
       </div>
@@ -134,6 +162,7 @@ onMounted(load);
       >
         Account
       </button>
+      <button id="settings-tab-mcp" type="button" role="tab" aria-controls="settings-panel-mcp" :aria-selected="activeTab === 'mcp'" :class="{ selected: activeTab === 'mcp' }" @click="activeTab = 'mcp'; loadMcpTokens()">MCP</button>
       <button
         id="settings-tab-data"
         type="button"
@@ -157,6 +186,27 @@ onMounted(load);
         Export
       </button>
     </div>
+    <section v-if="activeTab === 'mcp'" id="settings-panel-mcp" class="settings-data" role="tabpanel" aria-labelledby="settings-tab-mcp" tabindex="0">
+      <section class="card settings-card settings-intro-card">
+        <p class="section-kicker">READ-ONLY INTEGRATIONS</p><h2>MCP access</h2>
+        <p>Create a token for Codex or Claude. The secret is shown once; each token can only read the categories you select.</p>
+        <form class="settings-form" @submit.prevent="createMcpToken">
+          <label>Token name<input v-model="mcpName" name="mcpTokenName" autocomplete="off" maxlength="100" required placeholder="e.g. Codex desktop…" /></label>
+          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
+          <fieldset class="mcp-categories"><legend>Accessible categories</legend><label v-for="category in mcpCategories" :key="category"><input v-model="selectedCategories" type="checkbox" :value="category" /> {{ category }}</label></fieldset>
+          <button class="primary" type="submit" :disabled="creatingToken">{{ creatingToken ? "Creating…" : "Create token" }}</button>
+        </form>
+        <p v-if="revealedSecret" class="mcp-secret" role="status" aria-live="polite"><strong>Copy this token now; it will not be shown again.</strong><code>{{ revealedSecret }}</code><span>Endpoint: <code>{{ mcpEndpoint }}</code></span></p>
+        <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>
+      </section>
+      <section class="card settings-card">
+        <h2>Tokens</h2><p v-if="!mcpTokens.length" class="muted">No active tokens.</p>
+        <article v-for="token in mcpTokens" :key="token.id" class="mcp-token">
+          <div><strong>{{ token.name }}</strong><p class="muted">{{ token.categories.join(", ") }}</p><p class="muted">Created {{ formatDate(token.createdAt) }} · Expires {{ formatDate(token.expiresAt) }} · Last used {{ formatDate(token.lastUsedAt) }}</p></div>
+          <button type="button" @click="revokeMcpToken(token)">Revoke…</button>
+        </article>
+      </section>
+    </section>
     <section
       v-if="activeTab === 'account'"
       id="settings-panel-account"
@@ -484,6 +534,14 @@ onMounted(load);
 .success {
   color: var(--workspace-success, #247a45);
 }
+.mcp-categories { display: flex; flex-wrap: wrap; gap: 8px 14px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); padding: 12px; }
+.mcp-categories legend { padding-inline: 4px; font-size: 12px; font-weight: 650; }
+.mcp-categories label { display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
+.mcp-categories input { width: auto; min-width: 18px; min-height: 18px; }
+.mcp-secret, .mcp-token { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.mcp-secret code { display: block; padding: 10px; border-radius: 6px; background: var(--workspace-selected); user-select: all; }
+.mcp-token { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
+.mcp-token p { margin: 3px 0 0; }
 @media (max-width: 560px) {
   .settings-card-heading {
     align-items: flex-start;

@@ -1,5 +1,10 @@
 # Knowledge Base UI roadmap
 
+## Integrations
+
+- [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP
+  endpoint for AI clients; manage tokens in Settings. See [MCP setup](mcp.md).
+
 - [x] Set a clear 20,000-character limit for note bodies in the web editor and
   API; rich-text document metadata remains separate from the body-text limit.
   PostgreSQL no longer indexes the entire body in a B-tree, so full-length

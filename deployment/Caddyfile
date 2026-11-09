@@ -30,6 +30,10 @@
 		reverse_proxy api:8080
 	}
 
+	handle /mcp {
+		reverse_proxy api:8080
+	}
+
 	handle {
 		reverse_proxy {$WEB_UPSTREAM:web:80}
 	}
@@ -43,6 +47,10 @@
 	}
 
 	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle /mcp {
 		reverse_proxy api:8080
 	}
 
