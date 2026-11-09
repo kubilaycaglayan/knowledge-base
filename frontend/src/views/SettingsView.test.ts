@@ -79,12 +79,23 @@ describe("SettingsView", () => {
 
   it("creates a scoped MCP token and displays its secret only in the creation result", async () => {
     const token = { id: "token-1", name: "Codex", categories: ["notes"], createdAt: "2026-01-01T00:00:00Z", expiresAt: "2026-02-01T00:00:00Z", lastUsedAt: null };
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/auth/me") return { email: "person@example.com", hasPassword: false, hasGoogle: true };
       if (path === "/mcp-tokens" && options?.method !== "POST") return [];
       return { token, secret: "kb_mcp_one_time_secret" };
     });
-    const wrapper = mount(SettingsView);
+    const wrapper = mount(SettingsView, {
+      global: {
+        stubs: {
+          VBtn: {
+            props: ["color", "variant", "size", "prependIcon"],
+            template: '<button type="button" :data-color="color" :data-variant="variant"><slot /></button>',
+          },
+        },
+      },
+    });
     await flushPromises();
     await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
     expect(wrapper.text()).toContain("MCP access");
@@ -104,6 +115,16 @@ describe("SettingsView", () => {
     expect(JSON.parse(createCall![1]!.body as string).categories).not.toContain("logs");
     expect(wrapper.text()).toContain("kb_mcp_one_time_secret");
     expect(wrapper.text()).toContain("Expires");
+    expect(wrapper.get(".mcp-token button").attributes()).toMatchObject({ "data-color": "error", "data-variant": "outlined" });
+    await wrapper.get(".mcp-secret-value button").trigger("click");
+    expect(writeText).toHaveBeenCalledWith("kb_mcp_one_time_secret");
+    expect(wrapper.text()).toContain("Token copied to clipboard.");
+    expect(wrapper.get(".mcp-secret-value button").text()).toBe("Copied");
+    writeText.mockRejectedValueOnce(new Error("clipboard unavailable"));
+    await wrapper.get(".mcp-secret-value button").trigger("click");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Could not copy the token. Select it and copy it manually.");
+    expect(wrapper.get(".mcp-secret-value button").text()).toBe("Copy token");
   });
 
   it("requires the current password for accounts that also use Google sign-in", async () => {

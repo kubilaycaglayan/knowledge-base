@@ -31,6 +31,8 @@ const mcpName = ref("");
 const mcpExpiry = ref("one_month");
 const selectedCategories = ref([...mcpCategories]);
 const revealedSecret = ref("");
+const copyStatus = ref("");
+const copiedSecret = ref(false);
 const mcpError = ref("");
 const creatingToken = ref(false);
 const mcpEndpoint = `${window.location.origin}/mcp`;
@@ -39,12 +41,23 @@ async function loadMcpTokens() {
   try { mcpTokens.value = await api<McpToken[]>("/mcp-tokens"); } catch { mcpError.value = "Could not load MCP tokens."; }
 }
 async function createMcpToken() {
-  mcpError.value = ""; revealedSecret.value = ""; creatingToken.value = true;
+  mcpError.value = ""; revealedSecret.value = ""; copyStatus.value = ""; copiedSecret.value = false; creatingToken.value = true;
   try {
     const created = await api<{ token: McpToken; secret: string }>("/mcp-tokens", { method: "POST", body: JSON.stringify({ name: mcpName.value.trim(), categories: selectedCategories.value, expiry: mcpExpiry.value }) });
     mcpTokens.value = [created.token, ...mcpTokens.value]; revealedSecret.value = created.secret; mcpName.value = "";
   } catch { mcpError.value = "Could not create token. Choose a name and at least one category."; }
   finally { creatingToken.value = false; }
+}
+async function copyMcpSecret() {
+  if (!revealedSecret.value) return;
+  try {
+    await navigator.clipboard.writeText(revealedSecret.value);
+    copiedSecret.value = true;
+    copyStatus.value = "Token copied to clipboard.";
+  } catch {
+    copiedSecret.value = false;
+    copyStatus.value = "Could not copy the token. Select it and copy it manually.";
+  }
 }
 async function revokeMcpToken(token: McpToken) {
   if (!window.confirm(`Revoke “${token.name}”? Connected clients will lose access.`)) return;
@@ -196,14 +209,22 @@ onMounted(load);
           <fieldset class="mcp-categories"><legend>Accessible categories</legend><label v-for="category in mcpCategories" :key="category"><input v-model="selectedCategories" type="checkbox" :value="category" /> {{ category }}</label></fieldset>
           <button class="primary" type="submit" :disabled="creatingToken">{{ creatingToken ? "Creating…" : "Create token" }}</button>
         </form>
-        <p v-if="revealedSecret" class="mcp-secret" role="status" aria-live="polite"><strong>Copy this token now; it will not be shown again.</strong><code>{{ revealedSecret }}</code><span>Endpoint: <code>{{ mcpEndpoint }}</code></span></p>
+        <div v-if="revealedSecret" class="mcp-secret">
+          <strong>Copy this token now; it will not be shown again.</strong>
+          <div class="mcp-secret-value">
+            <code>{{ revealedSecret }}</code>
+            <v-btn type="button" size="small" variant="outlined" :prepend-icon="copiedSecret ? 'mdi-check' : 'mdi-content-copy'" @click="copyMcpSecret">{{ copiedSecret ? "Copied" : "Copy token" }}</v-btn>
+          </div>
+          <span>Endpoint: <code>{{ mcpEndpoint }}</code></span>
+          <p v-if="copyStatus" class="muted" role="status" aria-live="polite">{{ copyStatus }}</p>
+        </div>
         <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>
       </section>
       <section class="card settings-card">
         <h2>Tokens</h2><p v-if="!mcpTokens.length" class="muted">No active tokens.</p>
         <article v-for="token in mcpTokens" :key="token.id" class="mcp-token">
           <div><strong>{{ token.name }}</strong><p class="muted">{{ token.categories.join(", ") }}</p><p class="muted">Created {{ formatDate(token.createdAt) }} · Expires {{ formatDate(token.expiresAt) }} · Last used {{ formatDate(token.lastUsedAt) }}</p></div>
-          <button type="button" @click="revokeMcpToken(token)">Revoke…</button>
+          <v-btn type="button" color="error" variant="outlined" size="small" @click="revokeMcpToken(token)">Revoke…</v-btn>
         </article>
       </section>
     </section>
@@ -539,7 +560,12 @@ onMounted(load);
 .mcp-categories label { display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
 .mcp-categories input { width: auto; min-width: 18px; min-height: 18px; }
 .mcp-secret, .mcp-token { display: grid; gap: 8px; overflow-wrap: anywhere; }
-.mcp-secret code { display: block; padding: 10px; border-radius: 6px; background: var(--workspace-selected); user-select: all; }
+.mcp-secret code { overflow-wrap: anywhere; padding: 10px; border-radius: 6px; background: var(--workspace-selected); user-select: all; }
+.mcp-secret-value { display: flex; align-items: center; gap: 10px; }
+.mcp-secret-value > code { min-width: 0; flex: 1; }
+.mcp-secret-value :deep(.v-btn) { flex: 0 0 auto; min-height: 40px; }
+.mcp-secret > span > code { padding: 2px 5px; }
+.mcp-copy-status { margin: 0; }
 .mcp-token { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
 .mcp-token p { margin: 3px 0 0; }
 @media (max-width: 560px) {
