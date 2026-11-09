@@ -56,6 +56,18 @@ done
 readiness_ms="$(( $(date +%s%3N) - phase_started_ms ))"
 phase_started_ms="$(date +%s%3N)"
 
+mcp_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --connect-timeout 2 --max-time 5 \
+  --request POST "http://localhost:${port}/mcp" \
+  --header 'Content-Type: application/json' \
+  --header 'Accept: application/json, text/event-stream' \
+  --data-binary '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"proxy-smoke-test","version":"1.0"}}}')"
+if [[ "$mcp_status" != "401" ]]; then
+  echo "MCP route did not reach the authenticated API through the Cloudflare proxy (HTTP ${mcp_status})." >&2
+  exit 1
+fi
+echo 'MCP route reaches the API and requires its bearer token.'
+
 AUTH_RATE_LIMIT_JWT_SECRET="$JWT_SECRET" AUTH_RATE_LIMIT_CORS_ORIGIN="${cors_origin%%,*}" node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
 AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop npm run test:auth:rate-limit:e2e --prefix frontend
 AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend
