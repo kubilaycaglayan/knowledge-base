@@ -11,6 +11,7 @@ class McpTokenControllerTest {
   void threeHourExpiryEndsExactlyThreeHoursAfterCreation() {
     Instant createdAt = Instant.parse("2026-11-09T10:15:30Z");
 
+    assertEquals(createdAt.plus(15, ChronoUnit.MINUTES), McpTokenController.expiryAt("fifteen_minutes", createdAt));
     assertEquals(createdAt.plus(3, ChronoUnit.HOURS), McpTokenController.expiryAt("three_hours", createdAt));
   }
 
