@@ -223,6 +223,13 @@ const checks = [
     /handle \/ws\/\* \{\s*reverse_proxy api:8080\s*\}/.test(caddyfile),
     `${name} routes timer WebSockets to the API`,
   ]),
+  ...[
+    ["local proxy", proxy],
+    ["production proxy", productionProxy],
+  ].map(([name, caddyfile]) => [
+    /handle \/mcp \{\s*reverse_proxy api:8080\s*\}/.test(caddyfile),
+    `${name} routes MCP requests to the API`,
+  ]),
   [
     /proxy-cloudflare:[\s\S]*\.\/deployment\/Caddyfile\.cloudflare:\/etc\/caddy\/Caddyfile/.test(
       smokeCompose,
