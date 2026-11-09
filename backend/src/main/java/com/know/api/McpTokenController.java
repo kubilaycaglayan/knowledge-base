@@ -35,12 +35,8 @@ public class McpTokenController {
     if (name.isEmpty() || name.length() > 100) throw new IllegalArgumentException("Token name must be between 1 and 100 characters");
     List<String> categories = request.categories() == null ? CATEGORIES : request.categories().stream().distinct().toList();
     if (!CATEGORIES.containsAll(categories)) throw new IllegalArgumentException("Select valid categories");
-    int months = switch (Objects.toString(request.expiry(), "one_month")) {
-      case "one_week" -> 0; case "one_month" -> 1; case "four_months" -> 4; case "one_year" -> 12;
-      default -> throw new IllegalArgumentException("Invalid expiry choice");
-    };
     Instant now = Instant.now();
-    Instant expires = months == 0 ? now.plus(7, ChronoUnit.DAYS) : now.plus(months, ChronoUnit.MONTHS);
+    Instant expires = expiryAt(Objects.toString(request.expiry(), "one_month"), now);
     byte[] bytes = new byte[32]; RANDOM.nextBytes(bytes);
     String secret = "kb_mcp_" + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
@@ -53,6 +49,17 @@ public class McpTokenController {
       return null;
     });
     return new CreatedToken(new TokenView(id,name,categories,now,expires,null),secret);
+  }
+
+  static Instant expiryAt(String choice, Instant now) {
+    return switch (choice) {
+      case "three_hours" -> now.plus(3, ChronoUnit.HOURS);
+      case "one_week" -> now.plus(7, ChronoUnit.DAYS);
+      case "one_month" -> now.plus(1, ChronoUnit.MONTHS);
+      case "four_months" -> now.plus(4, ChronoUnit.MONTHS);
+      case "one_year" -> now.plus(12, ChronoUnit.MONTHS);
+      default -> throw new IllegalArgumentException("Invalid expiry choice");
+    };
   }
 
   @DeleteMapping("/{id}")

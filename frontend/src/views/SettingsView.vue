@@ -192,7 +192,7 @@ onMounted(load);
         <p>Create a token for Codex or Claude. The secret is shown once; each token can only read the categories you select.</p>
         <form class="settings-form" @submit.prevent="createMcpToken">
           <label>Token name<input v-model="mcpName" name="mcpTokenName" autocomplete="off" maxlength="100" required placeholder="e.g. Codex desktop…" /></label>
-          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
+          <label>Expires after<select v-model="mcpExpiry" name="mcpExpiry"><option value="three_hours">Three hours</option><option value="one_week">One week</option><option value="one_month">One month</option><option value="four_months">Four months</option><option value="one_year">One year</option></select></label>
           <fieldset class="mcp-categories"><legend>Accessible categories</legend><label v-for="category in mcpCategories" :key="category"><input v-model="selectedCategories" type="checkbox" :value="category" /> {{ category }}</label></fieldset>
           <button class="primary" type="submit" :disabled="creatingToken">{{ creatingToken ? "Creating…" : "Create token" }}</button>
         </form>

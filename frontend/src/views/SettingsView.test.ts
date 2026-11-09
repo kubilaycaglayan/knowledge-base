@@ -92,13 +92,15 @@ describe("SettingsView", () => {
     expect(wrapper.find('[aria-labelledby="settings-tab-export"]').exists()).toBe(false);
     expect(wrapper.findAll('.mcp-categories input:checked')).toHaveLength(9);
     await wrapper.get('input[name="mcpTokenName"]').setValue("Codex");
+    expect(wrapper.get('select[name="mcpExpiry"]').text()).toContain("Three hours");
+    await wrapper.get('select[name="mcpExpiry"]').setValue("three_hours");
     await wrapper.get('.mcp-categories input[value="logs"]').setValue(false);
     await wrapper.get('#settings-panel-mcp form').trigger("submit");
     await flushPromises();
 
     const createCall = vi.mocked(api).mock.calls.find((call) => call[0] === "/mcp-tokens" && call[1]?.method === "POST");
     expect(createCall).toBeDefined();
-    expect(JSON.parse(createCall![1]!.body as string)).toMatchObject({ name: "Codex", categories: expect.arrayContaining(["notes"]), expiry: "one_month" });
+    expect(JSON.parse(createCall![1]!.body as string)).toMatchObject({ name: "Codex", categories: expect.arrayContaining(["notes"]), expiry: "three_hours" });
     expect(JSON.parse(createCall![1]!.body as string).categories).not.toContain("logs");
     expect(wrapper.text()).toContain("kb_mcp_one_time_secret");
     expect(wrapper.text()).toContain("Expires");

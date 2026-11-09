@@ -2,8 +2,9 @@
 
 Knowledge Base exposes a read-only, sessionless Streamable HTTP MCP endpoint at
 `https://<your-host>/mcp`. Create and revoke credentials in **Settings → MCP**.
-Each credential has a name, expiry and category grants. The secret is displayed
-only once. Treat it like a password and revoke it if it is exposed.
+Each credential has a name, category grants, and an expiry of three hours, one
+week, one month, four months, or one year. The secret is displayed only once.
+Treat it like a password and revoke it if it is exposed.
 
 The endpoint accepts MCP JSON-RPC `initialize`, `ping`, `tools/list`, and
 `tools/call` requests over HTTP POST. Send the credential as
