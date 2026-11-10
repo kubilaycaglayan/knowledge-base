@@ -25,17 +25,27 @@ class OpenAiConnectionControllerTest {
   }
 
   @Test
-  void listScopesOAuthGrantsToTheAuthenticatedPrincipal() {
+  void listMapsCommaDelimitedStoredScopesToApprovedAccessLabels() throws Exception {
     JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    var expected = new OpenAiConnectionController.Connection(
-        UUID.randomUUID(), "Recall Personal Knowledge Base", "kb:notes:read", List.of("Notes"), Instant.now());
     when(jdbc.query(anyString(), ArgumentMatchers.<RowMapper<OpenAiConnectionController.Connection>>any(),
-        eq("owner-1"))).thenReturn(List.of(expected));
+        eq("owner-1"))).thenAnswer(invocation -> {
+          var row = mock(java.sql.ResultSet.class);
+          Instant expiry = Instant.now();
+          when(row.getString(1)).thenReturn(UUID.randomUUID().toString());
+          when(row.getString(2)).thenReturn("Recall Personal Knowledge Base");
+          when(row.getString(3)).thenReturn("kb:notes:read,kb:logs:read");
+          when(row.getTimestamp(4)).thenReturn(java.sql.Timestamp.from(expiry));
+          @SuppressWarnings("unchecked") RowMapper<OpenAiConnectionController.Connection> mapper =
+              invocation.getArgument(1);
+          return List.of(mapper.mapRow(row, 0));
+        });
     var controller = new OpenAiConnectionController(jdbc, true);
 
     var result = controller.list(new TestingAuthenticationToken("owner-1", ""));
 
-    assertEquals(List.of(expected), result);
+    assertEquals(List.of("kb:notes:read,kb:logs:read"), result.stream()
+        .map(OpenAiConnectionController.Connection::scopes).toList());
+    assertEquals(List.of("Notes", "Logs"), result.get(0).scopeLabels());
     verify(jdbc).query(contains("where a.principal_name=?"),
         ArgumentMatchers.<RowMapper<OpenAiConnectionController.Connection>>any(), eq("owner-1"));
   }
