@@ -34,7 +34,7 @@ function initializeGoogleConnect() {
     client_id: config.dataset.clientId,
     callback: googleConnect,
   });
-  window.google.accounts.id.renderButton(button, { theme: "outline", size: "large" });
+  window.google.accounts.id.renderButton(button, { theme: "outline", size: "large", width: Math.min(320, button.clientWidth || 320) });
 }
 
 if (window.google) {
