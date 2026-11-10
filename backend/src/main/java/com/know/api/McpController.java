@@ -139,7 +139,7 @@ public class McpController {
           UUID user;
           try { user = UUID.fromString(principal); }
           catch (IllegalArgumentException malformedPrincipal) { return null; }
-          Set<String> categories = Arrays.stream(scopes.split(" "))
+          Set<String> categories = Arrays.stream(scopes.split("[,\\s]+"))
               .map(com.know.security.OpenAiScope::fromValue)
               .flatMap(Optional::stream)
               .map(com.know.security.OpenAiScope::category)
