@@ -1,7 +1,7 @@
-window.googleConnect = async function (response) {
+async function googleConnect(response) {
   if (!response || typeof response.credential !== "string") return;
 
-  const config = document.getElementById("g_id_onload");
+  const config = document.getElementById("google-connect-config");
   const csrfToken = config?.dataset.csrfToken ?? "";
 
   try {
@@ -24,4 +24,21 @@ window.googleConnect = async function (response) {
   } catch {
     window.alert("Could not complete Google sign-in. Try again or use email and password.");
   }
-};
+}
+
+function initializeGoogleConnect() {
+  const config = document.getElementById("google-connect-config");
+  const button = document.getElementById("google-connect-button");
+  if (!config || !button || !window.google) return;
+  window.google.accounts.id.initialize({
+    client_id: config.dataset.clientId,
+    callback: googleConnect,
+  });
+  window.google.accounts.id.renderButton(button, { theme: "outline", size: "large" });
+}
+
+if (window.google) {
+  initializeGoogleConnect();
+} else {
+  document.getElementById("google-gsi-client")?.addEventListener("load", initializeGoogleConnect, { once: true });
+}
