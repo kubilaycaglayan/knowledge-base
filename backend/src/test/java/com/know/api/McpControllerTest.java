@@ -11,8 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class McpControllerTest {
   private final KnowledgeService knowledge=mock(KnowledgeService.class);
@@ -21,6 +27,17 @@ class McpControllerTest {
       mock(LogService.class),mock(CalendarService.class),mock(TimerService.class),mock(ReportService.class),
       search,mock(LabelManagementService.class),mock(PathRepository.class),
       mock(BoardRepository.class),mock(BoardCardRepository.class),mock(ObjectProvider.class));
+
+  @Test void unauthenticatedEmptyProbeGetsOAuthChallengeRegardlessOfContentType() throws Exception {
+    MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
+        .addPlaceholderValue("app.openai-oauth.issuer", "https://kb.example.test")
+        .build();
+
+    mvc.perform(post("/mcp").contentType(MediaType.APPLICATION_OCTET_STREAM).accept(MediaType.ALL))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().string("WWW-Authenticate",
+            org.hamcrest.Matchers.containsString("https://kb.example.test/.well-known/oauth-protected-resource")));
+  }
 
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {
     var response=controller.toolList(Set.of("notes"));
