@@ -236,7 +236,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   proxy_challenge="$(curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/.well-known/openai-apps-challenge")"
   [[ "$proxy_challenge" == "$OPENAI_DOMAIN_CHALLENGE" ]]
   curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login" \
-    | grep -q 'Connect Knowledge Base'
+    | grep -q '<h1>Sign in</h1>'
   proxy_login_headers="$(curl -kfsS -D - -o /dev/null --connect-timeout 2 --max-time 5 \
     "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login")"
   printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; secure'
@@ -277,7 +277,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   curl -fsS --connect-timeout 2 --max-time 5 \
     "${cloudflare_proxy}/.well-known/oauth-protected-resource" | grep -q 'authorization_servers'
   curl -fsS --connect-timeout 2 --max-time 5 \
-    "${cloudflare_proxy}/connect/openai/login" | grep -q 'Connect Knowledge Base'
+    "${cloudflare_proxy}/connect/openai/login" | grep -q '<h1>Sign in</h1>'
   cloudflare_authorize_status="$(curl -sS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' \
     "${cloudflare_proxy}/oauth2/authorize")"
   [[ "$cloudflare_authorize_status" == "400" ]]
