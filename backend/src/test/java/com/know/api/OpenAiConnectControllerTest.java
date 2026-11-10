@@ -47,6 +47,22 @@ class OpenAiConnectControllerTest {
   }
 
   @Test
+  void googleLoginPageLoadsItsCallbackFromASelfHostedScript() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setAttribute("_csrf", new DefaultCsrfToken("X-CSRF-TOKEN", "_csrf", "csrf-test"));
+    var controller = new OpenAiConnectController(mock(UserRepository.class), mock(PasswordEncoder.class),
+        mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class),
+        mock(SessionAuthenticationStrategy.class), "google-client-id");
+
+    var page = controller.loginPage(request);
+
+    assertTrue(page.getBody().contains("src='/openai-connect.js'"));
+    assertTrue(page.getBody().contains("data-callback='googleConnect'"));
+    assertTrue(page.getBody().contains("data-csrf-token='csrf-test'"));
+    assertFalse(page.getBody().contains("<script>"), "CSP must not have to permit inline JavaScript");
+  }
+
+  @Test
   void consentPageUsesSessionBoundSupportedScopesAndOffersApprovalOrDecline() {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setAttribute("_csrf", new DefaultCsrfToken("X-CSRF-TOKEN", "_csrf", "csrf-test"));
