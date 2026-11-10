@@ -72,6 +72,14 @@ class McpControllerTest {
     @SuppressWarnings("unchecked") var tools=(List<Map<String,Object>>)response.get("tools");
     assertEquals(Set.of("notes_list","note_get","search"),new HashSet<>(tools.stream().map(t->(String)t.get("name")).toList()));
     assertTrue(controller.toolList(Set.of()).get("tools").equals(List.of()));
+    @SuppressWarnings("unchecked") var allTools = (List<Map<String,Object>>) controller.toolList(
+        Set.of("notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"))
+        .get("tools");
+    assertEquals(12, allTools.size());
+    for (var tool : allTools) {
+      assertEquals(Map.of("readOnlyHint", true, "destructiveHint", false, "openWorldHint", false),
+          tool.get("annotations"));
+    }
   }
 
   @Test void searchIsRestrictedToTheGrantedSourceCategories() throws Exception {

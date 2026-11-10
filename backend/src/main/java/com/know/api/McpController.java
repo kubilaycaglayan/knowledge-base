@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class McpController {
   private static final Logger log = LoggerFactory.getLogger(McpController.class);
+  private static final Map<String, Boolean> READ_ONLY_TOOL_ANNOTATIONS = Map.of(
+      "readOnlyHint", true, "destructiveHint", false, "openWorldHint", false);
   private final JdbcTemplate jdbc; private final ObjectMapper json;
   private final KnowledgeService knowledge; private final LogService logs; private final CalendarService calendar;
   private final TimerService timers; private final ReportService reports; private final SearchService search;
@@ -205,6 +207,7 @@ public class McpController {
                 Map.of(
                     "name", name,
                     "description", description,
+                    "annotations", READ_ONLY_TOOL_ANNOTATIONS,
                     "inputSchema", inputSchema()));
           }
         });
