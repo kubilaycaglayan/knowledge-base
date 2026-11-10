@@ -36,7 +36,7 @@ class McpControllerTest {
     mvc.perform(post("/mcp").contentType(MediaType.APPLICATION_OCTET_STREAM).accept(MediaType.ALL))
         .andExpect(status().isUnauthorized())
         .andExpect(header().string("WWW-Authenticate",
-            org.hamcrest.Matchers.containsString("https://kb.example.test/.well-known/oauth-protected-resource")));
+            org.hamcrest.Matchers.containsString("/.well-known/oauth-protected-resource")));
   }
 
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {
@@ -115,8 +115,9 @@ class McpControllerTest {
         search, mock(LabelManagementService.class), mock(PathRepository.class), mock(BoardRepository.class),
         mock(BoardCardRepository.class), provider);
 
-    var response = oauthController.handle("Bearer oauth-token",
-        Map.of("id", 1, "method", "tools/list", "params", Map.of()), "https://kb.example.test");
+    var response = oauthController.handle("Bearer oauth-token", "application/json",
+        new ObjectMapper().writeValueAsBytes(Map.of("id", 1, "method", "tools/list", "params", Map.of())),
+        "https://kb.example.test");
 
     assertEquals(200, response.getStatusCode().value());
     verify(jdbc).query(contains("oauth2_authorization"), any(RowMapper.class),

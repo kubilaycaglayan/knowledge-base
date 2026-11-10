@@ -1,5 +1,6 @@
 package com.know.api;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.know.service.*;
 import com.know.domain.*;
@@ -35,9 +36,11 @@ public class McpController {
     this.oauthJwtDecoder=oauthJwtDecoder.getIfAvailable();
   }
 
-  @PostMapping(value="/mcp", consumes=MediaType.APPLICATION_JSON_VALUE, produces={"application/json", "text/event-stream"})
+  @PostMapping(value="/mcp", produces={"application/json", "text/event-stream"})
   public ResponseEntity<?> handle(@RequestHeader(value="Authorization", required=false) String authorization,
-      @RequestBody Map<String,Object> request, @org.springframework.beans.factory.annotation.Value("${app.openai-oauth.issuer}") String issuer) throws Exception {
+      @RequestHeader(value="Content-Type", required=false) String contentType,
+      @RequestBody(required=false) byte[] requestBody,
+      @org.springframework.beans.factory.annotation.Value("${app.openai-oauth.issuer}") String issuer) throws Exception {
     Access access;
     try { access = authenticate(authorization, issuer); }
     catch (org.springframework.web.server.ResponseStatusException unauthorized) {
@@ -46,6 +49,14 @@ public class McpController {
           .header("WWW-Authenticate", "Bearer resource_metadata=\""+issuer+"/.well-known/oauth-protected-resource\"")
           .build();
     }
+    if (!isJsonContentType(contentType)) return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+    if (requestBody == null || requestBody.length == 0) return ResponseEntity.badRequest().build();
+    Map<String,Object> request;
+    try { request = json.readValue(requestBody, new TypeReference<>() {}); }
+    catch (com.fasterxml.jackson.core.JsonProcessingException malformedJson) {
+      return ResponseEntity.badRequest().build();
+    }
+    if (request == null) return ResponseEntity.badRequest().build();
     Object id=request.get("id"); String method=Objects.toString(request.get("method"),"");
     Object result;
     Map<String,Object> params=request.get("params") instanceof Map<?,?> m ? (Map<String,Object>)m : Map.of();
@@ -64,6 +75,12 @@ public class McpController {
       if (id == null) return ResponseEntity.accepted().build();
       return ResponseEntity.ok(Map.of("jsonrpc","2.0","id",id,"error",Map.of("code",-32602,"message",Objects.toString(e.getMessage(),"Request failed"))));
     }
+  }
+
+  private static boolean isJsonContentType(String contentType) {
+    if (contentType == null || contentType.isBlank()) return false;
+    try { return MediaType.APPLICATION_JSON.includes(MediaType.parseMediaType(contentType)); }
+    catch (IllegalArgumentException malformedContentType) { return false; }
   }
 
   record Access(UUID user, Set<String> categories) {}
