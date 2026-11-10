@@ -56,7 +56,7 @@ class OpenAiConnectControllerTest {
 
     var page = controller.loginPage(request);
 
-    assertTrue(page.getBody().contains("src='/openai-connect.js'"));
+    assertTrue(page.getBody().contains("src='/connect/openai/openai-connect.js'"));
     assertTrue(page.getBody().contains("data-callback='googleConnect'"));
     assertTrue(page.getBody().contains("data-csrf-token='csrf-test'"));
     assertFalse(page.getBody().contains("<script>"), "CSP must not have to permit inline JavaScript");

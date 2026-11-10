@@ -52,8 +52,8 @@ public class OpenAiConnectController {
   public ResponseEntity<String> loginPage(HttpServletRequest request) {
     String csrf = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t
         ? "<input type=\"hidden\" name=\""+t.getParameterName()+"\" value=\""+escape(t.getToken())+"\">" : "";
-    String csrfToken = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t ? escapeJs(t.getToken()) : "";
-    String googleButton = googleClientId.isBlank() ? "" : "<script src='https://accounts.google.com/gsi/client' async defer></script><div id='g_id_onload' data-client_id='"+escape(googleClientId)+"' data-callback='googleConnect'></div><div class='g_id_signin' data-type='standard'></div><script>async function googleConnect(r){const x=await fetch('/connect/openai/google',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'"+csrfToken+"'},body:JSON.stringify({idToken:r.credential})});if(x.ok){const d=await x.json();location.href=d.authorizationUrl;}else alert('Could not sign in with Google. Use an account already linked to Knowledge Base.');}</script>";
+    String csrfToken = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t ? escape(t.getToken()) : "";
+    String googleButton = googleClientId.isBlank() ? "" : "<script src='https://accounts.google.com/gsi/client' async defer></script><script src='/connect/openai/openai-connect.js' defer></script><div id='g_id_onload' data-client_id='"+escape(googleClientId)+"' data-callback='googleConnect' data-csrf-token='"+csrfToken+"'></div><div class='g_id_signin' data-type='standard'></div>";
     return html("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Connect Knowledge Base</title>"+PAGE_STYLE+"</head><body><main><h1>Connect Knowledge Base</h1><p>Sign in to choose what the OpenAI plugin can read.</p><form method=post action='/connect/openai/login'>"+csrf+"<label>Email <input name=email type=email autocomplete=username required></label><label>Password <input name=password type=password autocomplete=current-password required></label><button>Continue</button></form>"+googleButton+"</main></body></html>");
   }
 
@@ -137,10 +137,6 @@ public class OpenAiConnectController {
     }
   }
   private static String escape(String v) { return v.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&#39;"); }
-  private static String escapeJs(String value) {
-    return value.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
-        .replace("<", "\\x3c").replace("\r", "\\r").replace("\n", "\\n");
-  }
   private static boolean isAuthenticated(Authentication authentication) {
     return authentication != null && authentication.isAuthenticated()
         && !(authentication instanceof AnonymousAuthenticationToken);
