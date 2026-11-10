@@ -25,8 +25,11 @@ const saving = ref(false);
 const exportMessage = ref("");
 const activeTab = ref<"account" | "data" | "export" | "mcp">("account");
 type McpToken = { id: string; name: string; categories: string[]; createdAt: string; expiresAt: string; lastUsedAt: string | null };
+type OpenAiConnection = { id: string; clientName: string; scopes: string; expiresAt: string | null };
 const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
 const mcpTokens = ref<McpToken[]>([]);
+const openAiConnections = ref<OpenAiConnection[]>([]);
+const connectionError = ref("");
 const mcpName = ref("");
 const mcpExpiry = ref("fifteen_minutes");
 const selectedCategories = ref([...mcpCategories]);
@@ -44,6 +47,14 @@ const mcpEndpoint = `${window.location.origin}/mcp`;
 
 async function loadMcpTokens() {
   try { mcpTokens.value = await api<McpToken[]>("/mcp-tokens"); } catch { mcpError.value = "Could not load MCP tokens."; }
+  try { openAiConnections.value = await api<OpenAiConnection[]>("/openai-connections"); } catch { connectionError.value = "Could not load OpenAI connections."; }
+}
+async function revokeOpenAiConnection(connection: OpenAiConnection) {
+  connectionError.value = "";
+  try {
+    await api(`/openai-connections/${connection.id}`, { method: "DELETE" });
+    openAiConnections.value = openAiConnections.value.filter(item => item.id !== connection.id);
+  } catch { connectionError.value = "Could not disconnect OpenAI. Try again."; }
 }
 async function createMcpToken() {
   mcpError.value = ""; revealedSecret.value = ""; copyStatus.value = ""; copiedSecret.value = false; creatingToken.value = true;
@@ -262,6 +273,15 @@ onMounted(load);
           <p v-if="copyStatus" class="muted" role="status" aria-live="polite">{{ copyStatus }}</p>
         </div>
         <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>
+      </section>
+      <section class="card settings-card">
+        <h2>OpenAI connections</h2>
+        <p v-if="!openAiConnections.length" class="muted">No OpenAI connections.</p>
+        <p v-if="connectionError" class="notice" role="alert">{{ connectionError }}</p>
+        <article v-for="connection in openAiConnections" :key="connection.id" class="openai-connection">
+          <div><strong>{{ connection.clientName }}</strong><p class="muted">Approved access: {{ connection.scopes }}</p></div>
+          <v-btn type="button" color="error" variant="outlined" size="small" @click="revokeOpenAiConnection(connection)">Disconnect…</v-btn>
+        </article>
       </section>
       <section class="card settings-card">
         <h2>Tokens</h2><p v-if="!mcpTokens.length" class="muted">No active tokens.</p>

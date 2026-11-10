@@ -9,6 +9,7 @@ import com.know.service.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.ObjectProvider;
 
 class McpControllerTest {
   private final KnowledgeService knowledge=mock(KnowledgeService.class);
@@ -16,7 +17,7 @@ class McpControllerTest {
   private final McpController controller=new McpController(mock(JdbcTemplate.class),new ObjectMapper().findAndRegisterModules(),knowledge,
       mock(LogService.class),mock(CalendarService.class),mock(TimerService.class),mock(ReportService.class),
       search,mock(LabelManagementService.class),mock(PathRepository.class),
-      mock(BoardRepository.class),mock(BoardCardRepository.class));
+      mock(BoardRepository.class),mock(BoardCardRepository.class),mock(ObjectProvider.class));
 
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {
     var response=controller.toolList(Set.of("notes"));

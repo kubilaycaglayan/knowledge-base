@@ -34,6 +34,18 @@
 		reverse_proxy api:8080
 	}
 
+	handle /.well-known/* {
+		reverse_proxy api:8080
+	}
+
+	handle /oauth2/* {
+		reverse_proxy api:8080
+	}
+
+	handle /connect/openai/* {
+		reverse_proxy api:8080
+	}
+
 	handle {
 		reverse_proxy {$WEB_UPSTREAM:web:80}
 	}
@@ -51,6 +63,18 @@
 	}
 
 	handle /mcp {
+		reverse_proxy api:8080
+	}
+
+	handle /.well-known/* {
+		reverse_proxy api:8080
+	}
+
+	handle /oauth2/* {
+		reverse_proxy api:8080
+	}
+
+	handle /connect/openai/* {
 		reverse_proxy api:8080
 	}
 

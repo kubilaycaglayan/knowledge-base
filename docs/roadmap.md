@@ -4,6 +4,10 @@
 
 - [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP
   endpoint for AI clients; manage tokens in Settings. See [MCP setup](mcp.md).
+- [x] Add an isolated OAuth authorization-code + PKCE connection for the OpenAI
+  plugin, selectable read scopes, refresh rotation/replay revocation, discovery,
+  and per-user connection revocation. Production dashboard verification remains
+  a deployment task.
 - [x] Keep MCP report responses compact, fetch individual notes as plain text,
   and align the documented Codex server name with the plugin.
 

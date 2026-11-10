@@ -6,6 +6,24 @@ Each credential has a name, category grants, and an expiry of three hours, one
 week, one month, four months, or one year. The secret is displayed only once.
 Treat it like a password and revoke it if it is exposed.
 
+## OpenAI plugin authorization
+
+The Recall plugin uses OAuth rather than asking users to create a manual MCP
+token. When enabled by deployment configuration, OpenAI discovers the server
+through the OAuth and protected-resource metadata endpoints. Users sign in to
+their existing Knowledge Base account with its password or, when Google sign-in
+is configured, a Google account already linked to that Knowledge Base account.
+They select read-only categories on the consent screen and can review and
+disconnect grants in **Settings → MCP**.
+OAuth access tokens last 15 minutes; rotating refresh tokens expire after 30
+days without use. Reuse of a rotated refresh token revokes its grant. Manual
+MCP tokens remain available for direct clients such as Codex CLI and Claude.
+OAuth access tokens are RSA-signed, carry the exact MCP resource URI as their
+audience, and are checked for signature, issuer, audience, expiry, user, and
+granted categories on each MCP request. The signing key is persisted in the
+existing PostgreSQL database so deployed restarts do not invalidate active
+connections.
+
 The endpoint accepts MCP JSON-RPC `initialize`, `ping`, `tools/list`, and
 `tools/call` requests over HTTP POST. Send the credential as
 `Authorization: Bearer <token>`. MCP credentials are accepted only at `/mcp`;

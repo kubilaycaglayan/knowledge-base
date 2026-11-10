@@ -10,6 +10,10 @@ import java.util.*;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.*;
 
 /** Sessionless Streamable HTTP MCP endpoint. It deliberately exposes read tools only. */
@@ -20,18 +24,28 @@ public class McpController {
   private final TimerService timers; private final ReportService reports; private final SearchService search;
   private final LabelManagementService labels;
   private final PathRepository paths; private final BoardRepository boards; private final BoardCardRepository cards;
+  private final JwtDecoder oauthJwtDecoder;
   public McpController(JdbcTemplate jdbc, ObjectMapper json, KnowledgeService knowledge, LogService logs,
       CalendarService calendar, TimerService timers, ReportService reports, SearchService search,
-      LabelManagementService labels, PathRepository paths, BoardRepository boards, BoardCardRepository cards) {
+      LabelManagementService labels, PathRepository paths, BoardRepository boards, BoardCardRepository cards,
+      ObjectProvider<JwtDecoder> oauthJwtDecoder) {
     this.jdbc=jdbc; this.json=json; this.knowledge=knowledge; this.logs=logs; this.calendar=calendar;
     this.timers=timers; this.reports=reports; this.search=search; this.labels=labels;
     this.paths=paths; this.boards=boards; this.cards=cards;
+    this.oauthJwtDecoder=oauthJwtDecoder.getIfAvailable();
   }
 
   @PostMapping(value="/mcp", consumes=MediaType.APPLICATION_JSON_VALUE, produces={"application/json", "text/event-stream"})
   public ResponseEntity<?> handle(@RequestHeader(value="Authorization", required=false) String authorization,
-      @RequestBody Map<String,Object> request) throws Exception {
-    Access access = authenticate(authorization);
+      @RequestBody Map<String,Object> request, @org.springframework.beans.factory.annotation.Value("${app.openai-oauth.issuer:https://knowledgebase.blaqc.space}") String issuer) throws Exception {
+    Access access;
+    try { access = authenticate(authorization, issuer); }
+    catch (org.springframework.web.server.ResponseStatusException unauthorized) {
+      if (unauthorized.getStatusCode() != HttpStatus.UNAUTHORIZED) throw unauthorized;
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .header("WWW-Authenticate", "Bearer resource_metadata=\""+issuer+"/.well-known/oauth-protected-resource\"")
+          .build();
+    }
     Object id=request.get("id"); String method=Objects.toString(request.get("method"),"");
     Object result;
     Map<String,Object> params=request.get("params") instanceof Map<?,?> m ? (Map<String,Object>)m : Map.of();
@@ -53,9 +67,11 @@ public class McpController {
   }
 
   record Access(UUID user, Set<String> categories) {}
-  private Access authenticate(String auth) throws Exception {
+  private Access authenticate(String auth, String issuer) throws Exception {
     if (auth == null || !auth.startsWith("Bearer ")) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
     String secret=auth.substring(7);
+    Access oauth = oauthAccess(secret, issuer + "/mcp");
+    if (oauth != null) return oauth;
     String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8)));
     List<Access> ids =
         jdbc.query(
@@ -72,6 +88,29 @@ public class McpController {
     if(ids.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
     jdbc.update("update mcp_access_token set last_used_at=now() where token_hash=?",hash);
     return ids.get(0);
+  }
+
+  private Access oauthAccess(String token, String resource) {
+    if (oauthJwtDecoder == null) return null;
+    Jwt jwt;
+    try {
+      jwt = oauthJwtDecoder.decode(token);
+      if (!jwt.getAudience().contains(resource)) return null;
+    } catch (JwtException invalidToken) {
+      return null;
+    }
+    List<Access> found;
+    try { found = jdbc.query("select a.principal_name, a.authorized_scopes from oauth2_authorization a join oauth2_authorization_resource r on r.authorization_id=a.id where a.access_token_value=? and a.access_token_expires_at>now() and r.resource=?",
+        (rs, n) -> {
+          UUID user = UUID.fromString(rs.getString(1));
+          String scopes = rs.getString(2);
+          Set<String> categories = Arrays.stream(scopes.split(" ")).filter(s -> s.startsWith("kb:") && s.endsWith(":read"))
+              .map(s -> s.substring(3, s.length()-5)).collect(java.util.stream.Collectors.toUnmodifiableSet());
+          return new Access(user, categories);
+        }, token, resource); }
+    catch (org.springframework.dao.DataAccessException missingOAuthTables) { return null; }
+    if (found.isEmpty() || !jwt.getSubject().equals(found.get(0).user().toString())) return null;
+    return found.get(0);
   }
   Map<String,Object> toolList(Set<String> grants) {
     Map<String,String> descriptions=Map.ofEntries(

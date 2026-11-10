@@ -19,6 +19,20 @@ done
 [[ "$KNOW_API_BASE" == "https://${DOMAIN}/api/v1" ]] || fail 'KNOW_API_BASE must exactly match https://${DOMAIN}/api/v1'
 (( ${#JWT_SECRET} >= 32 )) || fail 'JWT_SECRET must be at least 32 characters'
 [[ "$POSTGRES_PASSWORD" != replace-with-* && -n "$POSTGRES_PASSWORD" ]] || fail 'POSTGRES_PASSWORD must be replaced with a real value'
+if [[ "${OPENAI_OAUTH_ENABLED:-false}" == 'true' ]]; then
+  [[ -n "${OPENAI_OAUTH_CLIENT_SECRET:-}" ]] || fail 'OPENAI_OAUTH_CLIENT_SECRET is required when OpenAI OAuth is enabled'
+  (( ${#OPENAI_OAUTH_CLIENT_SECRET} >= 32 )) || fail 'OPENAI_OAUTH_CLIENT_SECRET must be at least 32 characters'
+  [[ -n "${OPENAI_OAUTH_CLIENT_ID:-}" ]] || fail 'OPENAI_OAUTH_CLIENT_ID is required when OpenAI OAuth is enabled'
+  [[ -n "${OPENAI_DOMAIN_CHALLENGE:-}" ]] || fail 'OPENAI_DOMAIN_CHALLENGE is required when OpenAI OAuth is enabled'
+  [[ "${OPENAI_OAUTH_ISSUER:-}" == "https://${DOMAIN}" ]] || fail 'OPENAI_OAUTH_ISSUER must match https://${DOMAIN}'
+  [[ -n "${OPENAI_OAUTH_REDIRECT_URIS:-}" && "${OPENAI_OAUTH_REDIRECT_URIS}" != *[[:space:]]* ]] \
+    || fail 'OPENAI_OAUTH_REDIRECT_URIS must contain the exact comma-separated callback URLs without whitespace'
+  IFS=',' read -r -a openai_redirect_uris <<< "$OPENAI_OAUTH_REDIRECT_URIS"
+  for openai_redirect_uri in "${openai_redirect_uris[@]}"; do
+    [[ "$openai_redirect_uri" == https://chatgpt.com/* ]] \
+      || fail 'every OPENAI_OAUTH_REDIRECT_URIS entry must be an exact HTTPS chatgpt.com callback URL'
+  done
+fi
 [[ "$CLOUDFLARE_TUNNEL_TOKEN" != replace-with-* && -n "$CLOUDFLARE_TUNNEL_TOKEN" ]] || fail 'CLOUDFLARE_TUNNEL_TOKEN must be replaced with the real tunnel token'
 for backup_db_url_name in BACKUP_DB_URL; do
   backup_db_url="${!backup_db_url_name}"

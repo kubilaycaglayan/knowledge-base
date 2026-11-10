@@ -14,10 +14,9 @@ Before answering the user's first Knowledge Base question in a conversation, cal
 ## Connection defaults
 
 Default endpoint: https://knowledgebase.blaqc.space/mcp  
-Default Codex bearer-token environment variable: KNOWLEDGE_BASE_MCP_TOKEN  
 Default server name: knowledge-base
 
-The plugin declares the default remote MCP server as `knowledge-base` at `https://knowledgebase.blaqc.space/mcp` and uses bearer-token authentication. When the client requests a credential, the user should provide a scoped MCP token created in Knowledge Base under **Settings → MCP**. For direct Codex MCP configuration, the default token variable is `KNOWLEDGE_BASE_MCP_TOKEN`. If the user supplies a different endpoint, server name, or token variable name, follow those values. Never ask the user to paste a secret into chat or print/read its value. If the server is not connected, explain that the user can create a scoped token and configure the MCP server in their client.
+The plugin connects through OAuth. The user signs in to their existing Knowledge Base account and selects read categories during consent. Do not ask users for MCP tokens or passwords in chat. For direct clients, use the OAuth connection flow supported by that client; manually created MCP tokens remain available separately in **Settings → MCP**.
 
 ## Knowledge Base records
 

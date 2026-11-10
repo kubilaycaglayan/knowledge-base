@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "recall-personal-knowledge-base",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Recall Personal Knowledge Base brings your work and time insights to ChatGPT and Codex.",
   "author": {
     "name": "Knowledge Base"
@@ -91,7 +91,7 @@
         "commerce_description": "Recall Personal Knowledge Base is a read-only productivity plugin. It does not sell products or process payments."
       },
       "publication": {
-        "release_notes": "Version 1.0.6 adds OpenAI review cases, starter prompts, and current policy URLs to Recall Personal Knowledge Base. The plugin uses the Knowledge Base MCP server and remains read-only."
+        "release_notes": "Version 1.0.7 adds OAuth authentication for connecting a user's Knowledge Base account to the read-only OpenAI plugin."
       }
     }
   }
