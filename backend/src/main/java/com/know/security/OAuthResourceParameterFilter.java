@@ -10,6 +10,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Requires the MCP resource identifier to survive the complete OAuth exchange. */
@@ -32,8 +33,9 @@ public final class OAuthResourceParameterFilter extends OncePerRequestFilter {
     String requestedResource = request.getParameter("resource");
     boolean authorizeRequest = path.equals("/oauth2/authorize");
     boolean tokenRequest = path.equals("/oauth2/token");
+    boolean refreshRequest = tokenRequest && "refresh_token".equals(request.getParameter("grant_type"));
     boolean missingResource =
-        tokenRequest || (authorizeRequest && "GET".equalsIgnoreCase(request.getMethod()));
+        (tokenRequest && !refreshRequest) || (authorizeRequest && "GET".equalsIgnoreCase(request.getMethod()));
     if ((authorizeRequest || tokenRequest)
         && ((missingResource && requestedResource == null)
             || (requestedResource != null && !resource.equals(requestedResource)))) {
@@ -46,11 +48,87 @@ public final class OAuthResourceParameterFilter extends OncePerRequestFilter {
       return;
     }
     if (path.equals("/oauth2/authorize")) {
-      chain.doFilter(request,
-          new IssuerResponseWrapper(response, issuer, callbacks));
+      if ("POST".equalsIgnoreCase(request.getMethod())) {
+        String state = request.getParameter("state");
+        String clientId = request.getParameter("client_id");
+        Set<String> originallyRequested = OAuthConsentRequestStore.scopes(request, clientId, state);
+        Set<String> submitted = Arrays.stream(request.getParameterValues("scope") == null
+                ? new String[0] : request.getParameterValues("scope"))
+            .flatMap(value -> Arrays.stream(value.trim().split("\\s+")))
+            .filter(value -> !value.isBlank()).collect(java.util.stream.Collectors.toSet());
+        if (!OAuthConsentRequestStore.matches(request, clientId, state)
+            || !originallyRequested.containsAll(submitted)) {
+          response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+          response.setHeader("Cache-Control", "no-store");
+          response.setHeader("Pragma", "no-cache");
+          response.setContentType("application/json;charset=UTF-8");
+          response.getWriter().write("{\"error\":\"invalid_scope\",\"error_description\":\"Consent scopes must be a subset of the authenticated authorization request.\"}");
+          return;
+        }
+        try {
+          chain.doFilter(request, new IssuerResponseWrapper(response, issuer, callbacks));
+        } finally {
+          OAuthConsentRequestStore.forget(request, state);
+        }
+        return;
+      }
+      HttpServletResponse issuerResponse = new IssuerResponseWrapper(response, issuer, callbacks);
+      if ("GET".equalsIgnoreCase(request.getMethod())) {
+        chain.doFilter(request, new ConsentRedirectResponseWrapper(issuerResponse, request,
+            request.getParameter("client_id"), request.getParameter("scope")));
+      } else {
+        chain.doFilter(request, issuerResponse);
+      }
       return;
     }
     chain.doFilter(request, response);
+  }
+
+  private static final class ConsentRedirectResponseWrapper extends HttpServletResponseWrapper {
+    private final HttpServletRequest request;
+    private final String clientId;
+    private final String requestedScopes;
+
+    ConsentRedirectResponseWrapper(HttpServletResponse response, HttpServletRequest request,
+        String clientId, String requestedScopes) {
+      super(response);
+      this.request = request;
+      this.clientId = clientId;
+      this.requestedScopes = requestedScopes;
+    }
+
+    @Override public void sendRedirect(String location) throws IOException {
+      rememberConsentState(location);
+      super.sendRedirect(location);
+    }
+
+    @Override public void setHeader(String name, String value) {
+      if ("Location".equalsIgnoreCase(name)) rememberConsentState(value);
+      super.setHeader(name, value);
+    }
+
+    @Override public void addHeader(String name, String value) {
+      if ("Location".equalsIgnoreCase(name)) rememberConsentState(value);
+      super.addHeader(name, value);
+    }
+
+    private void rememberConsentState(String location) {
+      if (clientId == null || requestedScopes == null || location == null) return;
+      try {
+        java.net.URI uri = java.net.URI.create(location);
+        if (!"/connect/openai/consent".equals(uri.getPath()) || uri.getRawQuery() == null) return;
+        java.util.Map<String, String> query = new java.util.HashMap<>();
+        for (String pair : uri.getRawQuery().split("&")) {
+          String[] parts = pair.split("=", 2);
+          query.put(java.net.URLDecoder.decode(parts[0], StandardCharsets.UTF_8),
+              parts.length == 2 ? java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "");
+        }
+        if (clientId.equals(query.get("client_id")) && query.containsKey("state"))
+          OAuthConsentRequestStore.remember(request, clientId, query.get("state"), requestedScopes);
+      } catch (IllegalArgumentException malformedRedirect) {
+        // A malformed or unrelated redirect must not create consent state.
+      }
+    }
   }
 
   private static final class IssuerResponseWrapper extends HttpServletResponseWrapper {

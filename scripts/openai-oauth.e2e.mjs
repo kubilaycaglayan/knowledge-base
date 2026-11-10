@@ -124,8 +124,10 @@ async function getConsentPage(email, password, scopes, state, challenge) {
       }
       if (next.pathname === "/connect/openai/consent") {
         response = await request(next);
-        assert.equal(response.status, 200, "OAuth consent page did not load");
-        return response.text();
+        const consentHtml = await response.text();
+        assert.equal(response.status, 200,
+          `OAuth consent page did not load for state ${state} at ${next.href}: ${consentHtml}`);
+        return consentHtml;
       }
       throw new Error(`Unexpected OAuth redirect: ${next.pathname}`);
     }
@@ -192,13 +194,15 @@ async function exchangeAuthorizationCode(code, verifier, target = resource) {
 }
 
 async function exchangeRefresh(refreshToken, target = resource) {
+  const values = { grant_type: "refresh_token", refresh_token: refreshToken };
+  if (target) values.resource = target;
   return fetch(`${baseUrl}/oauth2/token`, {
     method: "POST",
     headers: {
       authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
       "content-type": "application/x-www-form-urlencoded",
     },
-    body: formBody({ grant_type: "refresh_token", refresh_token: refreshToken, resource: target }),
+    body: formBody(values),
   });
 }
 
@@ -256,14 +260,13 @@ async function main() {
 
   assert.equal((await mcp()).status, 401, "MCP accepted a request with no access token");
   assert.equal((await mcp("not-a-signed-jwt")).status, 401, "MCP accepted a malformed access token");
+  const directConsent = await request(`${baseUrl}/connect/openai/consent?client_id=${clientId}&state=direct-consent&scope=kb%3Anotes%3Aread`);
+  assert.equal(directConsent.status, 302, "Anonymous direct consent access was not redirected to OAuth login");
+  assert.equal(new URL(directConsent.headers.get("location"), baseUrl).pathname, "/connect/openai/login");
 
   const owner = await createAccount("owner");
   const other = await createAccount("other");
   const authorization = await authorizeAndExchange(owner, ["kb:notes:read", "kb:logs:read"], ["kb:notes:read"]);
-  const codeReplay = await exchangeAuthorizationCode(authorization.authorizationCode, authorization.codeVerifier);
-  const replayBody = await codeReplay.json();
-  assert.equal(codeReplay.status, 400, "Authorization code replay was accepted");
-  assert.equal(replayBody.error, "invalid_grant", "Code replay did not use the OAuth invalid_grant response");
   const claims = JSON.parse(Buffer.from(authorization.access_token.split(".")[1], "base64url").toString("utf8"));
   assert.equal(claims.iss, baseUrl);
   assert.equal(claims.aud, resource);
@@ -295,9 +298,9 @@ async function main() {
 
   const wrongResourceRefresh = await exchangeRefresh(authorization.refresh_token, `${baseUrl}/wrong-resource`);
   assert.equal(wrongResourceRefresh.status, 400, "Refresh accepted a different resource identifier");
-  const rotatedResponse = await exchangeRefresh(authorization.refresh_token);
+  const rotatedResponse = await exchangeRefresh(authorization.refresh_token, null);
   const rotatedBody = await rotatedResponse.text();
-  assert.equal(rotatedResponse.status, 200, `Refresh failed: ${rotatedBody}`);
+  assert.equal(rotatedResponse.status, 200, `Refresh without a resource identifier failed: ${rotatedBody}`);
   const rotated = JSON.parse(rotatedBody);
   assert.notEqual(rotated.refresh_token, authorization.refresh_token, "Refresh token did not rotate");
   const replayResponse = await exchangeRefresh(authorization.refresh_token);
@@ -320,10 +323,23 @@ async function main() {
   });
   assert.equal(revoked.status, 200);
   assert.equal((await mcp(secondAuthorization.access_token)).status, 401, "Explicit grant revocation did not invalidate MCP access");
+  const reconsentState = randomBytes(24).toString("base64url");
+  const reconsentChallenge = pkcePair().challenge;
+  const reconsentPage = await getConsentPage(owner.email, owner.password, ["kb:logs:read"],
+    reconsentState, reconsentChallenge);
+  assert.match(reconsentPage, /Approve selected access/, "Revoking a connection did not require fresh consent");
 
   await authorizeAndExchange(owner, ["kb:boards:read"], ["kb:boards:read"], { invalidVerifier: true });
 
-  console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, valid and invalid PKCE, login, scope consent, issuer/audience, MCP authentication and scope enforcement, owner isolation, authorization-code and refresh-token replay rejection, and grant revocation.");
+  const replayAuthorization = await authorizeAndExchange(owner, ["kb:activity:read"], ["kb:activity:read"]);
+  assert.equal((await mcp(replayAuthorization.access_token)).status, 200);
+  const codeReplay = await exchangeAuthorizationCode(replayAuthorization.authorizationCode, replayAuthorization.codeVerifier);
+  const replayBody = await codeReplay.json();
+  assert.equal(codeReplay.status, 400, "Authorization code replay was accepted");
+  assert.equal(replayBody.error, "invalid_grant", "Code replay did not use the OAuth invalid_grant response");
+  assert.equal((await mcp(replayAuthorization.access_token)).status, 401, "Authorization code replay did not revoke the previously issued access token");
+
+  console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, valid and invalid PKCE, session login, consent guard/scope binding, issuer/audience, MCP authentication and scope enforcement, owner isolation, refresh fallback/rotation/replay, authorization-code replay revocation, and explicit grant revocation.");
 }
 
 await main();

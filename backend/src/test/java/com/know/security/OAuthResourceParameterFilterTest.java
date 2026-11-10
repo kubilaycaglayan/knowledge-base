@@ -30,9 +30,23 @@ class OAuthResourceParameterFilterTest {
   }
 
   @Test
-  void consentPostMayUseTheResourceStoredFromTheInitialRequestAndAddsIssuerToCallback() throws Exception {
+  void consentRedirectStateKeepsInitialScopesBoundAndAddsIssuerToCallback() throws Exception {
+    MockHttpServletRequest initial = new MockHttpServletRequest("GET", "/oauth2/authorize");
+    initial.setServletPath("/oauth2/authorize");
+    initial.addParameter("resource", RESOURCE);
+    initial.addParameter("client_id", "client-1");
+    initial.addParameter("state", "state-1");
+    initial.addParameter("scope", "kb:notes:read kb:logs:read");
+    filter.doFilter(initial, new MockHttpServletResponse(), (req, res) ->
+        ((HttpServletResponse) res).sendRedirect(
+            "/connect/openai/consent?client_id=client-1&state=server-consent-state"));
+
     MockHttpServletRequest request = new MockHttpServletRequest("POST", "/oauth2/authorize");
     request.setServletPath("/oauth2/authorize");
+    request.setSession(initial.getSession());
+    request.addParameter("client_id", "client-1");
+    request.addParameter("state", "server-consent-state");
+    request.addParameter("scope", "kb:notes:read");
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     filter.doFilter(request, response,

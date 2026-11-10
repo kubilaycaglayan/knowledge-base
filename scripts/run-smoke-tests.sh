@@ -233,6 +233,12 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   printf '%s' "$proxy_headers" | grep -qi '^x-frame-options: DENY'
   printf '%s' "$proxy_headers" | grep -qi '^content-security-policy:'
   printf '%s' "$proxy_headers" | grep -qi '^permissions-policy:'
+  proxy_challenge="$(curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/.well-known/openai-apps-challenge")"
+  [[ "$proxy_challenge" == "$OPENAI_DOMAIN_CHALLENGE" ]]
+  curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login" \
+    | grep -q 'Connect Knowledge Base'
+  proxy_authorize_status="$(curl -ksS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' "https://localhost:${PROXY_HTTPS_PORT}/oauth2/authorize")"
+  [[ "$proxy_authorize_status" == "400" ]]
   # The theme bootstrap must be served as JavaScript through the deployed proxy.
   curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/theme.js" \
     | grep -q 'knowledge-base-theme'

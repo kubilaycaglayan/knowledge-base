@@ -25,11 +25,14 @@ const saving = ref(false);
 const exportMessage = ref("");
 const activeTab = ref<"account" | "data" | "export" | "mcp">("account");
 type McpToken = { id: string; name: string; categories: string[]; createdAt: string; expiresAt: string; lastUsedAt: string | null };
-type OpenAiConnection = { id: string; clientName: string; scopes: string; expiresAt: string | null };
+type OpenAiConnection = { id: string; clientName: string; scopes: string; scopeLabels: string[]; expiresAt: string | null };
 const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
 const mcpTokens = ref<McpToken[]>([]);
 const openAiConnections = ref<OpenAiConnection[]>([]);
 const connectionError = ref("");
+const openAiConnectionsEnabled = ref(false);
+const openAiConnectionsLoading = ref(false);
+const disconnectingOpenAiConnection = ref<string | null>(null);
 const mcpName = ref("");
 const mcpExpiry = ref("fifteen_minutes");
 const selectedCategories = ref([...mcpCategories]);
@@ -41,20 +44,33 @@ const mcpError = ref("");
 const creatingToken = ref(false);
 const revokeDialogOpen = ref(false);
 const tokenToRevoke = ref<McpToken | null>(null);
+const openAiConnectionToRevoke = ref<OpenAiConnection | null>(null);
 const revokingToken = ref(false);
 const revokeError = ref("");
+const connectionStatus = ref("");
 const mcpEndpoint = `${window.location.origin}/mcp`;
 
 async function loadMcpTokens() {
   try { mcpTokens.value = await api<McpToken[]>("/mcp-tokens"); } catch { mcpError.value = "Could not load MCP tokens."; }
-  try { openAiConnections.value = await api<OpenAiConnection[]>("/openai-connections"); } catch { connectionError.value = "Could not load OpenAI connections."; }
+  openAiConnectionsLoading.value = true;
+  try {
+    const availability = await api<{ enabled: boolean }>("/openai-connections/status");
+    openAiConnectionsEnabled.value = availability.enabled;
+    if (availability.enabled) openAiConnections.value = await api<OpenAiConnection[]>("/openai-connections");
+  } catch { connectionError.value = "Could not load OpenAI connections."; }
+  finally { openAiConnectionsLoading.value = false; }
 }
 async function revokeOpenAiConnection(connection: OpenAiConnection) {
   connectionError.value = "";
-  try {
-    await api(`/openai-connections/${connection.id}`, { method: "DELETE" });
-    openAiConnections.value = openAiConnections.value.filter(item => item.id !== connection.id);
-  } catch { connectionError.value = "Could not disconnect OpenAI. Try again."; }
+  connectionStatus.value = "";
+  openAiConnectionToRevoke.value = connection;
+  revokeError.value = "";
+  revokeDialogOpen.value = true;
+}
+function formatOpenAiExpiry(value: string | null) {
+  if (!value) return "Expiry unavailable";
+  const expiry = new Date(value);
+  return Number.isNaN(expiry.valueOf()) ? "Expiry unavailable" : `Active until ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(expiry)}`;
 }
 async function createMcpToken() {
   mcpError.value = ""; revealedSecret.value = ""; copyStatus.value = ""; copiedSecret.value = false; creatingToken.value = true;
@@ -95,21 +111,31 @@ function requestRevokeMcpToken(token: McpToken) {
 watch(revokeDialogOpen, (isOpen) => {
   if (!isOpen && !revokingToken.value) {
     tokenToRevoke.value = null;
+    openAiConnectionToRevoke.value = null;
     revokeError.value = "";
   }
 });
 async function confirmRevokeMcpToken() {
   const token = tokenToRevoke.value;
-  if (!token || revokingToken.value) return;
+  const connection = openAiConnectionToRevoke.value;
+  if ((!token && !connection) || revokingToken.value) return;
   revokingToken.value = true;
   revokeError.value = "";
   try {
-    await api(`/mcp-tokens/${token.id}`, { method: "DELETE" });
-    mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id);
+    if (connection) {
+      disconnectingOpenAiConnection.value = connection.id;
+      await api(`/openai-connections/${connection.id}`, { method: "DELETE" });
+      openAiConnections.value = openAiConnections.value.filter(item => item.id !== connection.id);
+      connectionStatus.value = `Disconnected ${connection.clientName}.`;
+    } else if (token) {
+      await api(`/mcp-tokens/${token.id}`, { method: "DELETE" });
+      mcpTokens.value = mcpTokens.value.filter(item => item.id !== token.id);
+    }
     revokeDialogOpen.value = false;
   } catch {
-    revokeError.value = "Could not revoke this token. Try again.";
+    revokeError.value = connection ? "Could not disconnect OpenAI. Try again." : "Could not revoke this token. Try again.";
   } finally {
+    disconnectingOpenAiConnection.value = null;
     revokingToken.value = false;
   }
 }
@@ -274,13 +300,15 @@ onMounted(load);
         </div>
         <p v-if="mcpError" class="notice" role="alert">{{ mcpError }}</p>
       </section>
-      <section class="card settings-card">
+      <section v-if="openAiConnectionsEnabled" class="card settings-card">
         <h2>OpenAI connections</h2>
-        <p v-if="!openAiConnections.length" class="muted">No OpenAI connections.</p>
-        <p v-if="connectionError" class="notice" role="alert">{{ connectionError }}</p>
+        <p v-if="openAiConnectionsLoading" class="muted" role="status" aria-live="polite">Loading OpenAI connections…</p>
+        <p v-else-if="!openAiConnections.length && !connectionError" class="muted">No OpenAI connections.</p>
+        <p v-if="connectionError" class="notice" role="alert" aria-live="polite">{{ connectionError }}</p>
+        <p v-if="connectionStatus" class="muted" role="status" aria-live="polite">{{ connectionStatus }}</p>
         <article v-for="connection in openAiConnections" :key="connection.id" class="openai-connection">
-          <div><strong>{{ connection.clientName }}</strong><p class="muted">Approved access: {{ connection.scopes }}</p></div>
-          <v-btn type="button" color="error" variant="outlined" size="small" @click="revokeOpenAiConnection(connection)">Disconnect…</v-btn>
+          <div><strong>{{ connection.clientName }}</strong><p class="muted">Approved access: {{ connection.scopeLabels.join(", ") }}</p><p class="muted">{{ formatOpenAiExpiry(connection.expiresAt) }}</p></div>
+          <v-btn type="button" color="error" variant="outlined" size="small" :loading="disconnectingOpenAiConnection === connection.id" :disabled="disconnectingOpenAiConnection !== null" @click="revokeOpenAiConnection(connection)">Disconnect…</v-btn>
         </article>
       </section>
       <section class="card settings-card">
@@ -293,14 +321,15 @@ onMounted(load);
     </section>
     <v-dialog v-model="revokeDialogOpen" max-width="420" content-class="mcp-revoke-dialog-content" :persistent="revokingToken">
       <v-card class="mcp-revoke-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mcp-revoke-title" aria-describedby="mcp-revoke-description">
-        <v-card-title class="mcp-revoke-title" id="mcp-revoke-title">Revoke token?</v-card-title>
+        <v-card-title class="mcp-revoke-title" id="mcp-revoke-title">{{ openAiConnectionToRevoke ? "Disconnect OpenAI?" : "Revoke token?" }}</v-card-title>
         <v-card-text class="mcp-revoke-description" id="mcp-revoke-description">
-          Connected clients using <strong>{{ tokenToRevoke?.name }}</strong> will lose access immediately. This cannot be undone.
+          <template v-if="openAiConnectionToRevoke">{{ openAiConnectionToRevoke.clientName }} will lose access to your Knowledge Base immediately. You will need to reconnect to restore access.</template>
+          <template v-else>Connected clients using <strong>{{ tokenToRevoke?.name }}</strong> will lose access immediately. This cannot be undone.</template>
         </v-card-text>
         <p v-if="revokeError" class="mcp-revoke-error" role="alert">{{ revokeError }}</p>
         <v-card-actions class="mcp-revoke-actions">
           <v-btn type="button" variant="outlined" :disabled="revokingToken" @click="revokeDialogOpen = false">Cancel</v-btn>
-          <v-btn class="mcp-revoke-confirm" type="button" color="error" variant="flat" :loading="revokingToken" :disabled="revokingToken" @click="confirmRevokeMcpToken">{{ revokingToken ? "Revoking…" : "Revoke token" }}</v-btn>
+          <v-btn class="mcp-revoke-confirm" type="button" color="error" variant="flat" :loading="revokingToken" :disabled="revokingToken" @click="confirmRevokeMcpToken">{{ revokingToken ? (openAiConnectionToRevoke ? "Disconnecting…" : "Revoking…") : (openAiConnectionToRevoke ? "Disconnect OpenAI" : "Revoke token") }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

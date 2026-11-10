@@ -61,6 +61,9 @@ public class TrackedOAuth2AuthorizationService implements OAuth2AuthorizationSer
       String grant = jdbc.query("select authorization_id from oauth2_refresh_token_history where token_hash=?",
           rs -> rs.next() ? rs.getString(1) : null, fingerprint(token));
       if (grant != null) {
+        // Fail closed: replaying an old bearer credential is indistinguishable
+        // from theft. Since only its fingerprint is retained, we cannot return
+        // the rotated token after a successful refresh response was lost.
         jdbc.update("delete from oauth2_authorization where id=?", grant);
         return null;
       }
@@ -74,6 +77,9 @@ public class TrackedOAuth2AuthorizationService implements OAuth2AuthorizationSer
       // the missing request and returning HTTP 500. Leave expiry and other
       // authorization-code validation to Spring's normal grant validator.
       if (authorization.getAttribute(OAuth2AuthorizationRequest.class.getName()) == null) {
+        // RFC 6749 §4.1.2 recommends revoking tokens issued from a replayed
+        // code; deleting this authorization also invalidates its active tokens.
+        delegate.remove(authorization);
         return null;
       }
     }

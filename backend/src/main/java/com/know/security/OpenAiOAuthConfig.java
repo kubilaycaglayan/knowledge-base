@@ -24,6 +24,8 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -54,8 +56,9 @@ public class OpenAiOAuthConfig {
   @Order(1)
   SecurityFilterChain authorizationServerChain(HttpSecurity http,
       @Value("${app.openai-oauth.enabled:false}") boolean enabled,
-      @Value("${app.openai-oauth.issuer:https://knowledgebase.blaqc.space}") String issuer,
-      @Value("${app.openai-oauth.redirect-uris:https://chatgpt.com/connector_platform_oauth_redirect}") String redirectUris) throws Exception {
+      @Value("${app.openai-oauth.issuer}") String issuer,
+      @Value("${app.openai-oauth.redirect-uris:https://chatgpt.com/connector_platform_oauth_redirect}") String redirectUris,
+      AuthAttemptLimiter limiter) throws Exception {
     if (!enabled) {
       // The domain-verification challenge and protected-resource metadata must
       // stay public even before the OAuth client has been configured. Only the
@@ -66,6 +69,7 @@ public class OpenAiOAuthConfig {
       return http.build();
     }
     OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+    http.addFilterBefore(new OAuthTokenRateLimitFilter(limiter), SecurityContextHolderFilter.class);
     http.addFilterBefore(new OAuthResourceParameterFilter(issuer, redirectUris), SecurityContextHolderFilter.class);
     http.getConfigurer(org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer.class)
         .authorizationEndpoint(endpoint -> endpoint.consentPage("/connect/openai/consent"))
@@ -83,20 +87,23 @@ public class OpenAiOAuthConfig {
       @Value("${app.openai-oauth.client-secret:}") String clientSecret,
       @Value("${app.openai-oauth.redirect-uris:https://chatgpt.com/connector_platform_oauth_redirect}") String redirectUris) {
     JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbc);
-    if (enabled && !clientSecret.isBlank()) {
+    if (enabled && clientSecret.isBlank())
+      throw new IllegalStateException("OPENAI_OAUTH_CLIENT_SECRET is required when OpenAI OAuth is enabled");
+    if (enabled) {
       java.util.Set<String> allowedRedirects = java.util.Arrays.stream(redirectUris.split(","))
           .map(String::trim).filter(uri -> !uri.isBlank())
           .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
       RegisteredClient existing = repository.findByClientId(clientId);
       if (existing != null) {
         RegisteredClient.Builder updated = RegisteredClient.from(existing)
-            .redirectUris(uris -> { uris.clear(); uris.addAll(allowedRedirects); });
+            .redirectUris(uris -> { uris.clear(); uris.addAll(allowedRedirects); })
+            .scopes(scopes -> { scopes.clear(); scopes.addAll(OpenAiScope.valuesList()); });
         if (existing.getClientSecret() == null || !encoder.matches(clientSecret, existing.getClientSecret()))
           updated.clientSecret(encoder.encode(clientSecret));
         repository.save(updated.build());
         return repository;
       }
-      RegisteredClient client = RegisteredClient.withId(UUID.randomUUID().toString())
+      RegisteredClient.Builder client = RegisteredClient.withId(UUID.randomUUID().toString())
           .clientId(clientId)
           .clientSecret(encoder.encode(clientSecret))
           .clientName("Recall Personal Knowledge Base")
@@ -104,14 +111,11 @@ public class OpenAiOAuthConfig {
           .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
           .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
           .redirectUris(uris -> uris.addAll(allowedRedirects))
-          .scope("kb:notes:read").scope("kb:logs:read").scope("kb:calendar:read")
-          .scope("kb:sessions:read").scope("kb:activity:read").scope("kb:reports:read")
-          .scope("kb:paths:read").scope("kb:labels:read").scope("kb:boards:read")
           .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).requireProofKey(true).build())
           .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(15))
-              .refreshTokenTimeToLive(Duration.ofDays(30)).reuseRefreshTokens(false).build())
-          .build();
-      repository.save(client);
+              .refreshTokenTimeToLive(Duration.ofDays(30)).reuseRefreshTokens(false).build());
+      OpenAiScope.valuesList().forEach(client::scope);
+      repository.save(client.build());
     }
     return repository;
   }
@@ -128,12 +132,18 @@ public class OpenAiOAuthConfig {
 
   @Bean
   AuthorizationServerSettings authorizationServerSettings(
-      @Value("${app.openai-oauth.issuer:https://knowledgebase.blaqc.space}") String issuer) {
+      @Value("${app.openai-oauth.issuer}") String issuer) {
     return AuthorizationServerSettings.builder().issuer(issuer).build();
   }
 
   @Bean
+  SessionAuthenticationStrategy openAiSessionAuthenticationStrategy() {
+    return new ChangeSessionIdAuthenticationStrategy();
+  }
+
+  @Bean
   @ConditionalOnProperty(prefix="app.openai-oauth", name="enabled", havingValue="true")
+  @org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization
   RSAKey openAiSigningKey(JdbcTemplate jdbc) {
     String serialized = jdbc.query("select jwk from oauth2_signing_key where id=1",
         rs -> rs.next() ? rs.getString(1) : null);
@@ -180,7 +190,7 @@ public class OpenAiOAuthConfig {
   @Bean
   @ConditionalOnProperty(prefix="app.openai-oauth", name="enabled", havingValue="true")
   JwtDecoder openAiJwtDecoder(RSAKey openAiSigningKey,
-      @Value("${app.openai-oauth.issuer:https://knowledgebase.blaqc.space}") String issuer) throws Exception {
+      @Value("${app.openai-oauth.issuer}") String issuer) throws Exception {
     NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(openAiSigningKey.toRSAPublicKey()).build();
     decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
     return decoder;

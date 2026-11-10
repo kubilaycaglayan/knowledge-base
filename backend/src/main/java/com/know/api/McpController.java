@@ -37,7 +37,7 @@ public class McpController {
 
   @PostMapping(value="/mcp", consumes=MediaType.APPLICATION_JSON_VALUE, produces={"application/json", "text/event-stream"})
   public ResponseEntity<?> handle(@RequestHeader(value="Authorization", required=false) String authorization,
-      @RequestBody Map<String,Object> request, @org.springframework.beans.factory.annotation.Value("${app.openai-oauth.issuer:https://knowledgebase.blaqc.space}") String issuer) throws Exception {
+      @RequestBody Map<String,Object> request, @org.springframework.beans.factory.annotation.Value("${app.openai-oauth.issuer}") String issuer) throws Exception {
     Access access;
     try { access = authenticate(authorization, issuer); }
     catch (org.springframework.web.server.ResponseStatusException unauthorized) {
@@ -102,15 +102,23 @@ public class McpController {
     List<Access> found;
     try { found = jdbc.query("select a.principal_name, a.authorized_scopes from oauth2_authorization a join oauth2_authorization_resource r on r.authorization_id=a.id where a.access_token_value=? and a.access_token_expires_at>now() and r.resource=?",
         (rs, n) -> {
-          UUID user = UUID.fromString(rs.getString(1));
+          String principal = rs.getString(1);
           String scopes = rs.getString(2);
-          Set<String> categories = Arrays.stream(scopes.split(" ")).filter(s -> s.startsWith("kb:") && s.endsWith(":read"))
-              .map(s -> s.substring(3, s.length()-5)).collect(java.util.stream.Collectors.toUnmodifiableSet());
-          return new Access(user, categories);
+          if (principal == null || scopes == null || scopes.isBlank()) return null;
+          UUID user;
+          try { user = UUID.fromString(principal); }
+          catch (IllegalArgumentException malformedPrincipal) { return null; }
+          Set<String> categories = Arrays.stream(scopes.split(" "))
+              .map(com.know.security.OpenAiScope::fromValue)
+              .flatMap(Optional::stream)
+              .map(com.know.security.OpenAiScope::category)
+              .collect(java.util.stream.Collectors.toUnmodifiableSet());
+          return categories.isEmpty() ? null : new Access(user, categories);
         }, token, resource); }
     catch (org.springframework.dao.DataAccessException missingOAuthTables) { return null; }
-    if (found.isEmpty() || !jwt.getSubject().equals(found.get(0).user().toString())) return null;
-    return found.get(0);
+    Access access = found.stream().filter(Objects::nonNull).findFirst().orElse(null);
+    if (access == null || jwt.getSubject() == null || !jwt.getSubject().equals(access.user().toString())) return null;
+    return access;
   }
   Map<String,Object> toolList(Set<String> grants) {
     Map<String,String> descriptions=Map.ofEntries(

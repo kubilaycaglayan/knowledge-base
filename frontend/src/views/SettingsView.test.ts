@@ -84,6 +84,59 @@ describe("SettingsView", () => {
     expect(wrapper.get('[role="status"]').text()).toBe("Could not export your data. Try again.");
   });
 
+  it("shows labeled OpenAI scopes and expiry, confirms disconnect, and hides the section when disabled", async () => {
+    const connection = {
+      id: "connection-1", clientName: "Recall Personal Knowledge Base", scopes: "kb:notes:read kb:logs:read",
+      scopeLabels: ["Notes", "Logs"], expiresAt: "2027-01-01T00:00:00Z",
+    };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/auth/me") return { email: "person@example.com", hasPassword: true, hasGoogle: false };
+      if (path === "/openai-connections/status") return { enabled: true };
+      if (path === "/openai-connections" && options?.method !== "DELETE") return [connection];
+      if (path === "/openai-connections/connection-1" && options?.method === "DELETE") return undefined;
+      return [];
+    });
+    const wrapper = mount(SettingsView, {
+      global: {
+        stubs: {
+          VBtn: {
+            props: ["color", "variant", "size", "prependIcon", "loading", "disabled"],
+            template: '<button type="button" :disabled="disabled"><slot /></button>',
+          },
+          VDialog: { props: ["modelValue", "persistent"], template: '<div v-if="modelValue" class="v-dialog-stub"><slot /></div>' },
+          VCard: { template: "<div><slot /></div>" },
+          VCardTitle: { template: "<h2><slot /></h2>" },
+          VCardText: { template: "<p><slot /></p>" },
+          VCardActions: { template: '<div class="mcp-revoke-actions"><slot /></div>' },
+        },
+      },
+    });
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".openai-connection").text()).toContain("Approved access: Notes, Logs");
+    expect(wrapper.get(".openai-connection").text()).toContain("Active until");
+    await wrapper.get(".openai-connection button").trigger("click");
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain("will lose access to your Knowledge Base immediately");
+    await wrapper.get('[role="alertdialog"] .mcp-revoke-actions button:first-child').trigger("click");
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/openai-connections/connection-1", expect.objectContaining({ method: "DELETE" }));
+
+    await wrapper.get(".openai-connection button").trigger("click");
+    await wrapper.get(".mcp-revoke-confirm").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="status"]').text()).toBe("Disconnected Recall Personal Knowledge Base.");
+
+    vi.mocked(api).mockImplementation(async (path: string) => path === "/auth/me"
+      ? { email: "person@example.com", hasPassword: true, hasGoogle: false }
+      : path === "/openai-connections/status" ? { enabled: false } : []);
+    const disabledWrapper = mount(SettingsView);
+    await flushPromises();
+    await disabledWrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    await flushPromises();
+    expect(disabledWrapper.text()).not.toContain("OpenAI connections");
+  });
+
   it("creates a scoped MCP token and displays its secret only in the creation result", async () => {
     const token = { id: "token-1", name: "Codex", categories: ["notes"], createdAt: "2026-01-01T00:00:00Z", expiresAt: "2026-02-01T00:00:00Z", lastUsedAt: null };
     const writeText = vi.fn().mockResolvedValue(undefined);
