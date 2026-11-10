@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { sourceDrift } from "./check-ototest-source-drift.mjs";
 
@@ -54,4 +55,10 @@ test("allows retired routes only when explicitly classified unsupported", () => 
     `${routeMatrix}\n| \`/retired\` | main.ts | historical row | excluded | unsupported/excluded | retired |`,
   );
   assert.deepEqual(drift, { apiMissing: [], apiExtra: [], routeMissing: [], routeExtra: [] });
+});
+
+test("deployed-shaped smoke reconciles the live API document against the inventory", () => {
+  const smoke = readFileSync(new URL("./run-smoke-tests.sh", import.meta.url), "utf8");
+  assert.match(smoke,
+    /compose exec -T api wget -qO- http:\/\/localhost:8080\/v3\/api-docs \| node scripts\/check-ototest-source-drift\.mjs --openapi-stdin/);
 });

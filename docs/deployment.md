@@ -100,6 +100,14 @@ Use a narrow exception for that endpoint or rule rather than disabling the WAF
 globally. The existing Spring authentication limiter remains enabled because it
 also keys attempts by email and is independent of edge IP limits.
 
+The OpenAI OAuth token endpoint records only failed exchanges (HTTP 400/401)
+and partitions its in-process budget by the configured OAuth client and visitor
+address. Production reaches the private API through Cloudflare Tunnel, where
+Cloudflare supplies `CF-Connecting-IP`; the application ignores generic
+`X-Forwarded-For` so callers cannot choose their own rate-limit key. When that
+Cloudflare header is absent or malformed, the filter falls back to the socket
+address.
+
 The origin must remain reachable only through the tunnel. Deploy production
 with `docker-compose.cloudflare.yml`; do not publish the proxy's HTTP/HTTPS
 ports directly to the Internet.

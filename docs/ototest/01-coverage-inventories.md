@@ -92,7 +92,7 @@ page-region and edge-case decomposition.
 - [Extension and feature map](01-extension-and-feature-map.md): manifest
   permissions, entrypoints, feature evidence, commands, exclusions, and ranked
   gaps are recorded.
-- Static source reconciliation found all 19 router entries and all 118
+- Static source reconciliation found all 20 router entries and all 120
   controller verb/path variants in the corresponding matrices. The acceptance
   checklist now records which inventory checkpoints are documented; remaining
   unchecked items describe incomplete operation/control traceability and

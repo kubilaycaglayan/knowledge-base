@@ -57,6 +57,7 @@ public class OpenAiOAuthConfig {
   SecurityFilterChain authorizationServerChain(HttpSecurity http,
       @Value("${app.openai-oauth.enabled:false}") boolean enabled,
       @Value("${app.openai-oauth.issuer}") String issuer,
+      @Value("${app.openai-oauth.client-id:knowledge-base-openai}") String clientId,
       @Value("${app.openai-oauth.redirect-uris:https://chatgpt.com/connector_platform_oauth_redirect}") String redirectUris,
       AuthAttemptLimiter limiter) throws Exception {
     if (!enabled) {
@@ -69,7 +70,7 @@ public class OpenAiOAuthConfig {
       return http.build();
     }
     OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-    http.addFilterBefore(new OAuthTokenRateLimitFilter(limiter), SecurityContextHolderFilter.class);
+    http.addFilterBefore(new OAuthTokenRateLimitFilter(limiter, clientId), SecurityContextHolderFilter.class);
     http.addFilterBefore(new OAuthResourceParameterFilter(issuer, redirectUris), SecurityContextHolderFilter.class);
     http.getConfigurer(org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer.class)
         .authorizationEndpoint(endpoint -> endpoint.consentPage("/connect/openai/consent"))

@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import jakarta.servlet.http.HttpServletResponse;
 
 class OAuthResourceParameterFilterTest {
   private static final String ISSUER = "https://kb.example.test";
@@ -55,6 +55,49 @@ class OAuthResourceParameterFilterTest {
 
     assertEquals(CALLBACK + "?code=abc&state=xyz&iss=https%3A%2F%2Fkb.example.test",
         response.getHeader("Location"));
+  }
+
+  @Test
+  void consentPostRejectsScopeEscalation() throws Exception {
+    assertConsentPostRejected("client-1", "server-consent-state", "kb:notes:read kb:logs:read");
+  }
+
+  @Test
+  void consentPostRejectsMismatchedClient() throws Exception {
+    assertConsentPostRejected("other-client", "server-consent-state", "kb:notes:read");
+  }
+
+  @Test
+  void consentPostRejectsUnknownState() throws Exception {
+    assertConsentPostRejected("client-1", "unknown-state", "kb:notes:read");
+  }
+
+  private void assertConsentPostRejected(String clientId, String state, String submittedScopes)
+      throws Exception {
+    MockHttpServletRequest initial = new MockHttpServletRequest("GET", "/oauth2/authorize");
+    initial.setServletPath("/oauth2/authorize");
+    initial.addParameter("resource", RESOURCE);
+    initial.addParameter("client_id", "client-1");
+    initial.addParameter("state", "initial-state");
+    initial.addParameter("scope", "kb:notes:read");
+    filter.doFilter(initial, new MockHttpServletResponse(), (req, res) ->
+        ((HttpServletResponse) res).sendRedirect(
+            "/connect/openai/consent?client_id=client-1&state=server-consent-state"));
+
+    MockHttpServletRequest post = new MockHttpServletRequest("POST", "/oauth2/authorize");
+    post.setServletPath("/oauth2/authorize");
+    post.setSession(initial.getSession());
+    post.addParameter("client_id", clientId);
+    post.addParameter("state", state);
+    post.addParameter("scope", submittedScopes);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    boolean[] continued = {false};
+
+    filter.doFilter(post, response, (req, res) -> continued[0] = true);
+
+    assertEquals(400, response.getStatus());
+    assertTrue(response.getContentAsString().contains("invalid_scope"));
+    assertFalse(continued[0]);
   }
 
   @Test

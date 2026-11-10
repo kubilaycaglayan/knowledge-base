@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.function.LongSupplier;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -34,6 +35,29 @@ public class AuthAttemptLimiter {
     if (windows.size() > 1_000)
       windows.entrySet().removeIf(entry -> now >= entry.getValue().resetAt());
     return next.attempts() <= MAX_ATTEMPTS;
+  }
+
+  /** Checks a failure-based budget without consuming an attempt. */
+  public boolean isBlocked(String key) {
+    long now = nanoTime.getAsLong();
+    AtomicBoolean blocked = new AtomicBoolean();
+    windows.computeIfPresent(key, (ignored, current) -> {
+      if (now >= current.resetAt()) return null;
+      blocked.set(current.attempts() >= MAX_ATTEMPTS);
+      return current;
+    });
+    return blocked.get();
+  }
+
+  /** Records a failed credential exchange after its response status is known. */
+  public void recordFailure(String key) {
+    long now = nanoTime.getAsLong();
+    windows.compute(key, (ignored, current) -> {
+      if (current == null || now >= current.resetAt()) return new Window(1, now + WINDOW_NANOS);
+      return new Window(current.attempts() + 1, current.resetAt());
+    });
+    if (windows.size() > 1_000)
+      windows.entrySet().removeIf(entry -> now >= entry.getValue().resetAt());
   }
 
   int trackedKeyCount() {

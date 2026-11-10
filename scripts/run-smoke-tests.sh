@@ -29,7 +29,7 @@ export OPENAI_OAUTH_CLIENT_ID=knowledge-base-openai-smoke
 export OPENAI_OAUTH_CLIENT_SECRET=local-smoke-openai-client-secret-not-for-production
 export OPENAI_OAUTH_REDIRECT_URIS=https://chatgpt.com/connector_platform_oauth_redirect
 export OPENAI_DOMAIN_CHALLENGE=knowledge-base-openai-smoke-challenge
-export SESSION_COOKIE_SECURE=false
+export SESSION_COOKIE_SECURE=true
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   : "${PROXY_DEV_PORT:=26000}"
   : "${PROXY_HTTP_PORT:=26080}"
@@ -237,6 +237,11 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   [[ "$proxy_challenge" == "$OPENAI_DOMAIN_CHALLENGE" ]]
   curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login" \
     | grep -q 'Connect Knowledge Base'
+  proxy_login_headers="$(curl -kfsS -D - -o /dev/null --connect-timeout 2 --max-time 5 \
+    "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login")"
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; secure'
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; httponly'
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; samesite=lax'
   proxy_authorize_status="$(curl -ksS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' "https://localhost:${PROXY_HTTPS_PORT}/oauth2/authorize")"
   [[ "$proxy_authorize_status" == "400" ]]
   # The theme bootstrap must be served as JavaScript through the deployed proxy.

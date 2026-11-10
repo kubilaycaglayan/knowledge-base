@@ -13,8 +13,12 @@
 generated development `/v3/api-docs` document contained 107 method/path pairs,
 matching the 107 matrix rows exactly (no missing or extra operations). The
 OpenAI OAuth addition brings the current source inventory to 120 API
-operations; the new OAuth operations are recorded below. A follow-up inventory
-check at `a488663c` counted 385 qualified evidence
+operations; the new OAuth operations are recorded below. The live count is
+reconciled on every `verify / smoke` run: `scripts/run-smoke-tests.sh` reads
+the running API's `/v3/api-docs` and pipes it into
+`scripts/check-ototest-source-drift.mjs`. The parser unit tests in
+`verify / web-and-extension` are separate regression coverage for the checker.
+A follow-up inventory check at `a488663c` counted 385 qualified evidence
 references (307 unique class/method pairs) and resolved each unique pair to an
 existing Java test class and method. These checks validate operation/reference
 integrity, not the relevance of every assertion.

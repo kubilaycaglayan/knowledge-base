@@ -19,6 +19,11 @@ function rememberCookies(response) {
     if (separator < 1) continue;
     const name = pair.slice(0, separator);
     const value = pair.slice(separator + 1);
+    if (name === "SESSION") {
+      assert.match(header, /;\s*Secure(?:;|$)/i, "SESSION cookie must be Secure");
+      assert.match(header, /;\s*HttpOnly(?:;|$)/i, "SESSION cookie must be HttpOnly");
+      assert.match(header, /;\s*SameSite=Lax(?:;|$)/i, "SESSION cookie must use SameSite=Lax");
+    }
     if (/max-age=0/i.test(header)) cookies.delete(name);
     else cookies.set(name, value);
   }
@@ -102,6 +107,7 @@ async function getConsentPage(email, password, scopes, state, challenge) {
       if (next.pathname === "/connect/openai/login") {
         const loginPage = await request(next);
         assert.equal(loginPage.status, 200, "OAuth password login page did not load");
+        assert.ok(cookies.has("SESSION"), "OAuth login flow did not issue the Spring Session cookie");
         const loginHtml = await loginPage.text();
         const csrf = field(loginHtml, "_csrf");
         const previousSession = [...cookies].find(([name]) => name === "SESSION")?.[1];
