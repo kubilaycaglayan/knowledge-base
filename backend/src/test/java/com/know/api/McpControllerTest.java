@@ -134,9 +134,9 @@ class McpControllerTest {
         .thenAnswer(invocation -> {
           java.sql.ResultSet row = mock(java.sql.ResultSet.class);
           when(row.getString(1)).thenReturn(user.toString());
-          when(row.getString(2)).thenReturn("kb:notes:read");
+          when(row.getString(2)).thenReturn("kb:notes:read,kb:logs:read");
           @SuppressWarnings("unchecked") RowMapper<McpController.Access> mapper = invocation.getArgument(1);
-          return List.of(mapper.mapRow(row, 0));
+          return Collections.singletonList(mapper.mapRow(row, 0));
         });
     McpController oauthController = new McpController(jdbc, new ObjectMapper().findAndRegisterModules(), knowledge,
         mock(LogService.class), mock(CalendarService.class), mock(TimerService.class), mock(ReportService.class),
