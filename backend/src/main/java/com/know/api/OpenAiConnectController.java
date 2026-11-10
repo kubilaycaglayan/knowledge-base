@@ -54,7 +54,11 @@ public class OpenAiConnectController {
         ? "<input type=\"hidden\" name=\""+t.getParameterName()+"\" value=\""+escape(t.getToken())+"\">" : "";
     String csrfToken = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t ? escape(t.getToken()) : "";
     String googleButton = googleClientId.isBlank() ? "" : "<script src='https://accounts.google.com/gsi/client' async defer></script><script src='/connect/openai/openai-connect.js' defer></script><div id='g_id_onload' data-client_id='"+escape(googleClientId)+"' data-callback='googleConnect' data-csrf-token='"+csrfToken+"'></div><div class='g_id_signin' data-type='standard'></div>";
-    return html("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Connect Knowledge Base</title>"+PAGE_STYLE+"</head><body><main><h1>Connect Knowledge Base</h1><p>Sign in to choose what the OpenAI plugin can read.</p><form method=post action='/connect/openai/login'>"+csrf+"<label>Email <input name=email type=email autocomplete=username required></label><label>Password <input name=password type=password autocomplete=current-password required></label><button>Continue</button></form>"+googleButton+"</main></body></html>");
+    return ResponseEntity.ok().contentType(MediaType.TEXT_HTML)
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .header(HttpHeaders.PRAGMA, "no-cache")
+        .header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+        .body("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Connect Knowledge Base</title>"+PAGE_STYLE+"</head><body><main><h1>Connect Knowledge Base</h1><p>Sign in to choose what the OpenAI plugin can read.</p><form method=post action='/connect/openai/login'>"+csrf+"<label>Email <input name=email type=email autocomplete=username required></label><label>Password <input name=password type=password autocomplete=current-password required></label><button>Continue</button></form>"+googleButton+"</main></body></html>");
   }
 
   @GetMapping(value="/consent", produces=MediaType.TEXT_HTML_VALUE)
