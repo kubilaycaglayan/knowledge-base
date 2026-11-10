@@ -24,6 +24,8 @@ before(async () => {
     optimizeDeps: {
       include: [
         "vuetify/components/VBtn",
+        "vuetify/components/VCard",
+        "vuetify/components/VDialog",
         "vuetify/components/VIcon",
         "vuetify/components/VList",
         "vuetify/components/VSelect",
@@ -41,6 +43,8 @@ before(async () => {
   const optimized = optimizer.metadata.optimized;
   for (const dependency of [
     "vuetify/components/VBtn",
+    "vuetify/components/VCard",
+    "vuetify/components/VDialog",
     "vuetify/components/VIcon",
     "vuetify/components/VList",
     "vuetify/components/VSelect",
