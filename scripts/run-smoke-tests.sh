@@ -265,6 +265,31 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" \
     "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/register" \
     | grep -q '"token"'
+  # Verify the production Cloudflare origin proxy routes the OpenAI OAuth
+  # endpoints to the API instead of falling through to the web application's
+  # SPA response. Cloudflare terminates public TLS before this origin.
+  cloudflare_proxy="http://localhost:${PROXY_CLOUDFLARE_PORT}"
+  cloudflare_challenge="$(curl -fsS --connect-timeout 2 --max-time 5 \
+    "${cloudflare_proxy}/.well-known/openai-apps-challenge")"
+  [[ "$cloudflare_challenge" == "$OPENAI_DOMAIN_CHALLENGE" ]]
+  curl -fsS --connect-timeout 2 --max-time 5 \
+    "${cloudflare_proxy}/.well-known/oauth-authorization-server" | grep -q 'http://api:8080'
+  curl -fsS --connect-timeout 2 --max-time 5 \
+    "${cloudflare_proxy}/.well-known/oauth-protected-resource" | grep -q 'authorization_servers'
+  curl -fsS --connect-timeout 2 --max-time 5 \
+    "${cloudflare_proxy}/connect/openai/login" | grep -q 'Connect Knowledge Base'
+  cloudflare_authorize_status="$(curl -sS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' \
+    "${cloudflare_proxy}/oauth2/authorize")"
+  [[ "$cloudflare_authorize_status" == "400" ]]
+  cloudflare_mcp_payload='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
+  cloudflare_mcp_status="$(curl -sS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' \
+    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    --data "$cloudflare_mcp_payload" "${cloudflare_proxy}/mcp")"
+  [[ "$cloudflare_mcp_status" == "401" ]]
+  curl -sS --connect-timeout 2 --max-time 5 -D - -o /dev/null \
+    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    --data "$cloudflare_mcp_payload" "${cloudflare_proxy}/mcp" \
+    | grep -Eqi '^www-authenticate: Bearer resource_metadata="http://api:8080/\.well-known/oauth-protected-resource"'
   # The timer WebSocket must reach the API through both the local proxy and
   # the production (Cloudflare) proxy config: a proxy that serves the web app
   # for /ws/* instead leaves every client polling /timers/current.
