@@ -8,6 +8,9 @@ import com.know.domain.*;
 import com.know.service.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.RowMapper;
@@ -20,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(OutputCaptureExtension.class)
 class McpControllerTest {
   private final KnowledgeService knowledge=mock(KnowledgeService.class);
   private final SearchService search=mock(SearchService.class);
@@ -37,6 +41,30 @@ class McpControllerTest {
         .andExpect(status().isUnauthorized())
         .andExpect(header().string("WWW-Authenticate",
             org.hamcrest.Matchers.containsString("/.well-known/oauth-protected-resource")));
+  }
+
+  @Test void logsSafeReasonWhenOAuthAudienceDoesNotMatchMcpResource(CapturedOutput output) throws Exception {
+    JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    JwtDecoder decoder = mock(JwtDecoder.class);
+    @SuppressWarnings("unchecked") ObjectProvider<JwtDecoder> provider = mock(ObjectProvider.class);
+    when(provider.getIfAvailable()).thenReturn(decoder);
+    when(decoder.decode("oauth-token-never-log"))
+        .thenReturn(Jwt.withTokenValue("oauth-token-never-log").header("alg", "RS256")
+            .subject(UUID.randomUUID().toString()).audience(List.of("https://wrong.example/mcp"))
+            .issuedAt(java.time.Instant.now()).expiresAt(java.time.Instant.now().plusSeconds(300)).build());
+    McpController oauthController = new McpController(jdbc, new ObjectMapper().findAndRegisterModules(), knowledge,
+        mock(LogService.class), mock(CalendarService.class), mock(TimerService.class), mock(ReportService.class),
+        search, mock(LabelManagementService.class), mock(PathRepository.class), mock(BoardRepository.class),
+        mock(BoardCardRepository.class), provider);
+
+    var response = oauthController.handle("Bearer oauth-token-never-log", "application/json",
+        new ObjectMapper().writeValueAsBytes(Map.of("id", 1, "method", "tools/list", "params", Map.of())),
+        "https://kb.example.test");
+
+    assertEquals(401, response.getStatusCode().value());
+    assertTrue(output.getOut().contains("MCP OAuth bearer rejected reason=audience_mismatch"));
+    assertTrue(output.getOut().contains("https://wrong.example/mcp"));
+    assertFalse(output.getOut().contains("oauth-token-never-log"));
   }
 
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {

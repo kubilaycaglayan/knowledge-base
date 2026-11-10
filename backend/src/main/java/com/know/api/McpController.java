@@ -11,6 +11,8 @@ import java.util.*;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.PageRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 /** Sessionless Streamable HTTP MCP endpoint. It deliberately exposes read tools only. */
 @RestController
 public class McpController {
+  private static final Logger log = LoggerFactory.getLogger(McpController.class);
   private final JdbcTemplate jdbc; private final ObjectMapper json;
   private final KnowledgeService knowledge; private final LogService logs; private final CalendarService calendar;
   private final TimerService timers; private final ReportService reports; private final SearchService search;
@@ -108,12 +111,23 @@ public class McpController {
   }
 
   private Access oauthAccess(String token, String resource) {
-    if (oauthJwtDecoder == null) return null;
+    if (oauthJwtDecoder == null) {
+      if (looksLikeJwt(token)) log.warn("MCP OAuth bearer rejected reason=jwt_decoder_unavailable");
+      return null;
+    }
     Jwt jwt;
     try {
       jwt = oauthJwtDecoder.decode(token);
-      if (!jwt.getAudience().contains(resource)) return null;
     } catch (JwtException invalidToken) {
+      if (looksLikeJwt(token)) {
+        log.info("MCP OAuth bearer rejected reason=jwt_validation_failed exceptionType={}",
+            invalidToken.getClass().getSimpleName());
+      }
+      return null;
+    }
+    if (jwt.getAudience() == null || !jwt.getAudience().contains(resource)) {
+      log.info("MCP OAuth bearer rejected reason=audience_mismatch issuer={} audience={} expectedAudience={} expiresAt={}",
+          jwt.getIssuer(), jwt.getAudience(), resource, jwt.getExpiresAt());
       return null;
     }
     List<Access> found;
@@ -132,10 +146,33 @@ public class McpController {
               .collect(java.util.stream.Collectors.toUnmodifiableSet());
           return categories.isEmpty() ? null : new Access(user, categories);
         }, token, resource); }
-    catch (org.springframework.dao.DataAccessException missingOAuthTables) { return null; }
+    catch (org.springframework.dao.DataAccessException lookupFailure) {
+      log.warn("MCP OAuth bearer rejected reason=authorization_lookup_failed exceptionType={}",
+          lookupFailure.getClass().getSimpleName());
+      return null;
+    }
+    if (found.isEmpty()) {
+      log.info("MCP OAuth bearer rejected reason=grant_not_found_expired_or_resource_mismatch issuer={} audience={} expectedAudience={} expiresAt={}",
+          jwt.getIssuer(), jwt.getAudience(), resource, jwt.getExpiresAt());
+      return null;
+    }
     Access access = found.stream().filter(Objects::nonNull).findFirst().orElse(null);
-    if (access == null || jwt.getSubject() == null || !jwt.getSubject().equals(access.user().toString())) return null;
+    if (access == null) {
+      log.info("MCP OAuth bearer rejected reason=stored_grant_has_invalid_principal_or_no_scopes");
+      return null;
+    }
+    if (jwt.getSubject() == null || !jwt.getSubject().equals(access.user().toString())) {
+      log.info("MCP OAuth bearer rejected reason=subject_does_not_match_grant");
+      return null;
+    }
     return access;
+  }
+
+  private static boolean looksLikeJwt(String token) {
+    if (token == null) return false;
+    int firstSeparator = token.indexOf('.');
+    return firstSeparator > 0 && token.indexOf('.', firstSeparator + 1) > firstSeparator + 1
+        && token.indexOf('.', token.indexOf('.', firstSeparator + 1) + 1) < 0;
   }
   Map<String,Object> toolList(Set<String> grants) {
     Map<String,String> descriptions=Map.ofEntries(
