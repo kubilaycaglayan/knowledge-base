@@ -28,7 +28,7 @@ public class OpenAiConnectionController {
         (rs,n) -> {
           String scopes = rs.getString(3);
           java.util.List<String> labels = scopes == null ? java.util.List.of()
-              : java.util.Arrays.stream(scopes.split("\\s+"))
+              : java.util.Arrays.stream(scopes.split("[,\\s]+"))
                   .map(com.know.security.OpenAiScope::fromValue).flatMap(java.util.Optional::stream)
                   .map(com.know.security.OpenAiScope::label).toList();
           return new Connection(UUID.fromString(rs.getString(1)), rs.getString(2), scopes, labels,
