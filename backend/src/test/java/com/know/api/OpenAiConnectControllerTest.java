@@ -76,6 +76,45 @@ class OpenAiConnectControllerTest {
   }
 
   @Test
+  void oauthPasswordLoginStartsSessionAndReturnsToSafeContinuation() {
+    UserRepository users = mock(UserRepository.class);
+    PasswordEncoder passwords = mock(PasswordEncoder.class);
+    AuthAttemptLimiter limiter = mock(AuthAttemptLimiter.class);
+    SessionAuthenticationStrategy sessions = mock(SessionAuthenticationStrategy.class);
+    User user = new User("person@example.com", "stored-bcrypt-hash", "Person");
+    when(users.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(user));
+    when(passwords.matches("correct-password", "stored-bcrypt-hash")).thenReturn(true);
+    when(limiter.allow(anyString())).thenReturn(true);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse servletResponse = new MockHttpServletResponse();
+
+    var response = new OpenAiConnectController(users, passwords, mock(GoogleIdentityVerifier.class), limiter,
+        sessions, "").login(" person@example.com ", "correct-password", request, servletResponse);
+
+    assertEquals(302, response.getStatusCode().value());
+    assertEquals("/", response.getHeaders().getFirst(HttpHeaders.LOCATION));
+    assertEquals(user.getId().toString(), SecurityContextHolder.getContext().getAuthentication().getName());
+    verify(sessions).onAuthentication(any(), eq(request), eq(servletResponse));
+  }
+
+  @Test
+  void oauthPasswordLoginRejectsUnknownAccountsAfterDummyPasswordComparison() {
+    UserRepository users = mock(UserRepository.class);
+    PasswordEncoder passwords = mock(PasswordEncoder.class);
+    AuthAttemptLimiter limiter = mock(AuthAttemptLimiter.class);
+    when(users.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
+    when(limiter.allow(anyString())).thenReturn(true);
+    var controller = new OpenAiConnectController(users, passwords, mock(GoogleIdentityVerifier.class), limiter,
+        mock(SessionAuthenticationStrategy.class), "");
+
+    var error = assertThrows(ResponseStatusException.class, () -> controller.login("missing@example.com",
+        "wrong-password", new MockHttpServletRequest(), new MockHttpServletResponse()));
+
+    assertEquals(401, error.getStatusCode().value());
+    verify(passwords).matches(eq("wrong-password"), anyString());
+  }
+
+  @Test
   void consentPageDoesNotTrustScopesFromTheQueryString() {
     MockHttpServletRequest request = new MockHttpServletRequest();
     OAuthConsentRequestStore.remember(request, "knowledge-base-openai", "state-one", "kb:notes:read");
