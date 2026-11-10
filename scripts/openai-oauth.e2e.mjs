@@ -134,7 +134,7 @@ async function getConsentPage(email, password, scopes, state, challenge) {
   throw new Error("OAuth authorization exceeded the redirect limit");
 }
 
-async function authorizeAndExchange(account, scopes, selectedScopes) {
+async function authorizeAndExchange(account, scopes, selectedScopes, { invalidVerifier = false } = {}) {
   const state = randomBytes(24).toString("base64url");
   const { verifier, challenge } = pkcePair();
   const consentHtml = await getConsentPage(account.email, account.password, scopes, state, challenge);
@@ -162,8 +162,14 @@ async function authorizeAndExchange(account, scopes, selectedScopes) {
   const code = callback.searchParams.get("code");
   assert.ok(code, "OAuth callback did not contain an authorization code");
 
-  const tokenResponse = await exchangeAuthorizationCode(code, verifier);
+  const submittedVerifier = invalidVerifier ? randomBytes(48).toString("base64url") : verifier;
+  const tokenResponse = await exchangeAuthorizationCode(code, submittedVerifier);
   const tokenBody = await tokenResponse.text();
+  if (invalidVerifier) {
+    assert.equal(tokenResponse.status, 400, `Wrong PKCE verifier was accepted: ${tokenBody}`);
+    assert.equal(JSON.parse(tokenBody).error, "invalid_grant");
+    return null;
+  }
   assert.equal(tokenResponse.status, 200, `Code exchange failed: ${tokenBody}`);
   return { ...JSON.parse(tokenBody), authorizationCode: code, codeVerifier: verifier };
 }
@@ -255,7 +261,9 @@ async function main() {
   const other = await createAccount("other");
   const authorization = await authorizeAndExchange(owner, ["kb:notes:read", "kb:logs:read"], ["kb:notes:read"]);
   const codeReplay = await exchangeAuthorizationCode(authorization.authorizationCode, authorization.codeVerifier);
+  const replayBody = await codeReplay.json();
   assert.equal(codeReplay.status, 400, "Authorization code replay was accepted");
+  assert.equal(replayBody.error, "invalid_grant", "Code replay did not use the OAuth invalid_grant response");
   const claims = JSON.parse(Buffer.from(authorization.access_token.split(".")[1], "base64url").toString("utf8"));
   assert.equal(claims.iss, baseUrl);
   assert.equal(claims.aud, resource);
@@ -313,7 +321,9 @@ async function main() {
   assert.equal(revoked.status, 200);
   assert.equal((await mcp(secondAuthorization.access_token)).status, 401, "Explicit grant revocation did not invalidate MCP access");
 
-  console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, PKCE, login, scope consent, issuer/audience, MCP authentication and scope enforcement, owner isolation, authorization-code and refresh-token replay rejection, and grant revocation.");
+  await authorizeAndExchange(owner, ["kb:boards:read"], ["kb:boards:read"], { invalidVerifier: true });
+
+  console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, valid and invalid PKCE, login, scope consent, issuer/audience, MCP authentication and scope enforcement, owner isolation, authorization-code and refresh-token replay rejection, and grant revocation.");
 }
 
 await main();

@@ -65,7 +65,19 @@ public class TrackedOAuth2AuthorizationService implements OAuth2AuthorizationSer
         return null;
       }
     }
-    return delegate.findByToken(token, tokenType);
+    OAuth2Authorization authorization = delegate.findByToken(token, tokenType);
+    if (authorization != null && tokenType != null
+        && org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames.CODE.equals(tokenType.getValue())) {
+      // Once redeemed, the PKCE request is intentionally removed from storage.
+      // Hide an already-redeemed code from the client-authenticator so Spring
+      // Authorization Server reports invalid_grant instead of trying to read
+      // the missing request and returning HTTP 500. Leave expiry and other
+      // authorization-code validation to Spring's normal grant validator.
+      if (authorization.getAttribute(OAuth2AuthorizationRequest.class.getName()) == null) {
+        return null;
+      }
+    }
+    return authorization;
   }
 
   private static String fingerprint(String token) {
