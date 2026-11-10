@@ -7,8 +7,23 @@
       "extensions": {
         "com.openai": {
           "auth": {
-            "type": "api_key",
-            "headerScheme": "bearer"
+            "type": "oauth",
+            "client": {
+              "mode": "provided",
+              "clientId": "knowledge-base-openai",
+              "tokenEndpointAuthMethod": "client_secret_basic"
+            },
+            "defaultScopes": [
+              "kb:notes:read",
+              "kb:logs:read",
+              "kb:calendar:read",
+              "kb:sessions:read",
+              "kb:activity:read",
+              "kb:reports:read",
+              "kb:paths:read",
+              "kb:labels:read",
+              "kb:boards:read"
+            ]
           }
         }
       }

@@ -77,6 +77,9 @@ public class SecurityConfig {
                         "/api/v1/auth/google",
                         "/ws/timers",
                         "/mcp",
+                        "/connect/openai/**",
+                        "/.well-known/oauth-protected-resource",
+                        "/.well-known/openai-apps-challenge",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")

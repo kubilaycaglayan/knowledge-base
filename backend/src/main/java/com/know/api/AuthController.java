@@ -79,12 +79,9 @@ public class AuthController {
       @Valid @RequestBody Credentials c, jakarta.servlet.http.HttpServletRequest request) {
     String email = c.email().trim().toLowerCase(Locale.ROOT);
     checkRate(request, email);
-    User u =
-        users
-            .findByEmailIgnoreCase(email)
-            .filter(x -> encoder.matches(c.password(), x.getPasswordHash()))
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+    User u = users.findByEmailIgnoreCase(email).orElse(null);
+    if (!com.know.security.PasswordTiming.matches(encoder, c.password(), u))
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     return response(u);
   }
 

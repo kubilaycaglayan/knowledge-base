@@ -9,6 +9,10 @@ import com.know.service.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 class McpControllerTest {
   private final KnowledgeService knowledge=mock(KnowledgeService.class);
@@ -16,7 +20,7 @@ class McpControllerTest {
   private final McpController controller=new McpController(mock(JdbcTemplate.class),new ObjectMapper().findAndRegisterModules(),knowledge,
       mock(LogService.class),mock(CalendarService.class),mock(TimerService.class),mock(ReportService.class),
       search,mock(LabelManagementService.class),mock(PathRepository.class),
-      mock(BoardRepository.class),mock(BoardCardRepository.class));
+      mock(BoardRepository.class),mock(BoardCardRepository.class),mock(ObjectProvider.class));
 
   @Test void toolDiscoveryContainsReadOnlyToolsAndHonorsCategoryGrants() {
     var response=controller.toolList(Set.of("notes"));
@@ -69,5 +73,37 @@ class McpControllerTest {
     assertTrue(serialized.contains("\"contentText\":\"Plain text body\""));
     assertFalse(serialized.contains("\"content\""));
     verify(knowledge).getNote(user,noteId);
+  }
+
+  @Test void oauthBearerUsesThePersistedAudienceAndScopeGrant() throws Exception {
+    UUID user = UUID.randomUUID();
+    JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    JwtDecoder decoder = mock(JwtDecoder.class);
+    @SuppressWarnings("unchecked") ObjectProvider<JwtDecoder> provider = mock(ObjectProvider.class);
+    when(provider.getIfAvailable()).thenReturn(decoder);
+    var jwt = Jwt.withTokenValue("oauth-token").header("alg", "RS256")
+        .subject(user.toString()).audience(List.of("https://kb.example.test/mcp"))
+        .issuedAt(java.time.Instant.now()).expiresAt(java.time.Instant.now().plusSeconds(300)).build();
+    when(decoder.decode("oauth-token")).thenReturn(jwt);
+    when(jdbc.query(anyString(), any(RowMapper.class), eq("oauth-token"), eq("https://kb.example.test/mcp")))
+        .thenAnswer(invocation -> {
+          java.sql.ResultSet row = mock(java.sql.ResultSet.class);
+          when(row.getString(1)).thenReturn(user.toString());
+          when(row.getString(2)).thenReturn("kb:notes:read");
+          @SuppressWarnings("unchecked") RowMapper<McpController.Access> mapper = invocation.getArgument(1);
+          return List.of(mapper.mapRow(row, 0));
+        });
+    McpController oauthController = new McpController(jdbc, new ObjectMapper().findAndRegisterModules(), knowledge,
+        mock(LogService.class), mock(CalendarService.class), mock(TimerService.class), mock(ReportService.class),
+        search, mock(LabelManagementService.class), mock(PathRepository.class), mock(BoardRepository.class),
+        mock(BoardCardRepository.class), provider);
+
+    var response = oauthController.handle("Bearer oauth-token",
+        Map.of("id", 1, "method", "tools/list", "params", Map.of()), "https://kb.example.test");
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(jdbc).query(contains("oauth2_authorization"), any(RowMapper.class),
+        eq("oauth-token"), eq("https://kb.example.test/mcp"));
+    verify(jdbc, never()).query(contains("mcp_access_token"), any(RowMapper.class), any());
   }
 }

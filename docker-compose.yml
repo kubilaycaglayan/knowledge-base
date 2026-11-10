@@ -27,6 +27,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5177}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      OPENAI_OAUTH_ENABLED: ${OPENAI_OAUTH_ENABLED:-false}
+      OPENAI_OAUTH_ISSUER: ${OPENAI_OAUTH_ISSUER:-https://${DOMAIN:-localhost}}
+      OPENAI_OAUTH_CLIENT_ID: ${OPENAI_OAUTH_CLIENT_ID:-knowledge-base-openai}
+      OPENAI_OAUTH_CLIENT_SECRET: ${OPENAI_OAUTH_CLIENT_SECRET:-}
+      OPENAI_OAUTH_REDIRECT_URIS: ${OPENAI_OAUTH_REDIRECT_URIS:-https://chatgpt.com/connector_platform_oauth_redirect}
+      OPENAI_DOMAIN_CHALLENGE: ${OPENAI_DOMAIN_CHALLENGE:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
       test:

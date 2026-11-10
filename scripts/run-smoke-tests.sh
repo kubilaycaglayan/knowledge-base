@@ -23,6 +23,13 @@ fi
 : "${DB_DEV_PORT:=26432}"
 : "${API_DEV_PORT:=26081}"
 export DB_DEV_PORT API_DEV_PORT
+export OPENAI_OAUTH_ENABLED=true
+export OPENAI_OAUTH_ISSUER=http://api:8080
+export OPENAI_OAUTH_CLIENT_ID=knowledge-base-openai-smoke
+export OPENAI_OAUTH_CLIENT_SECRET=local-smoke-openai-client-secret-not-for-production
+export OPENAI_OAUTH_REDIRECT_URIS=https://chatgpt.com/connector_platform_oauth_redirect
+export OPENAI_DOMAIN_CHALLENGE=knowledge-base-openai-smoke-challenge
+export SESSION_COOKIE_SECURE=true
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   : "${PROXY_DEV_PORT:=26000}"
   : "${PROXY_HTTP_PORT:=26080}"
@@ -226,6 +233,17 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   printf '%s' "$proxy_headers" | grep -qi '^x-frame-options: DENY'
   printf '%s' "$proxy_headers" | grep -qi '^content-security-policy:'
   printf '%s' "$proxy_headers" | grep -qi '^permissions-policy:'
+  proxy_challenge="$(curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/.well-known/openai-apps-challenge")"
+  [[ "$proxy_challenge" == "$OPENAI_DOMAIN_CHALLENGE" ]]
+  curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login" \
+    | grep -q 'Connect Knowledge Base'
+  proxy_login_headers="$(curl -kfsS -D - -o /dev/null --connect-timeout 2 --max-time 5 \
+    "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login")"
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; secure'
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; httponly'
+  printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; samesite=lax'
+  proxy_authorize_status="$(curl -ksS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' "https://localhost:${PROXY_HTTPS_PORT}/oauth2/authorize")"
+  [[ "$proxy_authorize_status" == "400" ]]
   # The theme bootstrap must be served as JavaScript through the deployed proxy.
   curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/theme.js" \
     | grep -q 'knowledge-base-theme'
@@ -288,6 +306,8 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
 fi
 
 # A deployment must accept a token issued by the previous API container.
+oauth_signing_kid_before="$(api http://localhost:8080/oauth2/jwks | sed -n 's/.*"kid":"\([^"]*\)".*/\1/p')"
+[[ -n "$oauth_signing_kid_before" ]]
 compose up -d --no-deps --force-recreate api
 for attempt in {1..480}; do
   if api http://localhost:8080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
@@ -300,6 +320,14 @@ for attempt in {1..480}; do
   sleep 0.25
 done
 api "${header[@]}" http://localhost:8080/api/v1/auth/me | grep -Fq "$email"
+oauth_signing_kid_after="$(api http://localhost:8080/oauth2/jwks | sed -n 's/.*"kid":"\([^"]*\)".*/\1/p')"
+[[ "$oauth_signing_kid_after" == "$oauth_signing_kid_before" ]]
+docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" \
+  -v "$PWD/scripts:/app/scripts:ro" -w /app/scripts \
+  -e OPENAI_OAUTH_ENABLED -e OPENAI_OAUTH_ISSUER -e OPENAI_OAUTH_CLIENT_ID \
+  -e OPENAI_OAUTH_CLIENT_SECRET -e OPENAI_OAUTH_REDIRECT_URIS \
+  -e OPENAI_DOMAIN_CHALLENGE -e API_DEV_PORT \
+  node:22-alpine node openai-oauth.e2e.mjs
 # Servlet error dispatches must not turn a valid session into a 401.
 missing_response="$(compose exec -T api wget -S -O /dev/null "${header[@]}" \
   http://localhost:8080/api/v1/session-continuity-missing-route 2>&1 || true)"

@@ -41,7 +41,12 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
           "/api/v1/auth/google/config",
           "/api/v1/auth/register",
           "/api/v1/auth/login",
-          "/api/v1/auth/google");
+          "/api/v1/auth/google",
+          "/connect/openai/login",
+          "/connect/openai/google",
+          "/connect/openai/consent",
+          "/.well-known/oauth-protected-resource",
+          "/.well-known/openai-apps-challenge");
 
   @LocalServerPort int port;
 
@@ -170,6 +175,17 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
     for (String path : List.of("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google")) {
       int status = send("POST", path, (String) null, "{}").status();
       assertNotEquals(401, status, path);
+      assertTrue(status < 500, path + " -> " + status);
+    }
+    for (String path : List.of("/connect/openai/login")) {
+      int status = send("GET", path, (String) null, null).status();
+      assertTrue(status < 500, path + " -> " + status);
+    }
+    for (String path : List.of(
+        "/.well-known/oauth-protected-resource",
+        "/.well-known/openai-apps-challenge")) {
+      int status = send("GET", path, (String) null, null).status();
+      assertNotEquals(401, status, path + " must stay public while OAuth is disabled");
       assertTrue(status < 500, path + " -> " + status);
     }
   }

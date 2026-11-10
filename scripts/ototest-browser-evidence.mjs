@@ -57,7 +57,7 @@ export function rowsMissingNamedAssertions(rows, evidenceIndex, statusIndex) {
 
 export function coveredStateClaimsMissingLayer(rows, evidenceIndex, claimIndex, statusIndex) {
   const stateClaim = /\b(?:persist\w*|read.?back|owner(?:ship)?|owned|foreign|another user)\b/i;
-  const statefulLayer = /(?:[A-Za-z][A-Za-z0-9]*IntegrationTest\.|(?:real-stack|real-browser)\.acceptance\.test\.)/i;
+  const statefulLayer = /(?:[A-Za-z][A-Za-z0-9]*IntegrationTest\.|(?:real-stack|real-browser)\.acceptance\.test\.|scripts\/openai-oauth\.e2e\.mjs)/i;
   return rows.flatMap((cells, index) => {
     const claim = cells[claimIndex] ?? "";
     if (cells[statusIndex] !== "covered" || !stateClaim.test(claim) || statefulLayer.test(cells[evidenceIndex] ?? "")) return [];
