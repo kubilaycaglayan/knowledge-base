@@ -162,7 +162,14 @@ async function authorizeAndExchange(account, scopes, selectedScopes) {
   const code = callback.searchParams.get("code");
   assert.ok(code, "OAuth callback did not contain an authorization code");
 
-  const tokenResponse = await fetch(`${baseUrl}/oauth2/token`, {
+  const tokenResponse = await exchangeAuthorizationCode(code, verifier);
+  const tokenBody = await tokenResponse.text();
+  assert.equal(tokenResponse.status, 200, `Code exchange failed: ${tokenBody}`);
+  return { ...JSON.parse(tokenBody), authorizationCode: code, codeVerifier: verifier };
+}
+
+async function exchangeAuthorizationCode(code, verifier, target = resource) {
+  return fetch(`${baseUrl}/oauth2/token`, {
     method: "POST",
     headers: {
       authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
@@ -173,12 +180,9 @@ async function authorizeAndExchange(account, scopes, selectedScopes) {
       code,
       redirect_uri: redirectUri,
       code_verifier: verifier,
-      resource,
+      resource: target,
     }),
   });
-  const tokenBody = await tokenResponse.text();
-  assert.equal(tokenResponse.status, 200, `Code exchange failed: ${tokenBody}`);
-  return JSON.parse(tokenBody);
 }
 
 async function exchangeRefresh(refreshToken, target = resource) {
@@ -193,9 +197,11 @@ async function exchangeRefresh(refreshToken, target = resource) {
 }
 
 async function mcp(token) {
+  const headers = { "content-type": "application/json" };
+  if (token) headers.authorization = `Bearer ${token}`;
   return fetch(resource, {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", id: randomUUID(), method: "tools/list", params: {} }),
   });
 }
@@ -229,9 +235,27 @@ async function main() {
   assert.equal(invalidTarget.status, 400, "Authorization accepted a different resource identifier");
   assert.equal((await invalidTarget.json()).error, "invalid_target");
 
+  const invalidRedirect = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: "https://attacker.example/callback",
+    resource,
+    scope: "kb:notes:read",
+    state: "invalid-redirect-e2e",
+    code_challenge: "invalid-redirect-challenge",
+    code_challenge_method: "S256",
+  });
+  const invalidCallback = await request(`${baseUrl}/oauth2/authorize?${invalidRedirect}`);
+  assert.equal(invalidCallback.status, 400, "Authorization accepted a callback outside the registered redirect allow-list");
+
+  assert.equal((await mcp()).status, 401, "MCP accepted a request with no access token");
+  assert.equal((await mcp("not-a-signed-jwt")).status, 401, "MCP accepted a malformed access token");
+
   const owner = await createAccount("owner");
   const other = await createAccount("other");
   const authorization = await authorizeAndExchange(owner, ["kb:notes:read", "kb:logs:read"], ["kb:notes:read"]);
+  const codeReplay = await exchangeAuthorizationCode(authorization.authorizationCode, authorization.codeVerifier);
+  assert.equal(codeReplay.status, 400, "Authorization code replay was accepted");
   const claims = JSON.parse(Buffer.from(authorization.access_token.split(".")[1], "base64url").toString("utf8"));
   assert.equal(claims.iss, baseUrl);
   assert.equal(claims.aud, resource);
@@ -289,7 +313,7 @@ async function main() {
   assert.equal(revoked.status, 200);
   assert.equal((await mcp(secondAuthorization.access_token)).status, 401, "Explicit grant revocation did not invalidate MCP access");
 
-  console.log("OpenAI OAuth E2E passed: discovery, challenge, PKCE, login, scope consent, issuer/audience, MCP scope enforcement, owner isolation, refresh rotation/replay, and grant revocation.");
+  console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, PKCE, login, scope consent, issuer/audience, MCP authentication and scope enforcement, owner isolation, authorization-code and refresh-token replay rejection, and grant revocation.");
 }
 
 await main();
