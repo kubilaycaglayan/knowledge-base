@@ -76,10 +76,11 @@ public class OpenAiConnectController {
         .filter(OAuthConsentRequestStore.scopes(request, client_id, state)::contains)
         .map(value -> OpenAiScope.fromValue(value).orElseThrow()).toList();
     StringBuilder fields = new StringBuilder(csrf).append(hidden("client_id", client_id)).append(hidden("state", state));
-    for (OpenAiScope item : requested) fields.append("<label><input type=checkbox name=scope value=\"")
-        .append(escape(item.value())).append("\" checked>").append(escape(item.label())).append("</label><br>");
+    for (OpenAiScope item : requested) fields.append("<label class=scope-option><input type=checkbox name=scope value=\"")
+        .append(escape(item.value())).append("\" checked><span>").append(escape(item.label())).append("</span></label>");
     if (requested.isEmpty()) return html("<!doctype html><title>OpenAI connection</title><p>No supported read permissions were requested.</p>");
-    return html("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Approve OpenAI access</title>"+PAGE_STYLE+"</head><body><main><h1>Connect Recall Personal Knowledge Base</h1><p>Choose the read-only categories this connection can access.</p><form method=post action='/oauth2/authorize'>"+fields+"<button name=user_oauth_approval value=true>Approve selected access</button><button type=submit name=user_oauth_approval value=false>Cancel connection</button></form></main></body></html>");
+    String consentStyle = "<style>main{max-width:520px;margin:24px auto;padding:20px}.consent-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.scope-option{display:flex;align-items:center;gap:10px;min-height:40px;padding:8px 10px;border:1px solid #dfe3e9;border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer}.scope-option:hover{background:#f7f8fa}.scope-option input[type=checkbox]{flex:0 0 18px;width:18px;height:18px;accent-color:#334155}.consent-form button{grid-column:1/-1}.consent-form button+button{background:#fff;color:#334155}.consent-form button+button:hover{background:#f7f8fa}@media(max-width:520px){main{margin:12px auto;padding:16px}.consent-form{grid-template-columns:1fr}}</style>";
+    return html("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Approve OpenAI access</title>"+PAGE_STYLE+consentStyle+"</head><body><main><h1>Connect Recall Personal Knowledge Base</h1><p>Choose the read-only categories this connection can access.</p><form class=consent-form method=post action='/oauth2/authorize'>"+fields+"<button name=user_oauth_approval value=true>Approve selected access</button><button type=submit name=user_oauth_approval value=false>Cancel connection</button></form></main></body></html>");
   }
 
   private static String hidden(String name, String value) { return "<input type=hidden name=\""+name+"\" value=\""+escape(value)+"\">"; }
