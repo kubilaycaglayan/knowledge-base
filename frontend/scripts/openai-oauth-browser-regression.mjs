@@ -9,7 +9,7 @@ assert.match(base, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/);
 const clientId = process.env.OAUTH_BROWSER_CLIENT_ID || 'knowledge-base-openai';
 const callback = 'https://chatgpt.com/connector_platform_oauth_redirect';
 const caddy = readFileSync(new URL('../../deployment/Caddyfile.cloudflare', import.meta.url), 'utf8');
-const policy = caddy.match(/Content-Security-Policy "([^"]+)"/)[1];
+const policy = caddy.match(/header @oauth_connect Content-Security-Policy "([^"]+)"/)[1];
 const email = `browser-oauth-${randomUUID()}@example.com`;
 const password = 'Disposable-OAuth-Password-2026';
 const registered = await fetch(`${base}/api/v1/auth/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) });

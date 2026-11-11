@@ -11,6 +11,9 @@ Treat it like a password and revoke it if it is exposed.
 The backend honors forwarded headers from the trusted Caddy reverse proxy so
 OAuth login redirects preserve the external HTTPS scheme. Keep the backend
 port private; the edge proxy must overwrite client-supplied forwarded headers.
+OAuth connection pages allow form redirects to `https://chatgpt.com` in their
+Content Security Policy, so browsers can follow the authorization callback.
+Other pages retain a same-origin form policy.
 
 The Recall plugin uses OAuth rather than asking users to create a manual MCP
 token. When enabled by deployment configuration, OpenAI discovers the server

@@ -332,3 +332,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   months near either end instead of a fixed multi-year scroll space.
 - [x] Move Gantt date controls into the toolbar and combine path/board choices
   in its All boards dropdown.
+# OAuth connection reliability
+
+- OAuth connection pages permit the ChatGPT callback in their form policy; browser verification covers login and consent redirects.
