@@ -11,6 +11,14 @@ const stubs = {
   VBtn: { template: "<button v-bind='$attrs'><slot /></button>" },
 };
 
+it("offers the standard theme control in the account header", async () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 401 }));
+  const wrapper = mount(OAuthAccountView, { global: { stubs } });
+  await flushPromises();
+  expect(wrapper.find('header button.theme-toggle').exists()).toBe(true);
+  fetchSpy.mockRestore();
+});
+
 it("shows the authenticated account and submits a CSRF-protected choice", async () => {
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf", authorizationUrl: "/oauth2/authorize?state=test" }), { status: 200 }));
   const wrapper = mount(OAuthAccountView, { global: { stubs } });

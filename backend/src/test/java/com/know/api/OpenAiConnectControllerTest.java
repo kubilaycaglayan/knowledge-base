@@ -119,6 +119,8 @@ class OpenAiConnectControllerTest {
     assertTrue(page.getBody().contains("autocomplete=current-password"));
     assertTrue(page.getBody().contains("id='openai-login-form'"));
     assertTrue(page.getBody().contains("src='/connect/openai/openai-connect.js'"));
+    assertTrue(page.getBody().contains("src='/connect/openai/theme.js'"));
+    assertTrue(page.getBody().contains("class='theme-toggle ghost'"));
     assertTrue(page.getBody().contains("id='openai-login-error'"));
     assertEquals("no-store", page.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
     assertEquals("same-origin-allow-popups", page.getHeaders().getFirst("Cross-Origin-Opener-Policy"));
@@ -153,6 +155,8 @@ class OpenAiConnectControllerTest {
             new TestingAuthenticationToken("user-1", "", "ROLE_USER"));
 
     assertTrue(page.getBody().contains("Notes"));
+    assertTrue(page.getBody().contains("src='/connect/openai/theme.js'"));
+    assertTrue(page.getBody().contains("class='theme-toggle ghost'"));
     assertTrue(page.getBody().contains("Logs"));
     assertFalse(page.getBody().contains("unsupported:write"));
     assertTrue(page.getBody().contains("name=user_oauth_approval value=true"));
