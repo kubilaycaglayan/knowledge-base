@@ -19,7 +19,9 @@ it("shows the authenticated account and submits a CSRF-protected choice", async 
   expect(wrapper.get("form").attributes("action")).toBe("/connect/openai/account");
   expect(wrapper.get('input[name="_csrf"]').attributes("value")).toBe("csrf");
   expect(wrapper.findAll("button").map(button => button.attributes("value"))).toEqual(["continue", "switch"]);
+  const continueClasses = wrapper.get('button[value="continue"]').classes();
   fetchSpy.mockRestore();
+  expect(continueClasses).toContain("primary");
 });
 
 it("posts the account choice as JSON and explicitly navigates to its continuation", async () => {
