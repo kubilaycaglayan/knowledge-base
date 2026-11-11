@@ -16,6 +16,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 class OpenAiConnectionControllerTest {
   @Test
+  void endingBrowserSessionInvalidatesTheExistingSessionWithoutCreatingOne() {
+    var request = new org.springframework.mock.web.MockHttpServletRequest();
+    var session = (org.springframework.mock.web.MockHttpSession) request.getSession();
+    var controller = new OpenAiConnectionController(mock(JdbcTemplate.class), true);
+    controller.endBrowserSession(request);
+    assertTrue(session.isInvalid());
+    controller.endBrowserSession(request);
+    assertNull(request.getSession(false));
+  }
+  @Test
   void statusReportsOAuthFeatureAvailability() {
     var enabled = new OpenAiConnectionController(mock(JdbcTemplate.class), true);
     var disabled = new OpenAiConnectionController(mock(JdbcTemplate.class), false);

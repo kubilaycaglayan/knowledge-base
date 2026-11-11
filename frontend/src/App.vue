@@ -10,6 +10,7 @@ import { isDarkTheme, theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
 import { usePreferencesStore } from "./stores/preferences";
+import { api } from "./lib/api";
 import {
   clearWarmupCooldown,
   pageDataTasks,
@@ -23,6 +24,8 @@ const preferences = usePreferencesStore();
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
 const showLogoutConfirmation = ref(false);
+const signingOut = ref(false);
+const signOutError = ref("");
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
@@ -101,10 +104,20 @@ watchEffect(() => {
         : path.slice(1);
   document.title = `Knowledge Base · ${page.charAt(0).toUpperCase()}${page.slice(1)}`;
 });
-function logout() {
-  showLogoutConfirmation.value = false;
-  auth.clearToken();
-  void router?.replace("/");
+async function logout() {
+  if (signingOut.value) return;
+  signingOut.value = true;
+  signOutError.value = "";
+  try {
+    await api("/openai-connections/browser-session", { method: "DELETE" });
+    showLogoutConfirmation.value = false;
+    auth.clearToken();
+    void router?.replace("/");
+  } catch {
+    signOutError.value = "Could not sign out completely. Check your connection and try again.";
+  } finally {
+    signingOut.value = false;
+  }
 }
 function authenticated() {
   auth.refresh();
@@ -229,11 +242,13 @@ function authenticated() {
         >
           Are you sure you want to sign out of Knowledge Base?
         </v-card-text>
+        <v-card-text v-if="signOutError" role="alert">{{ signOutError }}</v-card-text>
         <v-card-actions class="sign-out-dialog-actions">
           <v-btn
             type="button"
             class="sign-out-cancel"
             variant="outlined"
+            :disabled="signingOut"
             @click="showLogoutConfirmation = false"
           >
             Cancel
@@ -243,6 +258,8 @@ function authenticated() {
             class="sign-out-confirm"
             color="error"
             variant="flat"
+            :loading="signingOut"
+            :disabled="signingOut"
             @click="logout"
           >
             Sign out

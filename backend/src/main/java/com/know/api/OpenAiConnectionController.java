@@ -22,6 +22,13 @@ public class OpenAiConnectionController {
   @GetMapping("/status")
   public Availability status() { return new Availability(enabled); }
 
+  @DeleteMapping("/browser-session")
+  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+  public void endBrowserSession(jakarta.servlet.http.HttpServletRequest request) {
+    var session = request.getSession(false);
+    if (session != null) session.invalidate();
+  }
+
   @GetMapping
   public List<Connection> list(Authentication auth) {
     return jdbc.query("select a.id,c.client_name,a.authorized_scopes,coalesce(a.refresh_token_expires_at,a.access_token_expires_at) from oauth2_authorization a join oauth2_registered_client c on c.id=a.registered_client_id where a.principal_name=? and coalesce(a.refresh_token_expires_at,a.access_token_expires_at)>now() order by coalesce(a.refresh_token_expires_at,a.access_token_expires_at) desc",
