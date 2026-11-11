@@ -72,6 +72,32 @@ class OAuthResourceParameterFilterTest {
     assertConsentPostRejected("client-1", "unknown-state", "kb:notes:read");
   }
 
+  @Test
+  void repeatedConsentShowsRecoveryInsteadOfRawScopeError() throws Exception {
+    MockHttpServletRequest initial = new MockHttpServletRequest("GET", "/oauth2/authorize");
+    initial.setServletPath("/oauth2/authorize");
+    initial.addParameter("resource", RESOURCE);
+    initial.addParameter("client_id", "client-1");
+    initial.addParameter("scope", "kb:notes:read");
+    filter.doFilter(initial, new MockHttpServletResponse(), (req, res) ->
+        ((HttpServletResponse) res).sendRedirect("/connect/openai/consent?client_id=client-1&state=one-time"));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      MockHttpServletRequest post = new MockHttpServletRequest("POST", "/oauth2/authorize");
+      post.setServletPath("/oauth2/authorize");
+      post.setSession(initial.getSession());
+      post.addParameter("client_id", "client-1");
+      post.addParameter("state", "one-time");
+      post.addParameter("scope", "kb:notes:read");
+      MockHttpServletResponse response = new MockHttpServletResponse();
+      filter.doFilter(post, response, (req, res) -> ((HttpServletResponse) res).sendRedirect(CALLBACK));
+      if (attempt == 1) {
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getContentType().startsWith("text/html"));
+        assertTrue(response.getContentAsString().contains("Start the connection again"));
+      }
+    }
+  }
+
   private void assertConsentPostRejected(String clientId, String state, String submittedScopes)
       throws Exception {
     MockHttpServletRequest initial = new MockHttpServletRequest("GET", "/oauth2/authorize");
