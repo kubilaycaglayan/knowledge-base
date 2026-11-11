@@ -77,7 +77,7 @@ async function submitChoice(event: SubmitEvent) {
             <p v-if="choiceBusy" role="status">Continuing authorization…</p>
             <form method="post" action="/connect/openai/account" @submit.prevent="submitChoice">
               <input type="hidden" :name="account.csrfParameter" :value="account.csrfToken">
-              <v-btn type="submit" name="action" value="continue" color="primary" variant="flat" :loading="choiceBusy" :disabled="choiceBusy">Continue</v-btn>
+              <v-btn class="primary" type="submit" name="action" value="continue" color="primary" variant="flat" :loading="choiceBusy" :disabled="choiceBusy">Continue</v-btn>
               <v-btn type="submit" name="action" value="switch" variant="outlined" :loading="choiceBusy" :disabled="choiceBusy">Switch account</v-btn>
             </form>
           </template>
