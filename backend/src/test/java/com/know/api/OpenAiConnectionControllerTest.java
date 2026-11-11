@@ -18,11 +18,12 @@ class OpenAiConnectionControllerTest {
   @Test
   void endingBrowserSessionInvalidatesTheExistingSessionWithoutCreatingOne() {
     var request = new org.springframework.mock.web.MockHttpServletRequest();
+    var response = new org.springframework.mock.web.MockHttpServletResponse();
     var session = (org.springframework.mock.web.MockHttpSession) request.getSession();
     var controller = new OpenAiConnectionController(mock(JdbcTemplate.class), true);
-    controller.endBrowserSession(request);
+    assertEquals(204, controller.endBrowserSession(request, response).getStatusCode().value());
     assertTrue(session.isInvalid());
-    controller.endBrowserSession(request);
+    assertEquals(204, controller.endBrowserSession(request, response).getStatusCode().value());
     assertNull(request.getSession(false));
   }
   @Test

@@ -1,10 +1,18 @@
 package com.know.api;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.session.Session;
+import org.springframework.session.SessionRepository;
+import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -12,8 +20,26 @@ import org.springframework.web.bind.annotation.*;
 public class OpenAiConnectionController {
   private final JdbcTemplate jdbc;
   private final boolean enabled;
+  private final ObjectProvider<SessionRepository<? extends Session>> sessionRepositories;
+  private final ObjectProvider<CookieSerializer> cookieSerializers;
+
+  @Autowired
   public OpenAiConnectionController(JdbcTemplate jdbc,
-      @Value("${app.openai-oauth.enabled:false}") boolean enabled) { this.jdbc = jdbc; this.enabled = enabled; }
+      @Value("${app.openai-oauth.enabled:false}") boolean enabled,
+      ObjectProvider<SessionRepository<? extends Session>> sessionRepositories,
+      ObjectProvider<CookieSerializer> cookieSerializers) {
+    this.jdbc = jdbc;
+    this.enabled = enabled;
+    this.sessionRepositories = sessionRepositories;
+    this.cookieSerializers = cookieSerializers;
+  }
+
+  public OpenAiConnectionController(JdbcTemplate jdbc, boolean enabled) {
+    this.jdbc = jdbc;
+    this.enabled = enabled;
+    this.sessionRepositories = null;
+    this.cookieSerializers = null;
+  }
   public record Connection(UUID id, String clientName, String scopes, java.util.List<String> scopeLabels,
       java.time.Instant expiresAt, String label) {}
   public record Availability(boolean enabled) {}
@@ -23,10 +49,26 @@ public class OpenAiConnectionController {
   public Availability status() { return new Availability(enabled); }
 
   @DeleteMapping("/browser-session")
-  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-  public void endBrowserSession(jakarta.servlet.http.HttpServletRequest request) {
+  public ResponseEntity<Void> endBrowserSession(jakarta.servlet.http.HttpServletRequest request,
+      jakarta.servlet.http.HttpServletResponse response) {
+    CookieSerializer cookieSerializer = cookieSerializers == null ? null : cookieSerializers.getIfAvailable();
+    List<String> sessionIds = cookieSerializer == null
+        ? new ArrayList<>() : new ArrayList<>(cookieSerializer.readCookieValues(request));
     var session = request.getSession(false);
-    if (session != null) session.invalidate();
+    if (session != null) {
+      sessionIds.add(session.getId());
+      session.invalidate();
+    }
+    SessionRepository<? extends Session> sessionRepository =
+        sessionRepositories == null ? null : sessionRepositories.getIfAvailable();
+    if (sessionRepository != null) sessionIds.stream().filter(Objects::nonNull).distinct()
+        .forEach(sessionRepository::deleteById);
+    if (cookieSerializer != null) {
+      var cookieValue = new CookieSerializer.CookieValue(request, response, "");
+      cookieValue.setCookieMaxAge(0);
+      cookieSerializer.writeCookieValue(cookieValue);
+    }
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping
