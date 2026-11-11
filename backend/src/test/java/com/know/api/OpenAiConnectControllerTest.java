@@ -36,6 +36,8 @@ class OpenAiConnectControllerTest {
     var result = controller(users, mock(PasswordEncoder.class), mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class))
         .account(request, new TestingAuthenticationToken(user.getId().toString(), "", "ROLE_USER"));
     assertTrue(result.getBody().contains("person@example.com"));
+    assertTrue(result.getBody().contains("src='/connect/openai/theme.js'"));
+    assertTrue(result.getBody().contains("class='theme-toggle ghost'"));
     assertTrue(result.getBody().contains("Switch account"));
     assertTrue(result.getBody().contains("csrf-test"));
     assertEquals(java.nio.charset.StandardCharsets.UTF_8, result.getHeaders().getContentType().getCharset());

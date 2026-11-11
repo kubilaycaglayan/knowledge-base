@@ -16,6 +16,7 @@ it("offers the standard theme control in the account header", async () => {
   const wrapper = mount(OAuthAccountView, { global: { stubs } });
   await flushPromises();
   expect(wrapper.find('header button.theme-toggle').exists()).toBe(true);
+  expect(wrapper.findAll('header button.theme-toggle svg')).toHaveLength(1);
   fetchSpy.mockRestore();
 });
 
@@ -26,7 +27,7 @@ it("shows the authenticated account and submits a CSRF-protected choice", async 
   expect(wrapper.text()).toContain("user@example.test");
   expect(wrapper.get("form").attributes("action")).toBe("/connect/openai/account");
   expect(wrapper.get('input[name="_csrf"]').attributes("value")).toBe("csrf");
-  expect(wrapper.findAll("button").map(button => button.attributes("value"))).toEqual(["continue", "switch"]);
+  expect(wrapper.findAll("form button").map(button => button.attributes("value"))).toEqual(["continue", "switch"]);
   const continueClasses = wrapper.get('button[value="continue"]').classes();
   fetchSpy.mockRestore();
   expect(continueClasses).toContain("primary");
@@ -39,7 +40,7 @@ it("posts the account choice as JSON and explicitly navigates to its continuatio
   const wrapper = mount(OAuthAccountView, { global: { stubs } });
   await flushPromises();
 
-  await wrapper.get("form").trigger("submit", { submitter: wrapper.findAll("button")[0].element });
+  await wrapper.get("form").trigger("submit", { submitter: wrapper.get('button[value="continue"]').element });
   await flushPromises();
 
   expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -72,7 +73,7 @@ it("uses the captured continuation when the authorization bridge replaces the JS
   const wrapper = mount(OAuthAccountView, { global: { stubs } });
   await flushPromises();
 
-  await wrapper.get("form").trigger("submit", { submitter: wrapper.findAll("button")[0].element });
+  await wrapper.get("form").trigger("submit", { submitter: wrapper.get('button[value="continue"]').element });
   await flushPromises();
 
   expect(fetchSpy).toHaveBeenCalledTimes(3);

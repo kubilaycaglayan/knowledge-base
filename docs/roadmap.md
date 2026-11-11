@@ -3,6 +3,7 @@
 ## Integrations
 
 - [x] Cancel OpenAI consent without granting checked permissions or issuing an authorization code.
+- [x] Use the application theme control and palettes across OpenAI login, account confirmation, and consent; default to the system preference.
 
 - [x] Preserve HTTPS in OAuth login redirects behind the trusted reverse proxy.
 

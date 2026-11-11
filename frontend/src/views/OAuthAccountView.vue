@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { navigateToOAuthContinuation } from "../lib/oauthAuthorization";
+import ThemeToggle from "../components/ThemeToggle.vue";
 
 type AccountInfo = { email: string; csrfParameter: string; csrfToken: string; authorizationUrl: string };
 const account = ref<AccountInfo | null>(null);
@@ -64,7 +65,7 @@ async function submitChoice(event: SubmitEvent) {
 
 <template>
   <v-app class="oauth-account-page">
-    <header class="oauth-header"><a href="/" translate="no" aria-label="Knowledge Base">knowledge<span>.</span>base</a></header>
+    <header class="oauth-header"><a href="/" translate="no" aria-label="Knowledge Base">knowledge<span>.</span>base</a><ThemeToggle /></header>
     <main class="oauth-main">
       <v-card class="oauth-card" variant="outlined">
         <v-card-title class="oauth-title"><h1>Connect Knowledge Base</h1></v-card-title>
@@ -88,14 +89,14 @@ async function submitChoice(event: SubmitEvent) {
 </template>
 
 <style scoped>
-.oauth-account-page { min-height: 100vh; background: #f7f8fa; color: #252b36; }
-.oauth-header { width: min(1200px, calc(100% - 48px)); min-height: 76px; margin: 0 auto; padding: 16px 0; display: flex; align-items: center; border-bottom: 1px solid #dfe3e9; }
-.oauth-header a { color: #252b36; font-size: 19px; font-weight: 800; letter-spacing: -.7px; text-decoration: none; }
-.oauth-header span { color: #606b7b; }
+.oauth-account-page { min-height: 100vh; background: var(--workspace-background); color: var(--workspace-text); }
+.oauth-header { width: min(1200px, calc(100% - 48px)); min-height: 76px; margin: 0 auto; padding: 16px 0; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--workspace-border); }
+.oauth-header a { color: var(--workspace-text); font-size: 19px; font-weight: 800; letter-spacing: -.7px; text-decoration: none; }
+.oauth-header span { color: var(--workspace-muted); }
 .oauth-main { width: min(480px, calc(100% - 48px)); margin: 40px auto; }
-.oauth-card { padding: 8px; border-color: #dfe3e9; background: white; }
+.oauth-card { padding: 8px; border-color: var(--workspace-border); background: var(--workspace-surface); }
 .oauth-title h1 { font-size: 26px; font-weight: 650; line-height: 1.3; letter-spacing: -.7px; white-space: normal; }
-.oauth-card p { color: #606b7b; overflow-wrap: anywhere; }
+.oauth-card p { color: var(--workspace-muted); overflow-wrap: anywhere; }
 .oauth-card form { display: grid; gap: 12px; margin-top: 24px; }
 @media (max-width: 700px) { .oauth-header, .oauth-main { width: calc(100% - 32px); } .oauth-card form :deep(button) { min-height: 44px; } }
 </style>
