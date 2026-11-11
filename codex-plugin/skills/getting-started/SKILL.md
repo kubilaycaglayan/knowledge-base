@@ -36,7 +36,7 @@ The plugin connects through OAuth. The user signs in to their existing Knowledge
 - **Work by project or topic:** report_read for time totals; use path and session-label breakdowns. Use search for related notes, logs, sessions, cards, or calendar records.
 - **A date's journal/calendar details:** calendar_days.
 - **Short updates:** logs_list. Use labels_list and search to explore their labels.
-- **Longer written material:** use notes_list to find matching note metadata (q searches text); call note_get with the returned noteId to read one note's plain-text body. Use archived=true when archived notes are requested.
+- **Longer written material:** use notes_list to find matching note metadata (q searches text); call note_get with the returned noteId to read the body. If a likely title is absent, retry with distinctive title/content terms and inspect later pages before saying it is missing. Use archived=true when archived notes are requested.
 - **Label exploration:** labels_list gives the names, IDs, and scopes. Then search by the exact label name. Label-based results include via=LABEL and viaName; use these to identify records found through that label.
 - **Projects and tasks:** paths_list, boards_list, then board_cards using a boardId returned by boards_list.
 - **Recent changes:** activity_list.
@@ -50,22 +50,22 @@ These are MCP tools on the connected server, not separate REST endpoints. Calls 
 | --- | --- |
 | report_read | period=WEEK, MONTH, YEAR means current calendar period. Or send inclusive startDate/endDate as YYYY-MM-DD; custom ranges may not exceed two years. Returns totals and category breakdowns; daily rows are omitted unless includeDays=true, then daysPage/daysSize paginate at most 31 rows. Sankey data is omitted. |
 | calendar_days | Optional ISO startDate/endDate; defaults to the past 30 days through today; maximum range one year. |
-| sessions_list | page is zero-based; size defaults to 20 and is capped at 50. No date filter. |
-| notes_list | Returns metadata without note bodies. page is zero-based; size defaults to 20 and is capped at 100; optional q and archived. |
+| sessions_list | page is zero-based: start at 0; size defaults to 20 and is capped at 50. No date filter. |
+| notes_list | Returns metadata without note bodies. page is zero-based: start at 0; size defaults to 20 and is capped at 100; optional q and archived. |
 | note_get | Requires noteId from notes_list; returns plain-text content for one note, without the rich-text JSON document. |
-| logs_list | page is zero-based; size defaults to 50 and is capped at 100. No date or text filter. |
+| logs_list | page is zero-based: start at 0; size defaults to 50 and is capped at 100. No date or text filter. |
 | activity_list | Latest 200 entries maximum; no date filter. |
 | labels_list | Lists labels, IDs, scopes, and system status. |
-| search | Send q; page is zero-based; size defaults to 20 and is capped at 50; offset stops at 1,000. No date filter. |
-| paths_list | page is zero-based; size defaults to 50 and is capped at 100; archived paths are marked. |
-| boards_list | page is zero-based; size defaults to 50 and is capped at 100; archived and hidden boards are marked. |
-| board_cards | Requires boardId; archived=true selects archived cards. page is zero-based; size defaults to 50 and is capped at 100. |
+| search | Send q; page is zero-based: start at 0; size defaults to 20 and is capped at 50; offset stops at 1,000. No date filter. |
+| paths_list | page is zero-based: start at 0; size defaults to 50 and is capped at 100; archived paths are marked. |
+| boards_list | page is zero-based: start at 0; size defaults to 50 and is capped at 100; archived and hidden boards are marked. |
+| board_cards | Requires boardId; archived=true selects archived cards. Page is zero-based: start at 0; size defaults to 50 and is capped at 100. |
 
 ## Query guidance
 
 1. For time totals, prefer report_read over adding up one page of sessions. For a custom range, include both dates; the end date is inclusive.
 2. “This week” means Monday through Sunday. “Last month” and “last year” mean the previous complete calendar periods, so calculate their explicit date bounds.
 3. To explore a label, get its exact name using labels_list, then search by that name. Search also matches direct text and matching paths; inspect via and viaName so you can explain why each result appeared.
-4. Page through bounded lists before concluding there are no records. Search may return fuzzy matches when literal matches are absent, and is capped at offset 1,000.
+4. Pagination is zero-based: always start at page=0, then advance by one; inspect all relevant pages before concluding there are no records. Search may return fuzzy matches when literal matches are absent, and is capped at offset 1,000.
 5. If a tool is absent or the token lacks a category, explain the needed category. Do not use another tool or endpoint to bypass the grant.
 6. Give concise answers with the date range, total or finding, and relevant path, label, or source. Mention limits when they affect the conclusion.
