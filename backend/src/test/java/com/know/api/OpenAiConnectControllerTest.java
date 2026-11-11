@@ -80,6 +80,23 @@ class OpenAiConnectControllerTest {
     assertThrows(ResponseStatusException.class, () -> instance.chooseAccount("continue", new MockHttpServletRequest(),
         new TestingAuthenticationToken("user", "", "ROLE_USER")));
   }
+
+  @Test
+  void accountContinueReturnsJsonContinuationForBrowserManagedNavigation() throws Exception {
+    var request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.ACCEPT, "application/json");
+    String target = "/oauth2/authorize?response_type=code&state=abc";
+    request.getSession().setAttribute(OAuthAccountConfirmationFilter.PENDING, target);
+
+    var response = controller(mock(UserRepository.class), mock(PasswordEncoder.class),
+        mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class))
+        .chooseAccount("continue", request, new TestingAuthenticationToken("user", "", "ROLE_USER"));
+
+    assertEquals(200, response.getStatusCode().value());
+    Object body = response.getBody();
+    assertNotNull(body);
+    assertEquals(target, body.getClass().getMethod("authorizationUrl").invoke(body));
+  }
   @AfterEach
   void clearSecurityContext() {
     SecurityContextHolder.clearContext();
@@ -169,6 +186,31 @@ class OpenAiConnectControllerTest {
     assertEquals("/", response.getHeaders().getFirst(HttpHeaders.LOCATION));
     assertEquals(user.getId().toString(), SecurityContextHolder.getContext().getAuthentication().getName());
     verify(sessions).onAuthentication(any(), eq(request), eq(servletResponse));
+  }
+
+  @Test
+  void oauthPasswordLoginReturnsJsonContinuationForBrowserManagedNavigation() throws Exception {
+    UserRepository users = mock(UserRepository.class);
+    PasswordEncoder passwords = mock(PasswordEncoder.class);
+    AuthAttemptLimiter limiter = mock(AuthAttemptLimiter.class);
+    SessionAuthenticationStrategy sessions = mock(SessionAuthenticationStrategy.class);
+    User user = new User("person@example.com", "stored-bcrypt-hash", "Person");
+    when(users.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(user));
+    when(passwords.matches("correct-password", "stored-bcrypt-hash")).thenReturn(true);
+    when(limiter.allow(anyString())).thenReturn(true);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.ACCEPT, "application/json");
+    String target = "/oauth2/authorize?response_type=code&state=abc";
+    request.getSession().setAttribute(OAuthAccountConfirmationFilter.PENDING, target);
+    MockHttpServletResponse servletResponse = new MockHttpServletResponse();
+
+    var response = new OpenAiConnectController(users, passwords, mock(GoogleIdentityVerifier.class), limiter,
+        sessions, "").login("person@example.com", "correct-password", request, servletResponse);
+
+    assertEquals(200, response.getStatusCode().value());
+    Object body = response.getBody();
+    assertNotNull(body);
+    assertEquals(target, body.getClass().getMethod("authorizationUrl").invoke(body));
   }
 
   @Test
