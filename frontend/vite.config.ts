@@ -4,6 +4,9 @@ import vuetify from "vite-plugin-vuetify";
 
 export default defineConfig({
   plugins: [vue(), vuetify({ autoImport: true })],
+  // Prebundle the lazy-loaded settings field before browser tests navigate to it.
+  // Otherwise Vite reloads the page when it first discovers the component.
+  optimizeDeps: { include: ["vuetify/components/VTextField"] },
   server: {
     host: "0.0.0.0",
     port: 5177,

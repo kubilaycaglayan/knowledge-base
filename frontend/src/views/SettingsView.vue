@@ -25,7 +25,7 @@ const saving = ref(false);
 const exportMessage = ref("");
 const activeTab = ref<"account" | "data" | "export" | "mcp">("account");
 type McpToken = { id: string; name: string; categories: string[]; createdAt: string; expiresAt: string; lastUsedAt: string | null };
-type OpenAiConnection = { id: string; clientName: string; scopes: string; scopeLabels: string[]; expiresAt: string | null };
+type OpenAiConnection = { id: string; clientName: string; scopes: string; scopeLabels: string[]; expiresAt: string | null; label: string | null };
 const mcpCategories = ["notes", "logs", "calendar", "sessions", "activity", "reports", "paths", "labels", "boards"];
 const mcpTokens = ref<McpToken[]>([]);
 const openAiConnections = ref<OpenAiConnection[]>([]);
@@ -48,6 +48,10 @@ const openAiConnectionToRevoke = ref<OpenAiConnection | null>(null);
 const revokingToken = ref(false);
 const revokeError = ref("");
 const connectionStatus = ref("");
+const labelConnection = ref<OpenAiConnection | null>(null);
+const connectionLabel = ref("");
+const labelSaving = ref(false);
+const labelError = ref("");
 const mcpEndpoint = `${window.location.origin}/mcp`;
 
 async function loadMcpTokens() {
@@ -66,6 +70,26 @@ async function revokeOpenAiConnection(connection: OpenAiConnection) {
   openAiConnectionToRevoke.value = connection;
   revokeError.value = "";
   revokeDialogOpen.value = true;
+}
+function editConnectionLabel(connection: OpenAiConnection) {
+  labelConnection.value = connection;
+  connectionLabel.value = connection.label || "";
+  labelError.value = "";
+}
+async function saveConnectionLabel() {
+  const connection = labelConnection.value;
+  if (!connection || labelSaving.value) return;
+  const label = connectionLabel.value.trim();
+  if (label.length > 100) { labelError.value = "Use at most 100 characters."; return; }
+  labelSaving.value = true;
+  labelError.value = "";
+  try {
+    await api(`/openai-connections/${connection.id}/label`, { method: "PATCH", body: JSON.stringify({ label }) });
+    connection.label = label || null;
+    labelConnection.value = null;
+    connectionStatus.value = "Connection label saved.";
+  } catch { labelError.value = "Could not save the label. Try again."; }
+  finally { labelSaving.value = false; }
 }
 function formatOpenAiExpiry(value: string | null) {
   if (!value) return "Expiry unavailable";
@@ -302,13 +326,14 @@ onMounted(load);
       </section>
       <section v-if="openAiConnectionsEnabled" class="card settings-card">
         <h2>OpenAI connections</h2>
+        <p class="muted">Signing out of Knowledge Base does not disconnect these connections. Labels are added by you and do not verify the OpenAI account.</p>
         <p v-if="openAiConnectionsLoading" class="muted" role="status" aria-live="polite">Loading OpenAI connections…</p>
         <p v-else-if="!openAiConnections.length && !connectionError" class="muted">No OpenAI connections.</p>
         <p v-if="connectionError" class="notice" role="alert" aria-live="polite">{{ connectionError }}</p>
         <p v-if="connectionStatus" class="muted" role="status" aria-live="polite">{{ connectionStatus }}</p>
         <article v-for="connection in openAiConnections" :key="connection.id" class="openai-connection">
-          <div><strong>{{ connection.clientName }}</strong><p class="muted">Approved access: {{ connection.scopeLabels.join(", ") }}</p><p class="muted">{{ formatOpenAiExpiry(connection.expiresAt) }}</p></div>
-          <v-btn type="button" color="error" variant="outlined" size="small" :loading="disconnectingOpenAiConnection === connection.id" :disabled="disconnectingOpenAiConnection !== null" @click="revokeOpenAiConnection(connection)">Disconnect…</v-btn>
+          <div><strong>{{ connection.label || "Unlabeled connection" }}</strong><p class="muted">{{ connection.clientName }}</p><p class="muted">Approved access: {{ connection.scopeLabels.join(", ") }}</p><p class="muted">{{ formatOpenAiExpiry(connection.expiresAt) }}</p></div>
+          <div><v-btn type="button" color="error" variant="outlined" size="small" :loading="disconnectingOpenAiConnection === connection.id" :disabled="disconnectingOpenAiConnection !== null" @click="revokeOpenAiConnection(connection)">Disconnect…</v-btn> <v-btn type="button" variant="outlined" size="small" @click="editConnectionLabel(connection)">Edit label…</v-btn></div>
         </article>
       </section>
       <section class="card settings-card">
@@ -319,6 +344,13 @@ onMounted(load);
         </article>
       </section>
     </section>
+    <v-dialog :model-value="Boolean(labelConnection)" max-width="420" :persistent="labelSaving" aria-labelledby="connection-label-title" @update:model-value="value => { if (!value && !labelSaving) labelConnection = null; }">
+      <v-card>
+        <v-card-title id="connection-label-title">Connection label</v-card-title>
+        <v-card-text><p>Give this connection a name you recognize. This does not verify the OpenAI account.</p><v-text-field v-model="connectionLabel" aria-label="Connection label" name="connection-label" maxlength="100" :error-messages="labelError" @keydown.enter.prevent="saveConnectionLabel" /></v-card-text>
+        <v-card-actions><v-btn type="button" variant="outlined" :disabled="labelSaving" @click="labelConnection = null">Cancel</v-btn><v-btn type="button" variant="flat" :loading="labelSaving" :disabled="labelSaving" @click="saveConnectionLabel">Save label</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-dialog v-model="revokeDialogOpen" max-width="420" content-class="mcp-revoke-dialog-content" :persistent="revokingToken">
       <v-card class="mcp-revoke-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mcp-revoke-title" aria-describedby="mcp-revoke-description">
         <v-card-title class="mcp-revoke-title" id="mcp-revoke-title">{{ openAiConnectionToRevoke ? "Disconnect OpenAI?" : "Revoke token?" }}</v-card-title>
@@ -671,8 +703,11 @@ onMounted(load);
 .mcp-secret-value :deep(.v-btn) { flex: 0 0 auto; min-height: 40px; }
 .mcp-secret > span > code { padding: 2px 5px; }
 .mcp-copy-status { margin: 0; }
-.mcp-token { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
-.mcp-token p { margin: 3px 0 0; }
+.mcp-token, .openai-connection { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-top: 12px; border-top: 1px solid var(--workspace-border); overflow-wrap: anywhere; }
+.mcp-token p, .openai-connection p { margin: 3px 0 0; }
+.openai-connection > div { min-width: 0; }
+.openai-connection > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 600px) { .openai-connection { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
   .settings-tabs {
     display: grid;

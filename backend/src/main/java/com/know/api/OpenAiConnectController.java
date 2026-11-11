@@ -6,6 +6,7 @@ import com.know.security.GoogleIdentityVerifier;
 import com.know.security.AuthAttemptLimiter;
 import com.know.security.OpenAiScope;
 import com.know.security.OAuthConsentRequestStore;
+import com.know.security.OAuthAccountConfirmationFilter;
 import com.know.security.PasswordTiming;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -54,7 +55,7 @@ public class OpenAiConnectController {
         ? "<input type=\"hidden\" name=\""+t.getParameterName()+"\" value=\""+escape(t.getToken())+"\">" : "";
     String csrfToken = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t ? escape(t.getToken()) : "";
     String googleButton = googleClientId.isBlank() ? "" : "<script id='google-gsi-client' src='https://accounts.google.com/gsi/client' async defer></script><script src='/connect/openai/openai-connect.js' defer></script><div id='google-connect-config' data-client-id='"+escape(googleClientId)+"' data-csrf-token='"+csrfToken+"'></div><div class='google-login'><p>or continue with</p><div id='google-connect-button' aria-label='Continue with Google'></div></div>";
-    return ResponseEntity.ok().contentType(MediaType.TEXT_HTML)
+    return ResponseEntity.ok().contentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8))
         .header(HttpHeaders.CACHE_CONTROL, "no-store")
         .header(HttpHeaders.PRAGMA, "no-cache")
         .header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
@@ -84,6 +85,70 @@ public class OpenAiConnectController {
   }
 
   private static String hidden(String name, String value) { return "<input type=hidden name=\""+name+"\" value=\""+escape(value)+"\">"; }
+
+  public record AccountInfo(String email, String csrfParameter, String csrfToken) {}
+
+  @GetMapping(value="/account-info", produces=MediaType.APPLICATION_JSON_VALUE)
+  @ResponseBody
+  public ResponseEntity<AccountInfo> accountInfo(HttpServletRequest request, Authentication authentication) {
+    var session = request.getSession(false);
+    if (!isAuthenticated(authentication) || session == null
+        || !(session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String))
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Connection expired; start again from OpenAI");
+    User user;
+    try {
+      user = users.findById(java.util.UUID.fromString(authentication.getName())).orElseThrow();
+    } catch (IllegalArgumentException | java.util.NoSuchElementException ex) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired; start again from OpenAI");
+    }
+    if (!(request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken csrf))
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Connection unavailable");
+    return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .header(HttpHeaders.PRAGMA, "no-cache")
+        .body(new AccountInfo(user.getEmail(), csrf.getParameterName(), csrf.getToken()));
+  }
+
+  @GetMapping(value="/account", produces=MediaType.TEXT_HTML_VALUE)
+  @ResponseBody
+  public ResponseEntity<String> account(HttpServletRequest request, Authentication authentication) {
+    if (!isAuthenticated(authentication))
+      return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/connect/openai/login").build();
+    var session = request.getSession(false);
+    if (session == null || !(session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String))
+      return html(400, "<!doctype html><title>Connection expired</title><p>Start the connection again from OpenAI.</p>");
+    User user;
+    try {
+      user = users.findById(java.util.UUID.fromString(authentication.getName())).orElseThrow();
+    } catch (IllegalArgumentException | java.util.NoSuchElementException ex) {
+      return html(401, "<!doctype html><title>Session expired</title><p>Start the connection again from OpenAI.</p>");
+    }
+    String csrf = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t
+        ? hidden(t.getParameterName(), t.getToken()) : "";
+    return html("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Confirm account · Knowledge Base</title>"+PAGE_STYLE+"</head><body><header class='shell-header'><a class='brand' href='/' translate='no'>knowledge<span>.</span>base</a></header><main><h1>Connect Knowledge Base</h1><p>You’re signed in to Knowledge Base as <strong>"+escape(user.getEmail())+"</strong>.</p><form method=post action='/connect/openai/account'>"+csrf+"<button name=action value=continue>Continue</button><button name=action value=switch>Switch account</button></form></main></body></html>");
+  }
+
+  @PostMapping("/account")
+  @ResponseBody
+  public ResponseEntity<Void> chooseAccount(@RequestParam String action, HttpServletRequest request,
+      Authentication authentication) {
+    var session = request.getSession(false);
+    if (!isAuthenticated(authentication) || session == null
+        || !(session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String target))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Connection expired; start again from OpenAI");
+    if ("continue".equals(action)) {
+      session.removeAttribute(OAuthAccountConfirmationFilter.PENDING);
+      session.setAttribute(OAuthAccountConfirmationFilter.APPROVED, target);
+      return ResponseEntity.status(302).header(HttpHeaders.LOCATION, target).build();
+    }
+    if ("switch".equals(action)) {
+      session.removeAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+      session.removeAttribute(OAuthAccountConfirmationFilter.APPROVED);
+      SecurityContextHolder.clearContext();
+      request.changeSessionId();
+      return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/connect/openai/login").build();
+    }
+    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account selection");
+  }
 
   @PostMapping(value="/login", consumes=MediaType.APPLICATION_FORM_URLENCODED_VALUE)
   @ResponseBody
@@ -130,6 +195,9 @@ public class OpenAiConnectController {
           "Too many sign-in attempts; try again shortly");
   }
   private static String safeContinuation(HttpServletRequest request) {
+    HttpSession session = request.getSession(false);
+    if (session != null && session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String pending)
+      return pending;
     SavedRequest saved = new HttpSessionRequestCache().getRequest(request, null);
     if (saved == null) return "/";
     try {
@@ -148,7 +216,7 @@ public class OpenAiConnectController {
   }
   private static ResponseEntity<String> html(String body) { return html(200, body); }
   private static ResponseEntity<String> html(int status, String body) {
-    return ResponseEntity.status(status).contentType(MediaType.TEXT_HTML)
+    return ResponseEntity.status(status).contentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8))
         .header(HttpHeaders.CACHE_CONTROL, "no-store").header(HttpHeaders.PRAGMA, "no-cache").body(body);
   }
   public record GoogleLogin(String idToken) {}

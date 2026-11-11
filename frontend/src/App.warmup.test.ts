@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { routeLocationKey, routerKey } from "vue-router";
 import App from "./App.vue";
@@ -39,6 +39,7 @@ describe("App navigation warm-up", () => {
   });
 
   it("WU-11: starts the warm-up for a signed-in user and cancels it on sign-out", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
     localStorage.setItem("know_token", "token");
     const wrapper = mount(App, {
       global: {
@@ -54,10 +55,12 @@ describe("App navigation warm-up", () => {
 
     await wrapper.get("button.ghost").trigger("click");
     await wrapper.get(".sign-out-confirm").trigger("click");
+    await flushPromises();
 
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(clearWarmupCooldown).toHaveBeenCalledTimes(1);
     expect(scheduleWarmup).toHaveBeenCalledTimes(1);
+    fetchSpy.mockRestore();
   });
 
   it("does not warm up before sign-in", () => {

@@ -9,6 +9,7 @@ import com.know.domain.UserRepository;
 import com.know.security.AuthAttemptLimiter;
 import com.know.security.GoogleIdentityVerifier;
 import com.know.security.OAuthConsentRequestStore;
+import com.know.security.OAuthAccountConfirmationFilter;
 import java.util.Optional;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,61 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import org.springframework.web.server.ResponseStatusException;
 
 class OpenAiConnectControllerTest {
+  @Test
+  void accountConfirmationDisplaysEscapedIdentityAndOffersSwitch() {
+    User user = new User("person@example.com", "hash", "Person");
+    UserRepository users = mock(UserRepository.class);
+    when(users.findById(user.getId())).thenReturn(Optional.of(user));
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.getSession().setAttribute(OAuthAccountConfirmationFilter.PENDING, "/oauth2/authorize?state=abc");
+    request.setAttribute("_csrf", new DefaultCsrfToken("X-CSRF-TOKEN", "_csrf", "csrf-test"));
+    var result = controller(users, mock(PasswordEncoder.class), mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class))
+        .account(request, new TestingAuthenticationToken(user.getId().toString(), "", "ROLE_USER"));
+    assertTrue(result.getBody().contains("person@example.com"));
+    assertTrue(result.getBody().contains("Switch account"));
+    assertTrue(result.getBody().contains("csrf-test"));
+    assertEquals(java.nio.charset.StandardCharsets.UTF_8, result.getHeaders().getContentType().getCharset());
+    assertEquals("no-store", result.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
+  }
+
+  @Test
+  void accountInfoRequiresPendingAuthenticatedSessionAndReturnsCsrf() {
+    User user = new User("person@example.com", "hash", "Person");
+    UserRepository users = mock(UserRepository.class);
+    when(users.findById(user.getId())).thenReturn(Optional.of(user));
+    var instance = controller(users, mock(PasswordEncoder.class), mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class));
+    var request = new MockHttpServletRequest();
+    var auth = new TestingAuthenticationToken(user.getId().toString(), "", "ROLE_USER");
+    assertThrows(ResponseStatusException.class, () -> instance.accountInfo(request, auth));
+    request.getSession().setAttribute(OAuthAccountConfirmationFilter.PENDING, "/oauth2/authorize?state=one");
+    request.setAttribute("_csrf", new DefaultCsrfToken("X-CSRF-TOKEN", "_csrf", "test-csrf"));
+    var response = instance.accountInfo(request, auth);
+    assertEquals("person@example.com", response.getBody().email());
+    assertEquals("test-csrf", response.getBody().csrfToken());
+    assertEquals("no-store", response.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
+    assertThrows(ResponseStatusException.class, () -> instance.accountInfo(request, null));
+  }
+
+  @Test
+  void switchAccountClearsAuthenticationAndPreservesPendingRequest() {
+    var request = new MockHttpServletRequest();
+    var session = request.getSession();
+    String target = "/oauth2/authorize?state=abc";
+    session.setAttribute(OAuthAccountConfirmationFilter.PENDING, target);
+    session.setAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, "previous-user");
+    var result = controller(mock(UserRepository.class), mock(PasswordEncoder.class), mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class))
+        .chooseAccount("switch", request, new TestingAuthenticationToken("user", "", "ROLE_USER"));
+    assertEquals("/connect/openai/login", result.getHeaders().getFirst(HttpHeaders.LOCATION));
+    assertNull(session.getAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY));
+    assertEquals(target, session.getAttribute(OAuthAccountConfirmationFilter.PENDING));
+  }
+
+  @Test
+  void accountConfirmationCannotBeSubmittedWithoutPendingAuthorization() {
+    var instance = controller(mock(UserRepository.class), mock(PasswordEncoder.class), mock(GoogleIdentityVerifier.class), mock(AuthAttemptLimiter.class));
+    assertThrows(ResponseStatusException.class, () -> instance.chooseAccount("continue", new MockHttpServletRequest(),
+        new TestingAuthenticationToken("user", "", "ROLE_USER")));
+  }
   @AfterEach
   void clearSecurityContext() {
     SecurityContextHolder.clearContext();

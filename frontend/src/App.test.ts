@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import App from "./App.vue";
 import { routeLocationKey, routerKey } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
@@ -66,6 +66,7 @@ describe("App", () => {
   });
 
   it("shows the authenticated navigation and signs out", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
     localStorage.setItem("know_token", "token");
     const wrapper = mount(App, {
       global: {
@@ -101,10 +102,12 @@ describe("App", () => {
     expect(localStorage.getItem("know_token")).toBe("token");
     expect(wrapper.get('[role="alertdialog"]').text()).toContain("Sign out?");
     await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+    await flushPromises();
 
     expect(localStorage.getItem("know_token")).toBeNull();
     expect(wrapper.find("nav").exists()).toBe(false);
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
+    fetchSpy.mockRestore();
   });
 
   it("keeps the session when sign-out confirmation is cancelled", async () => {
@@ -117,6 +120,33 @@ describe("App", () => {
     expect(localStorage.getItem("know_token")).toBe("token");
     expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
     expect(wrapper.find("nav").exists()).toBe(true);
+  });
+
+  it("ends the separate OAuth browser session when signing out", async () => {
+    localStorage.setItem("know_token", "token");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const wrapper = mount(App, { global: { stubs } });
+
+    await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining("/openai-connections/browser-session"), expect.objectContaining({ method: "DELETE" }));
+    fetchSpy.mockRestore();
+  });
+
+  it("keeps the web login and offers retry if ending the OAuth session fails", async () => {
+    localStorage.setItem("know_token", "token");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (String(url).includes("/openai-connections/browser-session")) throw new Error("offline");
+      return new Response(null, { status: 204 });
+    });
+    const wrapper = mount(App, { global: { stubs } });
+    await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+    await flushPromises();
+    expect(localStorage.getItem("know_token")).toBe("token");
+    expect(wrapper.get('[role="alertdialog"] [role="alert"]').text()).toContain("try again");
+    fetchSpy.mockRestore();
   });
 
   it("puts the product name first in the browser title", async () => {

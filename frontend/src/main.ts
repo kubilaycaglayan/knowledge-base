@@ -85,4 +85,10 @@ router.beforeEach((to, from) => {
 });
 // Menus and dialogs teleport to <body>, so watch all of it, not only #app.
 watchBrowserCompletions(document.body);
-createApp(App).use(createPinia()).use(router).use(vuetify).mount("#app");
+if (window.location.pathname === "/oauth-account") {
+  void import("./views/OAuthAccountView.vue").then(({ default: view }) => {
+    createApp(view).use(vuetify).mount("#app");
+  });
+} else {
+  createApp(App).use(createPinia()).use(router).use(vuetify).mount("#app");
+}

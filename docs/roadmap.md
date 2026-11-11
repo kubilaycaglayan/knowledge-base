@@ -6,6 +6,7 @@
 
 - [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP
   endpoint for AI clients; manage tokens in Settings. See [MCP setup](mcp.md).
+  OpenAI connections require account confirmation, support account switching and user-provided labels, and remain separately revocable after web sign-out.
 - [x] Add an isolated OAuth authorization-code + PKCE connection for the OpenAI
   plugin, selectable read scopes, refresh rotation/replay revocation, discovery,
   and per-user connection revocation. Production dashboard verification remains

@@ -137,6 +137,36 @@ describe("SettingsView", () => {
     expect(disabledWrapper.text()).not.toContain("OpenAI connections");
   });
 
+  it("saves a user-provided OpenAI connection label", async () => {
+    const connection = { id: "connection-1", clientName: "OpenAI", scopes: "kb:notes:read", scopeLabels: ["Notes"], expiresAt: null, label: null };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/auth/me") return { email: "person@example.com", hasPassword: true, hasGoogle: false };
+      if (path === "/openai-connections/status") return { enabled: true };
+      if (path === "/openai-connections") return [connection];
+      if (path.endsWith("/label") && options?.method === "PATCH") return undefined;
+      return [];
+    });
+    const wrapper = mount(SettingsView, { global: { stubs: {
+      VBtn: { template: '<button type="button"><slot /></button>' },
+      VDialog: { props: ["modelValue"], template: '<div v-if="modelValue" role="dialog"><slot /></div>' },
+      VCard: { template: '<div v-bind="$attrs"><slot /></div>' },
+      VCardTitle: { template: '<h2><slot /></h2>' },
+      VCardText: { template: '<div><slot /></div>' },
+      VCardActions: { template: '<div><slot /></div>' },
+      VTextField: { props: ["modelValue"], emits: ["update:modelValue"], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
+    } } });
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-mcp"]').trigger("click");
+    await flushPromises();
+    await wrapper.get(".openai-connection button:last-child").trigger("click");
+    await wrapper.get('[role="dialog"] input').setValue("  Work account  ");
+    await wrapper.get('[role="dialog"] button:last-child').trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/openai-connections/connection-1/label", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ label: "Work account" }) }));
+    expect(wrapper.get(".openai-connection").text()).toContain("Work account");
+    expect(wrapper.text()).toContain("do not verify the OpenAI account");
+  });
+
   it("creates a scoped MCP token and displays its secret only in the creation result", async () => {
     const token = { id: "token-1", name: "Codex", categories: ["notes"], createdAt: "2026-01-01T00:00:00Z", expiresAt: "2026-02-01T00:00:00Z", lastUsedAt: null };
     const writeText = vi.fn().mockResolvedValue(undefined);
