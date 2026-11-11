@@ -56,6 +56,7 @@ class OpenAiConnectControllerTest {
     var response = instance.accountInfo(request, auth);
     assertEquals("person@example.com", response.getBody().email());
     assertEquals("test-csrf", response.getBody().csrfToken());
+    assertEquals("/oauth2/authorize?state=one", response.getBody().authorizationUrl());
     assertEquals("no-store", response.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
     assertThrows(ResponseStatusException.class, () -> instance.accountInfo(request, null));
   }

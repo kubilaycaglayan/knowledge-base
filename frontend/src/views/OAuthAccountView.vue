@@ -2,7 +2,7 @@
 import { onMounted, ref } from "vue";
 import { navigateToOAuthContinuation } from "../lib/oauthAuthorization";
 
-type AccountInfo = { email: string; csrfParameter: string; csrfToken: string };
+type AccountInfo = { email: string; csrfParameter: string; csrfToken: string; authorizationUrl: string };
 const account = ref<AccountInfo | null>(null);
 const failed = ref(false);
 const choiceBusy = ref(false);
@@ -20,6 +20,7 @@ async function submitChoice(event: SubmitEvent) {
   const form = event.currentTarget;
   const submitter = event.submitter as HTMLButtonElement | null;
   if (!(form instanceof HTMLFormElement)) return;
+  const action = submitter?.value || "continue";
   const data = new URLSearchParams();
   new FormData(form).forEach((value, key) => {
     if (typeof value === "string") data.append(key, value);
@@ -38,11 +39,21 @@ async function submitChoice(event: SubmitEvent) {
       credentials: "same-origin",
       cache: "no-store",
     });
-    const result = response.ok ? await response.json() as { authorizationUrl?: string } : null;
-    if (!response.ok || !result?.authorizationUrl) {
+    if (!response.ok) {
       throw new Error("Could not continue this connection. Start again from OpenAI.");
     }
-    navigateToOAuthContinuation(result.authorizationUrl);
+    let result: { authorizationUrl?: string } | null = null;
+    try { result = await response.json() as { authorizationUrl?: string }; } catch { /* Recover from intermediary response replacement below. */ }
+    if (result?.authorizationUrl) {
+      navigateToOAuthContinuation(result.authorizationUrl);
+      return;
+    }
+    const state = await fetch("/connect/openai/account-info", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (state.status !== 401) throw new Error("Could not continue this connection. Start again from OpenAI.");
+    navigateToOAuthContinuation(action === "switch" ? "/connect/openai/login" : account.value?.authorizationUrl || "");
   } catch (error) {
     choiceError.value = error instanceof Error
       ? error.message : "Could not continue this connection. Start again from OpenAI.";

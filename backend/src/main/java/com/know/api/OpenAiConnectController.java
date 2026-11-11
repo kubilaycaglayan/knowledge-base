@@ -89,14 +89,14 @@ public class OpenAiConnectController {
 
   private static String hidden(String name, String value) { return "<input type=hidden name=\""+name+"\" value=\""+escape(value)+"\">"; }
 
-  public record AccountInfo(String email, String csrfParameter, String csrfToken) {}
+  public record AccountInfo(String email, String csrfParameter, String csrfToken, String authorizationUrl) {}
 
   @GetMapping(value="/account-info", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody
   public ResponseEntity<AccountInfo> accountInfo(HttpServletRequest request, Authentication authentication) {
     var session = request.getSession(false);
     if (!isAuthenticated(authentication) || session == null
-        || !(session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String))
+        || !(session.getAttribute(OAuthAccountConfirmationFilter.PENDING) instanceof String authorizationUrl))
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Connection expired; start again from OpenAI");
     User user;
     try {
@@ -108,7 +108,7 @@ public class OpenAiConnectController {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Connection unavailable");
     return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store")
         .header(HttpHeaders.PRAGMA, "no-cache")
-        .body(new AccountInfo(user.getEmail(), csrf.getParameterName(), csrf.getToken()));
+        .body(new AccountInfo(user.getEmail(), csrf.getParameterName(), csrf.getToken(), authorizationUrl));
   }
 
   @GetMapping(value="/account", produces=MediaType.TEXT_HTML_VALUE)
