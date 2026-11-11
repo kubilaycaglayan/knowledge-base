@@ -157,6 +157,16 @@ class OpenAiConnectControllerTest {
     assertFalse(page.getBody().contains("unsupported:write"));
     assertTrue(page.getBody().contains("name=user_oauth_approval value=true"));
     assertTrue(page.getBody().contains("name=user_oauth_approval value=false"));
+    var forms = java.util.regex.Pattern.compile("<form[^>]*>(.*?)</form>", java.util.regex.Pattern.DOTALL)
+        .matcher(page.getBody());
+    String cancelForm = null;
+    while (forms.find()) {
+      if (forms.group(1).contains("Cancel connection")) cancelForm = forms.group(1);
+    }
+    assertNotNull(cancelForm);
+    assertFalse(cancelForm.contains("name=scope"), "Cancel must submit no scopes: Spring treats submitted scopes as approval");
+    assertTrue(cancelForm.contains("csrf-test"));
+    assertTrue(cancelForm.contains("csrf-state"));
     assertEquals("no-store", page.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
   }
 
