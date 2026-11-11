@@ -12,7 +12,7 @@ const stubs = {
 };
 
 it("shows the authenticated account and submits a CSRF-protected choice", async () => {
-  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf" }), { status: 200 }));
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf", authorizationUrl: "/oauth2/authorize?state=test" }), { status: 200 }));
   const wrapper = mount(OAuthAccountView, { global: { stubs } });
   await flushPromises();
   expect(wrapper.text()).toContain("user@example.test");
@@ -24,7 +24,7 @@ it("shows the authenticated account and submits a CSRF-protected choice", async 
 
 it("posts the account choice as JSON and explicitly navigates to its continuation", async () => {
   const fetchSpy = vi.spyOn(globalThis, "fetch")
-    .mockResolvedValueOnce(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf" }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf", authorizationUrl: "/oauth2/authorize?state=test" }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ authorizationUrl: "/oauth2/authorize?state=test" }), { status: 200 }));
   const wrapper = mount(OAuthAccountView, { global: { stubs } });
   await flushPromises();
@@ -47,6 +47,28 @@ it("posts the account choice as JSON and explicitly navigates to its continuatio
   expect(String(options?.body)).toContain("_csrf=csrf");
   expect(String(options?.body)).toContain("action=continue");
   expect(navigateMock).toHaveBeenCalledWith("/oauth2/authorize?state=test");
+  fetchSpy.mockRestore();
+  navigateMock.mockClear();
+});
+
+it("uses the captured continuation when the authorization bridge replaces the JSON response", async () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(new Response(JSON.stringify({ email: "user@example.test", csrfParameter: "_csrf", csrfToken: "csrf", authorizationUrl: "/oauth2/authorize?state=test" }), { status: 200 }))
+    .mockResolvedValueOnce(new Response("<!doctype html><title>Continuing authorization</title>", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }));
+  const wrapper = mount(OAuthAccountView, { global: { stubs } });
+  await flushPromises();
+
+  await wrapper.get("form").trigger("submit", { submitter: wrapper.findAll("button")[0].element });
+  await flushPromises();
+
+  expect(fetchSpy).toHaveBeenCalledTimes(3);
+  expect(fetchSpy.mock.calls[2][0]).toBe("/connect/openai/account-info");
+  expect(navigateMock).toHaveBeenCalledWith("/oauth2/authorize?state=test");
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   fetchSpy.mockRestore();
   navigateMock.mockClear();
 });
