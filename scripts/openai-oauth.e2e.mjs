@@ -88,7 +88,7 @@ async function createAccount(label) {
   return { email, password, token: payload.token };
 }
 
-async function getConsentPage(email, password, scopes, state, challenge) {
+async function getConsentPage(email, password, scopes, state, challenge, switchFrom = null) {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
@@ -101,7 +101,7 @@ async function getConsentPage(email, password, scopes, state, challenge) {
   });
   let response = await request(`${baseUrl}/oauth2/authorize?${params}`);
 
-  for (let redirects = 0; redirects < 6; redirects += 1) {
+  for (let redirects = 0; redirects < 12; redirects += 1) {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const next = new URL(response.headers.get("location"), baseUrl);
       if (next.pathname === "/connect/openai/login") {
@@ -128,6 +128,23 @@ async function getConsentPage(email, password, scopes, state, challenge) {
         response = await request(next);
         continue;
       }
+      if (next.pathname === "/oauth-account") {
+        const page = await request(`${baseUrl}/connect/openai/account`);
+        assert.equal(page.status, 200, "Account confirmation did not load");
+        const html = await page.text();
+        assert.ok(html.includes(switchFrom ?? email), "Account confirmation showed the wrong Knowledge Base user");
+        assert.match(html, /Switch account/);
+        const action = switchFrom ? "switch" : "continue";
+        switchFrom = null;
+        const confirmation = await request(`${baseUrl}/connect/openai/account`, {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: formBody({ _csrf: field(html, "_csrf"), action }),
+        });
+        assert.equal(confirmation.status, 302);
+        response = confirmation;
+        continue;
+      }
       if (next.pathname === "/connect/openai/consent") {
         response = await request(next);
         const consentHtml = await response.text();
@@ -142,10 +159,10 @@ async function getConsentPage(email, password, scopes, state, challenge) {
   throw new Error("OAuth authorization exceeded the redirect limit");
 }
 
-async function authorizeAndExchange(account, scopes, selectedScopes, { invalidVerifier = false } = {}) {
+async function authorizeAndExchange(account, scopes, selectedScopes, { invalidVerifier = false, switchFrom = null } = {}) {
   const state = randomBytes(24).toString("base64url");
   const { verifier, challenge } = pkcePair();
-  const consentHtml = await getConsentPage(account.email, account.password, scopes, state, challenge);
+  const consentHtml = await getConsentPage(account.email, account.password, scopes, state, challenge, switchFrom);
   const renderedScopes = inputValues(consentHtml)
     .filter((input) => input.name === "scope" && input.checked !== undefined)
     .map((input) => input.value);
@@ -292,6 +309,23 @@ async function main() {
   assert.equal(ownerGrants.length, 1);
   assert.match(ownerGrants[0].scopes, /kb:notes:read/);
   const grantId = ownerGrants[0].id;
+  const label = await request(`${baseUrl}/api/v1/openai-connections/${grantId}/label`, {
+    method: "PATCH", headers: { authorization: `Bearer ${owner.token}`, "content-type": "application/json" },
+    body: JSON.stringify({ label: "  Work OpenAI  " }),
+  });
+  assert.equal(label.status, 204);
+  const labeled = await request(`${baseUrl}/api/v1/openai-connections`, { headers: { authorization: `Bearer ${owner.token}` } });
+  assert.equal((await labeled.json())[0].label, "Work OpenAI");
+  const foreignLabel = await request(`${baseUrl}/api/v1/openai-connections/${grantId}/label`, {
+    method: "PATCH", headers: { authorization: `Bearer ${other.token}`, "content-type": "application/json" },
+    body: JSON.stringify({ label: "Stolen" }),
+  });
+  assert.equal(foreignLabel.status, 404);
+  const signOut = await request(`${baseUrl}/api/v1/openai-connections/browser-session`, {
+    method: "DELETE", headers: { authorization: `Bearer ${owner.token}` },
+  });
+  assert.equal(signOut.status, 204);
+  assert.equal((await mcp(authorization.access_token)).status, 200, "Signing out revoked an existing connection");
   const otherConnections = await request(`${baseUrl}/api/v1/openai-connections`, {
     headers: { authorization: `Bearer ${other.token}` },
   });
@@ -344,6 +378,11 @@ async function main() {
   assert.equal(codeReplay.status, 400, "Authorization code replay was accepted");
   assert.equal(replayBody.error, "invalid_grant", "Code replay did not use the OAuth invalid_grant response");
   assert.equal((await mcp(replayAuthorization.access_token)).status, 401, "Authorization code replay did not revoke the previously issued access token");
+
+  const switched = await authorizeAndExchange(other, ["kb:boards:read"], ["kb:boards:read"], { switchFrom: owner.email });
+  const switchedConnections = await request(`${baseUrl}/api/v1/openai-connections`, { headers: { authorization: `Bearer ${other.token}` } });
+  assert.equal((await switchedConnections.json()).length, 1, "Switching did not create a grant for the selected user");
+  assert.equal((await mcp(switched.access_token)).status, 200, "Switched account could not use its grant");
 
   console.log("OpenAI OAuth E2E passed: discovery, challenge, redirect allow-list, valid and invalid PKCE, session login, consent guard/scope binding, issuer/audience, MCP authentication and scope enforcement, owner isolation, refresh fallback/rotation/replay, authorization-code replay revocation, and explicit grant revocation.");
 }

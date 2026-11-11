@@ -134,6 +134,21 @@ describe("App", () => {
     fetchSpy.mockRestore();
   });
 
+  it("keeps the web login and offers retry if ending the OAuth session fails", async () => {
+    localStorage.setItem("know_token", "token");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (String(url).includes("/openai-connections/browser-session")) throw new Error("offline");
+      return new Response(null, { status: 204 });
+    });
+    const wrapper = mount(App, { global: { stubs } });
+    await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+    await flushPromises();
+    expect(localStorage.getItem("know_token")).toBe("token");
+    expect(wrapper.get('[role="alertdialog"] [role="alert"]').text()).toContain("try again");
+    fetchSpy.mockRestore();
+  });
+
   it("puts the product name first in the browser title", async () => {
     localStorage.setItem("know_token", "token");
     mount(App, {

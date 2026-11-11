@@ -72,6 +72,7 @@ public class OpenAiOAuthConfig {
     OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
     http.addFilterBefore(new OAuthTokenRateLimitFilter(limiter, clientId), SecurityContextHolderFilter.class);
     http.addFilterBefore(new OAuthResourceParameterFilter(issuer, redirectUris), SecurityContextHolderFilter.class);
+    http.addFilterAfter(new OAuthAccountConfirmationFilter(), SecurityContextHolderFilter.class);
     http.getConfigurer(org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer.class)
         .authorizationEndpoint(endpoint -> endpoint.consentPage("/connect/openai/consent"))
         .authorizationServerMetadataEndpoint(endpoint -> endpoint.authorizationServerMetadataCustomizer(

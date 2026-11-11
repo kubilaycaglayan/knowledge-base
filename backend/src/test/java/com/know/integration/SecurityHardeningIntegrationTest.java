@@ -44,6 +44,8 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
           "/api/v1/auth/google",
           "/connect/openai/login",
           "/connect/openai/google",
+          "/connect/openai/account",
+          "/connect/openai/account-info",
           "/connect/openai/consent",
           "/.well-known/oauth-protected-resource",
           "/.well-known/openai-apps-challenge");
@@ -162,6 +164,12 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
     }
     assertTrue(checked.size() > 80, "Expected to check every API route, checked " + checked);
     assertTrue(failures.isEmpty(), "Routes reachable without a token: " + failures);
+  }
+
+  @Test
+  void accountSelectionRejectsAnonymousPostsWithoutCsrf() {
+    Reply reply = send("POST", "/connect/openai/account", (String) null, "{}");
+    assertEquals(403, reply.status());
   }
 
   // TH-02

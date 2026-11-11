@@ -35,6 +35,28 @@ class OpenAiConnectionControllerTest {
   }
 
   @Test
+  void labelsAreTrimmedAndUpdatesAreScopedToTheOwner() {
+    JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    when(jdbc.update(anyString(), any(), any(), any())).thenReturn(1);
+    var controller = new OpenAiConnectionController(jdbc, true);
+    controller.label(new TestingAuthenticationToken("owner-1", ""), "grant-1",
+        new OpenAiConnectionController.LabelRequest("  Work account  "));
+    verify(jdbc).update(contains("where id=? and principal_name=?"), eq("Work account"), eq("grant-1"), eq("owner-1"));
+    assertThrows(ResponseStatusException.class, () -> controller.label(new TestingAuthenticationToken("owner-1", ""), "grant-1",
+        new OpenAiConnectionController.LabelRequest("a".repeat(101))));
+  }
+
+  @Test
+  void labelsCannotModifyAnotherUsersConnection() {
+    JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    when(jdbc.update(anyString(), any(), any(), any())).thenReturn(0);
+    var controller = new OpenAiConnectionController(jdbc, true);
+    var error = assertThrows(ResponseStatusException.class, () -> controller.label(new TestingAuthenticationToken("owner-1", ""), "foreign",
+        new OpenAiConnectionController.LabelRequest("Other")));
+    assertEquals(404, error.getStatusCode().value());
+  }
+
+  @Test
   void listMapsCommaDelimitedStoredScopesToApprovedAccessLabels() throws Exception {
     JdbcTemplate jdbc = mock(JdbcTemplate.class);
     when(jdbc.query(anyString(), ArgumentMatchers.<RowMapper<OpenAiConnectionController.Connection>>any(),
