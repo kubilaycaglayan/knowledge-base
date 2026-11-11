@@ -113,15 +113,20 @@ async function getConsentPage(email, password, scopes, state, challenge, switchF
         const previousSession = [...cookies].find(([name]) => name === "SESSION")?.[1];
         const loginResponse = await request(`${baseUrl}/connect/openai/login`, {
           method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            accept: "application/json",
+          },
           body: formBody({ email, password, _csrf: csrf }),
         });
-        assert.equal(loginResponse.status, 302, "OAuth password login did not continue authorization");
+        assert.equal(loginResponse.status, 200, "OAuth password login did not return an explicit continuation");
         const currentSession = [...cookies].find(([name]) => name === "SESSION")?.[1];
         if (previousSession && currentSession) {
           assert.notEqual(currentSession, previousSession, "OAuth login did not rotate its session ID");
         }
-        response = await request(new URL(loginResponse.headers.get("location"), baseUrl));
+        const loginContinuation = await loginResponse.json();
+        assert.ok(loginContinuation.authorizationUrl, "OAuth login omitted its continuation URL");
+        response = await request(new URL(loginContinuation.authorizationUrl, baseUrl));
         continue;
       }
       if (next.pathname === "/oauth2/authorize") {
@@ -138,11 +143,21 @@ async function getConsentPage(email, password, scopes, state, challenge, switchF
         switchFrom = null;
         const confirmation = await request(`${baseUrl}/connect/openai/account`, {
           method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            ...(action === "continue" ? { accept: "application/json" } : {}),
+          },
           body: formBody({ _csrf: field(html, "_csrf"), action }),
         });
-        assert.equal(confirmation.status, 302);
-        response = confirmation;
+        if (action === "continue") {
+          assert.equal(confirmation.status, 200, "Account choice did not return an explicit continuation");
+          const continuation = await confirmation.json();
+          assert.ok(continuation.authorizationUrl, "Account choice omitted its continuation URL");
+          response = await request(new URL(continuation.authorizationUrl, baseUrl));
+        } else {
+          assert.equal(confirmation.status, 302);
+          response = confirmation;
+        }
         continue;
       }
       if (next.pathname === "/connect/openai/consent") {

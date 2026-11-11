@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { navigateToOAuthContinuation } from "../lib/oauthAuthorization";
 
 type AccountInfo = { email: string; csrfParameter: string; csrfToken: string };
 const account = ref<AccountInfo | null>(null);
 const failed = ref(false);
+const choiceBusy = ref(false);
+const choiceError = ref("");
 onMounted(async () => {
   document.title = "Confirm account · Knowledge Base";
   try {
@@ -12,6 +15,40 @@ onMounted(async () => {
     account.value = await response.json() as AccountInfo;
   } catch { failed.value = true; }
 });
+
+async function submitChoice(event: SubmitEvent) {
+  const form = event.currentTarget;
+  const submitter = event.submitter as HTMLButtonElement | null;
+  if (!(form instanceof HTMLFormElement)) return;
+  const data = new URLSearchParams();
+  new FormData(form).forEach((value, key) => {
+    if (typeof value === "string") data.append(key, value);
+  });
+  data.set(submitter?.name || "action", submitter?.value || "continue");
+  choiceBusy.value = true;
+  choiceError.value = "";
+  try {
+    const response = await fetch(form.getAttribute("action") || "/connect/openai/account", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      body: data.toString(),
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const result = response.ok ? await response.json() as { authorizationUrl?: string } : null;
+    if (!response.ok || !result?.authorizationUrl) {
+      throw new Error("Could not continue this connection. Start again from OpenAI.");
+    }
+    navigateToOAuthContinuation(result.authorizationUrl);
+  } catch (error) {
+    choiceError.value = error instanceof Error
+      ? error.message : "Could not continue this connection. Start again from OpenAI.";
+    choiceBusy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -25,10 +62,12 @@ onMounted(async () => {
           <p v-else-if="failed" role="alert">This connection has expired. Start the connection again from OpenAI.</p>
           <template v-else-if="account">
             <p>You’re signed in to Knowledge Base as <strong>{{ account.email }}</strong>.</p>
-            <form method="post" action="/connect/openai/account">
+            <p v-if="choiceError" role="alert" aria-live="polite">{{ choiceError }}</p>
+            <p v-if="choiceBusy" role="status">Continuing authorization…</p>
+            <form method="post" action="/connect/openai/account" @submit.prevent="submitChoice">
               <input type="hidden" :name="account.csrfParameter" :value="account.csrfToken">
-              <v-btn type="submit" name="action" value="continue" color="primary" variant="flat">Continue</v-btn>
-              <v-btn type="submit" name="action" value="switch" variant="outlined">Switch account</v-btn>
+              <v-btn type="submit" name="action" value="continue" color="primary" variant="flat" :loading="choiceBusy" :disabled="choiceBusy">Continue</v-btn>
+              <v-btn type="submit" name="action" value="switch" variant="outlined" :loading="choiceBusy" :disabled="choiceBusy">Switch account</v-btn>
             </form>
           </template>
         </v-card-text>

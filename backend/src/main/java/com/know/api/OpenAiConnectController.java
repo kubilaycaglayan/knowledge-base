@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.Locale;
 import java.util.List;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,8 @@ import org.springframework.http.HttpStatus;
 @Controller
 @RequestMapping("/connect/openai")
 public class OpenAiConnectController {
+  public record AuthorizationContinuation(String authorizationUrl) {}
+
   private static final String PAGE_STYLE = "<style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#252b36;background:#f7f8fa}*{box-sizing:border-box}body{margin:0;padding:0 max(24px,env(safe-area-inset-right)) max(48px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));font-size:14px;line-height:1.5}.shell-header{max-width:1200px;min-height:76px;margin:0 auto 10px;padding:16px 0;display:flex;align-items:center;border-bottom:1px solid #dfe3e9}.brand{font-size:19px;font-weight:800;letter-spacing:-.7px;color:#252b36;text-decoration:none}.brand span{color:#606b7b}main{max-width:480px;margin:40px auto;padding:24px;background:#fff;border:1px solid #dfe3e9;border-radius:4px}h1{margin:0 0 6px;font-size:26px;font-weight:650;letter-spacing:-.7px;line-height:1.3;overflow-wrap:anywhere}p{color:#606b7b;margin:14px 0}form{display:grid;gap:14px;margin:24px 0}form>label{display:grid;gap:6px;font-size:12px;font-weight:600}input:not([type=checkbox]){width:100%;min-height:40px;border:1px solid #aab3c0;border-radius:4px;padding:9px 11px;font:inherit;font-size:14px;font-weight:400;color:#252b36;background:#fff}input[type=checkbox]{width:16px;height:16px;accent-color:#334155}form>label:has(input[type=checkbox]){display:flex;align-items:center;gap:12px;min-height:44px}button{min-height:36px;border:1px solid #334155;border-radius:4px;background:#334155;color:#fff;font:inherit;font-size:12px;font-weight:600;padding:7px 12px;cursor:pointer;touch-action:manipulation}button:hover{background:#253247}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #4478b4;outline-offset:3px}.google-login iframe{color-scheme:light}@media(max-width:700px){body{padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right))}main{padding:16px}input:not([type=checkbox]){min-height:44px;font-size:16px}button{min-height:44px}}</style>";
   private final UserRepository users;
   private final PasswordEncoder passwords;
@@ -54,12 +57,12 @@ public class OpenAiConnectController {
     String csrf = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t
         ? "<input type=\"hidden\" name=\""+t.getParameterName()+"\" value=\""+escape(t.getToken())+"\">" : "";
     String csrfToken = request.getAttribute("_csrf") instanceof org.springframework.security.web.csrf.CsrfToken t ? escape(t.getToken()) : "";
-    String googleButton = googleClientId.isBlank() ? "" : "<script id='google-gsi-client' src='https://accounts.google.com/gsi/client' async defer></script><script src='/connect/openai/openai-connect.js' defer></script><div id='google-connect-config' data-client-id='"+escape(googleClientId)+"' data-csrf-token='"+csrfToken+"'></div><div class='google-login'><p>or continue with</p><div id='google-connect-button' aria-label='Continue with Google'></div></div>";
+    String googleButton = googleClientId.isBlank() ? "" : "<script id='google-gsi-client' src='https://accounts.google.com/gsi/client' async defer></script><div id='google-connect-config' data-client-id='"+escape(googleClientId)+"' data-csrf-token='"+csrfToken+"'></div><div class='google-login'><p>or continue with</p><div id='google-connect-button' aria-label='Continue with Google'></div></div>";
     return ResponseEntity.ok().contentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8))
         .header(HttpHeaders.CACHE_CONTROL, "no-store")
         .header(HttpHeaders.PRAGMA, "no-cache")
         .header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
-        .body("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Sign in · Knowledge Base</title>"+PAGE_STYLE+"</head><body><header class='shell-header'><a class='brand' href='/' translate='no' aria-label='Knowledge Base'>knowledge<span>.</span>base</a></header><main><h1>Sign in</h1><p>Sign in to choose what the OpenAI plugin can read.</p><form method=post action='/connect/openai/login'>"+csrf+"<label>Email <input name=email type=email autocomplete=username required></label><label>Password <input name=password type=password autocomplete=current-password required></label><button>Sign in</button></form>"+googleButton+"</main></body></html>");
+        .body("<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><title>Sign in · Knowledge Base</title>"+PAGE_STYLE+"<style>button.is-loading::after{content:'';display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:oauth-spin .8s linear infinite}@keyframes oauth-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){button.is-loading::after{animation:none;border-right-color:currentColor}}</style></head><body><header class='shell-header'><a class='brand' href='/' translate='no' aria-label='Knowledge Base'>knowledge<span>.</span>base</a></header><main><h1>Sign in</h1><p>Sign in to choose what the OpenAI plugin can read.</p><p id='openai-login-error' role='alert' aria-live='polite' hidden></p><form id='openai-login-form' method=post action='/connect/openai/login'>"+csrf+"<label>Email <input name=email type=email autocomplete=username required></label><label>Password <input name=password type=password autocomplete=current-password required></label><button type=submit>Sign in</button></form>"+googleButton+"</main><script src='/connect/openai/openai-connect.js' defer></script></body></html>");
   }
 
   @GetMapping(value="/consent", produces=MediaType.TEXT_HTML_VALUE)
@@ -129,7 +132,7 @@ public class OpenAiConnectController {
 
   @PostMapping("/account")
   @ResponseBody
-  public ResponseEntity<Void> chooseAccount(@RequestParam String action, HttpServletRequest request,
+  public ResponseEntity<?> chooseAccount(@RequestParam String action, HttpServletRequest request,
       Authentication authentication) {
     var session = request.getSession(false);
     if (!isAuthenticated(authentication) || session == null
@@ -138,6 +141,7 @@ public class OpenAiConnectController {
     if ("continue".equals(action)) {
       session.removeAttribute(OAuthAccountConfirmationFilter.PENDING);
       session.setAttribute(OAuthAccountConfirmationFilter.APPROVED, target);
+      if (expectsJson(request)) return continuation(target);
       return ResponseEntity.status(302).header(HttpHeaders.LOCATION, target).build();
     }
     if ("switch".equals(action)) {
@@ -145,6 +149,7 @@ public class OpenAiConnectController {
       session.removeAttribute(OAuthAccountConfirmationFilter.APPROVED);
       SecurityContextHolder.clearContext();
       request.changeSessionId();
+      if (expectsJson(request)) return continuation("/connect/openai/login");
       return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/connect/openai/login").build();
     }
     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account selection");
@@ -153,7 +158,7 @@ public class OpenAiConnectController {
   @PostMapping(value="/login", consumes=MediaType.APPLICATION_FORM_URLENCODED_VALUE)
   @ResponseBody
   @io.swagger.v3.oas.annotations.Operation(summary = "Sign in for the OpenAI OAuth authorization flow")
-  public ResponseEntity<Void> login(@RequestParam String email, @RequestParam String password, HttpServletRequest request,
+  public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password, HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
     String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
     checkRate(request, normalizedEmail);
@@ -161,7 +166,9 @@ public class OpenAiConnectController {
     if (!PasswordTiming.matches(passwords, password, user))
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
     establishSession(user, request, response);
-    return ResponseEntity.status(302).header(HttpHeaders.LOCATION, safeContinuation(request)).build();
+    String continuation = safeContinuation(request);
+    if (expectsJson(request)) return continuation(continuation);
+    return ResponseEntity.status(302).header(HttpHeaders.LOCATION, continuation).build();
   }
 
   @PostMapping(value="/google", consumes=MediaType.APPLICATION_JSON_VALUE)
@@ -208,6 +215,23 @@ public class OpenAiConnectController {
     } catch (IllegalArgumentException ignored) {
       return "/";
     }
+  }
+  private static boolean expectsJson(HttpServletRequest request) {
+    String accept = request.getHeader(HttpHeaders.ACCEPT);
+    if (accept == null) return false;
+    try {
+      return MediaType.parseMediaTypes(accept).stream().anyMatch(mediaType ->
+          mediaType.getQualityValue() > 0
+              && "application".equalsIgnoreCase(mediaType.getType())
+              && ("json".equalsIgnoreCase(mediaType.getSubtype())
+                  || mediaType.getSubtype().toLowerCase(Locale.ROOT).endsWith("+json")));
+    } catch (IllegalArgumentException ignored) {
+      return false;
+    }
+  }
+  private static ResponseEntity<AuthorizationContinuation> continuation(String url) {
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        .cacheControl(CacheControl.noStore()).body(new AuthorizationContinuation(url));
   }
   private static String escape(String v) { return v.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&#39;"); }
   private static boolean isAuthenticated(Authentication authentication) {

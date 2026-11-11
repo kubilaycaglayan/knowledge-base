@@ -116,6 +116,9 @@ class OpenAiConnectControllerTest {
 
     assertTrue(page.getBody().contains("action='/connect/openai/login'"));
     assertTrue(page.getBody().contains("autocomplete=current-password"));
+    assertTrue(page.getBody().contains("id='openai-login-form'"));
+    assertTrue(page.getBody().contains("src='/connect/openai/openai-connect.js'"));
+    assertTrue(page.getBody().contains("id='openai-login-error'"));
     assertEquals("no-store", page.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL));
     assertEquals("same-origin-allow-popups", page.getHeaders().getFirst("Cross-Origin-Opener-Policy"));
   }
