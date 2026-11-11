@@ -304,6 +304,23 @@ async function main() {
 
   const owner = await createAccount("owner");
   const other = await createAccount("other");
+  const deniedState = randomBytes(24).toString("base64url");
+  const deniedPage = await getConsentPage(owner.email, owner.password, ["kb:notes:read"], deniedState, pkcePair().challenge);
+  const cancelForm = [...deniedPage.matchAll(/<form[^>]*>([\s\S]*?)<\/form>/g)]
+    .find((match) => match[1].includes("Cancel connection"))?.[1];
+  assert.ok(cancelForm, "Consent must offer cancellation");
+  const cancelFields = Object.fromEntries(inputValues(cancelForm).map(({ name, value }) => [name, value]));
+  assert.equal(cancelFields.scope, undefined, "Cancellation must not submit checked scopes");
+  const denial = await request(`${baseUrl}/oauth2/authorize`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: formBody({ ...cancelFields, user_oauth_approval: "false" }),
+  });
+  assert.equal(denial.status, 302);
+  const deniedCallback = new URL(denial.headers.get("location"));
+  assert.equal(deniedCallback.searchParams.get("error"), "access_denied");
+  assert.equal(deniedCallback.searchParams.has("code"), false);
+  assert.equal(deniedCallback.searchParams.get("state"), deniedState);
   const authorization = await authorizeAndExchange(owner, ["kb:notes:read", "kb:logs:read"], ["kb:notes:read"]);
   const claims = JSON.parse(Buffer.from(authorization.access_token.split(".")[1], "base64url").toString("utf8"));
   assert.equal(claims.iss, baseUrl);

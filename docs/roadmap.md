@@ -2,6 +2,8 @@
 
 ## Integrations
 
+- [x] Cancel OpenAI consent without granting checked permissions or issuing an authorization code.
+
 - [x] Preserve HTTPS in OAuth login redirects behind the trusted reverse proxy.
 
 - [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP

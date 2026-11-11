@@ -30,10 +30,14 @@ try {
   await page.getByLabel('Password').fill(password);
   await page.locator('form button').click({ timeout: 5000 });
   await page.getByRole('heading', { name: 'Connect Recall Personal Knowledge Base' }).waitFor();
-  await page.getByRole('button', { name: 'Approve selected access' }).click();
+  // Cancellation must ignore checked permissions and never issue a code.
+  await page.getByRole('button', { name: 'Cancel connection' }).click();
   await page.waitForURL(`${callback}**`, { timeout: 5000 });
-  assert.ok(new URL(page.url()).searchParams.has('code'), 'callback must include an authorization code');
-  console.log('OAuth browser login and consent reached the callback.');
+  const denied = new URL(page.url()).searchParams;
+  assert.equal(denied.get('error'), 'access_denied');
+  assert.equal(denied.has('code'), false);
+  assert.equal(denied.get('state'), params.get('state'));
+  console.log('OAuth cancellation denies access without issuing a code.');
 } finally {
   await browser.close();
 }
