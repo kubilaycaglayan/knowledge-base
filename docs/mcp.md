@@ -46,6 +46,8 @@ include an archived marker where supported by their domain view.
 Available tools: `notes_list`, `note_get`, `logs_list`, `calendar_days`,
 `sessions_list`, `activity_list`, `report_read`, `paths_list`, `labels_list`,
 `boards_list`, `board_cards`, and `search`.
+Paginated MCP tools use zero-based pages: begin at `page=0` and increment by one;
+check subsequent pages before concluding a matching record is absent.
 `report_read` returns totals and category breakdowns by default. Daily rows are
 omitted unless `includeDays=true`; requested rows are paginated with a maximum
 page size of 31. Sankey visualization data is not returned by MCP.

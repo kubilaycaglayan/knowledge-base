@@ -178,14 +178,14 @@ public class McpController {
   }
   Map<String,Object> toolList(Set<String> grants) {
     Map<String,String> descriptions=Map.ofEntries(
-      Map.entry("notes_list","List retained note metadata, including archived notes with archived=true. Use note_get to retrieve one note's plain-text body. Supports page, size, q, archived."),
+      Map.entry("notes_list","List retained note metadata, including archived notes with archived=true. Use note_get to retrieve one note's plain-text body. Supports page, size, q, archived. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."),
       Map.entry("note_get","Get one retained note by noteId. Returns plain-text content without rich-text JSON."),
-      Map.entry("logs_list","List retained logs."), Map.entry("calendar_days","Read calendar days for an ISO date range (maximum one year)."),
-      Map.entry("sessions_list","List retained time entries using page and size."), Map.entry("activity_list","List recent activity."),
+      Map.entry("logs_list","List retained logs. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."), Map.entry("calendar_days","Read calendar days for an ISO date range (maximum one year)."),
+      Map.entry("sessions_list","List retained time entries using page and size. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."), Map.entry("activity_list","List recent activity."),
       Map.entry("report_read","Read report totals and category breakdowns for period WEEK, MONTH, or YEAR, or startDate/endDate. Daily rows are omitted by default; set includeDays=true to fetch a page of at most 31 days. Sankey data is not returned."),
-      Map.entry("labels_list","List labels."), Map.entry("search","Search across only the data categories granted to this token."),
-      Map.entry("paths_list","List retained paths; archived paths are marked."), Map.entry("boards_list","List retained boards; archived boards are marked."),
-      Map.entry("board_cards","List cards for a user-owned board, including archived cards when requested."));
+      Map.entry("labels_list","List labels."), Map.entry("search","Search across only the data categories granted to this token. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."),
+      Map.entry("paths_list","List retained paths; archived paths are marked. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."), Map.entry("boards_list","List retained boards; archived boards are marked. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."),
+      Map.entry("board_cards","List cards for a user-owned board, including archived cards when requested. Pagination is zero-based: start at page 0 and advance by one until all relevant results are checked."));
     List<Map<String,Object>> tools=new ArrayList<>();
     descriptions.forEach(
         (name, description) -> {
