@@ -325,6 +325,13 @@ async function main() {
     method: "DELETE", headers: { authorization: `Bearer ${owner.token}` },
   });
   assert.equal(signOut.status, 204);
+  const browserAccountAfterSignOut = await request(`${baseUrl}/connect/openai/account`);
+  assert.equal(browserAccountAfterSignOut.status, 302,
+    "Signing out left the OAuth browser session authenticated");
+  assert.equal(new URL(browserAccountAfterSignOut.headers.get("location"), baseUrl).pathname,
+    "/connect/openai/login");
+  assert.equal(cookies.has("SESSION"), false,
+    "Signing out did not expire the OAuth SESSION cookie");
   assert.equal((await mcp(authorization.access_token)).status, 200, "Signing out revoked an existing connection");
   const otherConnections = await request(`${baseUrl}/api/v1/openai-connections`, {
     headers: { authorization: `Bearer ${other.token}` },
