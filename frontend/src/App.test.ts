@@ -119,6 +119,18 @@ describe("App", () => {
     expect(wrapper.find("nav").exists()).toBe(true);
   });
 
+  it("ends the separate OAuth browser session when signing out", async () => {
+    localStorage.setItem("know_token", "token");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const wrapper = mount(App, { global: { stubs } });
+
+    await wrapper.get("button.ghost").trigger("click");
+    await wrapper.get('[role="alertdialog"] button:last-child').trigger("click");
+
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining("/openai-connections/browser-session"), expect.objectContaining({ method: "DELETE" }));
+    fetchSpy.mockRestore();
+  });
+
   it("puts the product name first in the browser title", async () => {
     localStorage.setItem("know_token", "token");
     mount(App, {
