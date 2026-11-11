@@ -8,6 +8,10 @@ Treat it like a password and revoke it if it is exposed.
 
 ## OpenAI plugin authorization
 
+The backend honors forwarded headers from the trusted Caddy reverse proxy so
+OAuth login redirects preserve the external HTTPS scheme. Keep the backend
+port private; the edge proxy must overwrite client-supplied forwarded headers.
+
 The Recall plugin uses OAuth rather than asking users to create a manual MCP
 token. When enabled by deployment configuration, OpenAI discovers the server
 through the OAuth and protected-resource metadata endpoints. Users sign in to

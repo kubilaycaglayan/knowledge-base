@@ -244,6 +244,17 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   printf '%s' "$proxy_login_headers" | grep -Eqi '^set-cookie: SESSION=.*; samesite=lax'
   proxy_authorize_status="$(curl -ksS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{http_code}' "https://localhost:${PROXY_HTTPS_PORT}/oauth2/authorize")"
   [[ "$proxy_authorize_status" == "400" ]]
+  proxy_oauth_redirect="$(curl -ksS --connect-timeout 2 --max-time 5 -o /dev/null -w '%{redirect_url}' --get \
+    "https://localhost:${PROXY_HTTPS_PORT}/oauth2/authorize" \
+    --data-urlencode 'response_type=code' \
+    --data-urlencode "client_id=${OPENAI_OAUTH_CLIENT_ID}" \
+    --data-urlencode "redirect_uri=${OPENAI_OAUTH_REDIRECT_URIS}" \
+    --data-urlencode "resource=${OPENAI_OAUTH_ISSUER}/mcp" \
+    --data-urlencode 'scope=kb:notes:read' \
+    --data-urlencode 'state=https-redirect-smoke' \
+    --data-urlencode 'code_challenge=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG' \
+    --data-urlencode 'code_challenge_method=S256')"
+  [[ "$proxy_oauth_redirect" == "https://localhost:${PROXY_HTTPS_PORT}/connect/openai/login" ]]
   # The theme bootstrap must be served as JavaScript through the deployed proxy.
   curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/theme.js" \
     | grep -q 'knowledge-base-theme'

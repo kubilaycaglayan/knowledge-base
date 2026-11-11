@@ -2,6 +2,8 @@
 
 ## Integrations
 
+- [x] Preserve HTTPS in OAuth login redirects behind the trusted reverse proxy.
+
 - [x] Provide scoped, expiring read-only MCP credentials and a Streamable HTTP
   endpoint for AI clients; manage tokens in Settings. See [MCP setup](mcp.md).
 - [x] Add an isolated OAuth authorization-code + PKCE connection for the OpenAI
