@@ -122,7 +122,9 @@ class OAuthResourceParameterFilterTest {
     filter.doFilter(post, response, (req, res) -> continued[0] = true);
 
     assertEquals(400, response.getStatus());
-    assertTrue(response.getContentAsString().contains("invalid_scope"));
+    assertTrue(response.getContentAsString().contains(
+        "client-1".equals(clientId) && "server-consent-state".equals(state)
+            ? "invalid_scope" : "Start the connection again"));
     assertFalse(continued[0]);
   }
 

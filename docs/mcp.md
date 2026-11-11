@@ -14,6 +14,9 @@ port private; the edge proxy must overwrite client-supplied forwarded headers.
 OAuth connection pages allow form redirects to `https://chatgpt.com` in their
 Content Security Policy, so browsers can follow the authorization callback.
 Other pages retain a same-origin form policy.
+If a consent form is submitted again after it has been used or expired, the
+user is asked to restart the connection from OpenAI. Existing Knowledge Base
+browser sessions may allow a restarted connection to go directly to consent.
 
 The Recall plugin uses OAuth rather than asking users to create a manual MCP
 token. When enabled by deployment configuration, OpenAI discovers the server

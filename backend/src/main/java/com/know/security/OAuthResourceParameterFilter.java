@@ -56,8 +56,15 @@ public final class OAuthResourceParameterFilter extends OncePerRequestFilter {
                 ? new String[0] : request.getParameterValues("scope"))
             .flatMap(value -> Arrays.stream(value.trim().split("\\s+")))
             .filter(value -> !value.isBlank()).collect(java.util.stream.Collectors.toSet());
-        if (!OAuthConsentRequestStore.matches(request, clientId, state)
-            || !originallyRequested.containsAll(submitted)) {
+        if (!OAuthConsentRequestStore.matches(request, clientId, state)) {
+          response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+          response.setHeader("Cache-Control", "no-store");
+          response.setHeader("Pragma", "no-cache");
+          response.setContentType("text/html;charset=UTF-8");
+          response.getWriter().write("<!doctype html><html><head><title>Connection expired</title></head><body><main><h1>Connection expired or already submitted</h1><p>Start the connection again from OpenAI.</p></main></body></html>");
+          return;
+        }
+        if (!originallyRequested.containsAll(submitted)) {
           response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
           response.setHeader("Cache-Control", "no-store");
           response.setHeader("Pragma", "no-cache");
