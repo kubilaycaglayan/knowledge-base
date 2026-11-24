@@ -12,7 +12,10 @@ deploys; successful deployments are recorded so an unchanged commit is not
 deployed again. The normal preflight, health checks, WebSocket probe, image
 pruning, and production volumes remain in effect.
 
-Use the `kb-deploy` helper on the production host to inspect the watcher.
+Use the `kb-deploy` helper on the production host to control and inspect the watcher.
+Run `kb-deploy start` from any directory to check verified `main` immediately
+and deploy if a new commit is available. It waits for the cycle to finish and
+skips already deployed commits, including environment-only changes.
 Running `kb-deploy` starts a live view of watcher and deploy-script logs;
 `kb-deploy status` shows the timer and deployed commit, and `kb-deploy last`
 shows recent log entries. Add a number to `last` to choose how many entries to

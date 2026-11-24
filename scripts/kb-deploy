@@ -8,8 +8,9 @@ checkout="${DEPLOY_CHECKOUT:-$HOME/knowledge-base-production}"
 
 usage() {
   cat <<'EOF'
-Usage: kb-deploy [watch|status|last|help]
+Usage: kb-deploy [start|watch|status|last|help]
 
+  start   Check verified main and deploy if a new commit is available
   watch   Follow automatic deployment and deploy-script logs (default)
   status  Show the watcher timer and deployed/checked-out commits
   last    Show the latest watcher and deployment log entries
@@ -18,6 +19,9 @@ EOF
 }
 
 case "${1:-watch}" in
+  start)
+    exec systemctl --user start "$service"
+    ;;
   watch|logs)
     shift || true
     exec journalctl --user -u "$service" -f "$@"
