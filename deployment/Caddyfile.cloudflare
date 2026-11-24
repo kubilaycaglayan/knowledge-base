@@ -18,6 +18,8 @@
 
 :80 {
 	import security_headers
+	@root path /
+	header @root Access-Control-Allow-Origin "https://kubilaycaglayan.com"
 
 	handle /ws/* {
 		reverse_proxy api:8080
